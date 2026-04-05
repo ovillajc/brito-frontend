@@ -1,0 +1,47 @@
+import * as React from 'react'
+import { cn } from '@/src/core/infrastructure/utils/cn'
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'orange' | 'green'
+  size?: 'sm' | 'md' | 'lg' | 'icon'
+}
+
+/**
+ * Botón base reutilizable con los colores corporativos de Sociedad Brito.
+ */
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant = 'primary', size = 'md', ...props }, ref) => {
+    const variants = {
+      primary: 'bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-50/90',
+      secondary: 'bg-zinc-100 text-zinc-900 hover:bg-zinc-100/80 dark:bg-zinc-800 dark:text-zinc-50 dark:hover:bg-zinc-800/80',
+      outline: 'border border-zinc-200 bg-white hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-800 dark:hover:text-zinc-50',
+      ghost: 'hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50',
+      orange: 'bg-orange-600 text-white hover:bg-orange-700 shadow-sm transition-all active:scale-95',
+      green: 'bg-green-700 text-white hover:bg-green-800 shadow-sm transition-all active:scale-95',
+    }
+
+    const sizes = {
+      sm: 'h-9 px-3 text-xs',
+      md: 'h-10 px-4 py-2 text-sm',
+      lg: 'h-11 px-8 text-base',
+      icon: 'h-10 w-10',
+    }
+
+    return (
+      <button
+        className={cn(
+          'inline-flex items-center justify-center rounded-md font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+          variants[variant],
+          sizes[size],
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Button.displayName = 'Button'
+
+export { Button }
