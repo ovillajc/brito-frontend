@@ -8,12 +8,12 @@ describe('LoginLeftPanel Component', () => {
     render(<LoginLeftPanel />)
 
     // Evaluar los copys del overlay editorial
-    expect(screen.getByText(/Logística 4.0/i)).toBeDefined()
-    expect(screen.getByText(/Precisión en/i)).toBeDefined()
-    expect(screen.getByText(/cada kilómetro./i)).toBeDefined()
+    expect(screen.getByText(/Transportes Brito/i)).toBeDefined()
+    expect(screen.getByText(/La plataforma que impulsa tus operaciones logísticas/i)).toBeDefined()
+    expect(screen.getByText(/Monitoreo en tiempo real para optimizar/i)).toBeDefined()
     
     // Evaluar el tag de imagen para accesibilidad
-    const imgElement = screen.getByAltText(/Modern semi-truck on highway/i)
+    const imgElement = screen.getByAltText(/Modern logistics truck on a highway/i)
     expect(imgElement).toBeDefined()
   })
 })

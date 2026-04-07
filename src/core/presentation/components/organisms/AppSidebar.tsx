@@ -37,7 +37,7 @@ interface NavItem {
 
 const MAIN_MODULES: NavItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { label: 'Flotilla', icon: Truck, href: '/dashboard/fleet' },
+  { label: 'Flotilla', icon: Truck, href: '/fleet' },
   { label: 'Viajes', icon: Navigation, href: '/dashboard/trips' },
   { label: 'Directorio', icon: Users, href: '/dashboard/directory' },
   { label: 'Facturación', icon: FileText, href: '/dashboard/billing' },

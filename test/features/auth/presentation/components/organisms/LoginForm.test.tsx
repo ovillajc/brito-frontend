@@ -67,12 +67,12 @@ describe('LoginForm Component', () => {
 
   it('debe renderizar el título de bienvenida', () => {
     render(<LoginForm />)
-    expect(screen.getByText(/Bienvenido de nuevo/i)).toBeDefined()
+    expect(screen.getByText(/Acceso a plataforma/i)).toBeDefined()
   })
 
   it('debe renderizar los campos principales (Email y Contraseña)', () => {
     render(<LoginForm />)
-    expect(screen.getByPlaceholderText(/conductor@transportesbrito.com/i)).toBeDefined()
+    expect(screen.getByPlaceholderText(/nombre@transportesbrito.com/i)).toBeDefined()
     expect(screen.getByPlaceholderText(/••••••••/i)).toBeDefined()
   })
 
