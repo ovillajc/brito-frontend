@@ -6,7 +6,6 @@
 
 'use client'
 
-import React, { createContext, useContext, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -18,6 +17,7 @@ import {
   Package,
   Settings,
   HelpCircle,
+  Building,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -42,6 +42,11 @@ const MAIN_MODULES: NavItem[] = [
   { label: 'Directorio', icon: Users, href: '/dashboard/directory' },
   { label: 'Facturación', icon: FileText, href: '/dashboard/billing' },
   { label: 'Logística', icon: Package, href: '/dashboard/logistics' },
+]
+
+const ADMIN_MODULES: NavItem[] = [
+  { label: 'Usuarios', icon: Users, href: '/dashboard/users' },
+  { label: 'Compañías', icon: Building, href: '/dashboard/companies' },
 ]
 
 const SYSTEM_ITEMS: NavItem[] = [
@@ -116,6 +121,40 @@ export function AppSidebar() {
                   {!isCollapsed && <span className="truncate">{item.label}</span>}
                 </Link>
               </li>
+            )
+          })}
+        </ul>
+
+
+        {/* Separator */}
+        <div className="mx-2 my-3 h-px bg-outline-variant/20" />
+
+        {/* Admin */}
+        {!isCollapsed && (
+          <p className="px-2 mb-2 text-[10px] tracking-[0.2em] uppercase text-on-surface-variant font-medium">
+            Administración
+          </p>
+        )}
+        <ul className="flex flex-col gap-0.5">
+          {ADMIN_MODULES.map((item) => {
+            const isActive = pathname === item.href
+            return (
+             <li key={item.href}>
+              <Link 
+                href={item.href}
+                title={isCollapsed ? item.label : undefined}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface',
+                    isCollapsed && 'justify-center px-2'
+                )}
+              >
+                <item.icon className="size-4 shrink-0 pointer-events-none" />
+                {!isCollapsed && <span className="truncate pointer-events-none">{item.label}</span>}
+              </Link>
+             </li>
             )
           })}
         </ul>
