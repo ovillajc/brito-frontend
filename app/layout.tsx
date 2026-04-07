@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: "Operador híbrido líder en el sureste de México. Transporte de carga pesada, refrigerada y suministro de barita grado API.",
 };
 
+import { QueryProvider } from "@/src/core/presentation/providers/query-provider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -31,7 +33,9 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
       <body className="min-h-full flex flex-col font-body selection:bg-primary-container selection:text-on-primary-container">
-        {children}
+        <QueryProvider>
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );

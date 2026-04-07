@@ -13,8 +13,8 @@ import Link from 'next/link'
 
 /**
  * @fileoverview LoginForm.
- * Componente que renderiza el formulario de inicio de sesión orientado al rediseño Material.
- * Incluye validaciones y gestión de errores sin botones de login social.
+ * Componente que renderiza el formulario de inicio de sesión con el nuevo diseño "Stitch".
+ * Incluye validaciones, gestión de errores y elementos específicos para móvil.
  */
 
 export function LoginForm() {
@@ -32,79 +32,81 @@ export function LoginForm() {
   }, [form])
 
   return (
-    <div className="w-full max-w-md grow flex flex-col justify-center pt-24 lg:pt-12 xl:pt-0">
-      {/* Branding for Mobile */}
-      <div className="lg:hidden mb-12">
-        <div className="text-2xl font-bold tracking-tight text-on-surface flex items-center gap-2">
-          <span className="w-10 h-10 bg-linear-to-br from-primary to-primary-container rounded-xl flex items-center justify-center text-white">
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>fluid_med</span>
-          </span>
-          Transportes Brito
-        </div>
+    <div className="w-full max-w-md">
+      {/* Mobile Brand Header */}
+      <div className="lg:hidden absolute top-12 left-8">
+        <span className="text-primary-container font-headline text-3xl font-extrabold tracking-tight">Transportes Brito</span>
       </div>
 
-      <div className="space-y-2 mb-8">
-        <h1 className="text-4xl font-extrabold tracking-tight text-on-surface font-headline">Bienvenido de nuevo</h1>
-        <p className="text-on-surface-variant">Accede a tu centro de control logístico</p>
-      </div>
+      <header className="mb-10">
+        <h1 className="font-headline text-4xl font-bold text-surface-bright mb-2">Acceso a plataforma</h1>
+        <p className="text-surface-variant/60 font-body">Ingresa tus credenciales para gestionar la flota.</p>
+      </header>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleLogin as any)} className="space-y-6">
-          <div className="space-y-4">
-            {/* Email Field */}
-            <FormField
-              control={form.control as any}
-              name="email"
-              render={({ field }) => (
-                <FormItem className="space-y-2">
-                  <label htmlFor="email" className="text-sm font-semibold text-on-surface-variant flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[18px]">alternate_email</span>
-                    Correo electrónico o usuario
-                  </label>
+          {/* Field: Correo Corporativo */}
+          <FormField
+            control={form.control as any}
+            name="email"
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <label className="block text-sm font-medium text-surface-variant/80 ml-1" htmlFor="email">
+                  Correo Corporativo
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <span className="material-symbols-outlined text-outline text-lg">mail</span>
+                  </div>
                   <FormControl>
                     <input
                       id="email"
-                      placeholder="conductor@transportesbrito.com"
-                      className="w-full px-4 py-4 bg-surface-container-high border-none rounded-xl text-on-surface placeholder:text-outline focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all duration-300 outline-none"
+                      className="block w-full bg-surface-container-highest/10 border-0 rounded-xl py-4 pl-12 pr-4 text-surface placeholder-outline focus:ring-2 focus:ring-primary-container/30 focus:bg-surface-container-highest/20 transition-all outline-none"
+                      placeholder="nombre@transportesbrito.com"
+                      type="email"
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage className="text-error" />
-                </FormItem>
-              )}
-            />
+                </div>
+                <FormMessage className="text-error mt-1" />
+              </FormItem>
+            )}
+          />
 
-            {/* Password Field */}
-            <FormField
-              control={form.control as any}
-              name="password"
-              render={({ field }) => (
-                <FormItem className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label htmlFor="password" className="text-sm font-semibold text-on-surface-variant flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[18px]">lock</span>
-                      Contraseña
-                    </label>
-                    <Link
-                      href="/auth/forgot-password"
-                      className="text-sm font-medium text-secondary hover:text-on-secondary-fixed-variant transition-colors"
-                    >
-                      ¿Olvidaste tu contraseña?
-                    </Link>
+          {/* Field: Contraseña */}
+          <FormField
+            control={form.control as any}
+            name="password"
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <div className="flex justify-between items-center px-1">
+                  <label className="block text-sm font-medium text-surface-variant/80" htmlFor="password">
+                    Contraseña
+                  </label>
+                  <Link 
+                    href="/auth/forgot-password" 
+                    className="text-xs text-primary-container hover:text-primary-fixed transition-colors font-medium"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </Link>
+                </div>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <span className="material-symbols-outlined text-outline text-lg">lock</span>
                   </div>
                   <FormControl>
                     <div className="relative">
                       <input
                         id="password"
-                        type={showPassword ? 'text' : 'password'}
+                        className="block w-full bg-surface-container-highest/10 border-0 rounded-xl py-4 pl-12 pr-4 text-surface placeholder-outline focus:ring-2 focus:ring-primary-container/30 focus:bg-surface-container-highest/20 transition-all outline-none"
                         placeholder="••••••••"
-                        className="w-full px-4 py-4 bg-surface-container-high border-none rounded-xl text-on-surface placeholder:text-outline focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all duration-300 outline-none"
+                        type={showPassword ? 'text' : 'password'}
                         {...field}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant hover:text-on-surface-variant"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant hover:text-on-surface-variant transition-colors"
                       >
                          <span className="material-symbols-outlined">
                           {showPassword ? 'visibility_off' : 'visibility'}
@@ -112,67 +114,65 @@ export function LoginForm() {
                       </button>
                     </div>
                   </FormControl>
-                  <FormMessage className="text-error" />
-                </FormItem>
-              )}
-            />
-          </div>
+                </div>
+                <FormMessage className="text-error mt-1" />
+              </FormItem>
+            )}
+          />
 
-          <div className="flex justify-between items-center pt-2">
-            {/* Remember Me Checkbox */}
-            <FormField
-              control={form.control as any}
-              name="rememberMe"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <label className="relative flex items-center cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        className="peer sr-only"
-                        checked={field.value}
-                        onChange={field.onChange}
-                      />
-                      <div className="w-5 h-5 bg-surface-container-high rounded-md peer-checked:bg-secondary-container transition-colors flex items-center justify-center">
-                        <span className="material-symbols-outlined text-white text-[16px] hidden peer-checked:block">check</span>
-                      </div>
-                      <span className="ml-3 text-sm font-medium text-on-surface-variant group-hover:text-on-surface transition-colors">
-                        Recordar este dispositivo
-                      </span>
-                    </label>
-                  </FormControl>
-                  <FormMessage className="text-error" />
-                </FormItem>
-              )}
-            />
-          </div>
-          
-          {/* Primary Action */}
+          {/* Remember Me Field */}
+          <FormField
+            control={form.control as any}
+            name="rememberMe"
+            render={({ field }) => (
+              <FormItem className="flex items-center space-x-2 space-y-0">
+                <FormControl>
+                  <label className="relative flex items-center cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      className="peer sr-only"
+                      checked={field.value}
+                      onChange={field.onChange}
+                    />
+                    <div className="w-5 h-5 bg-surface-container-highest/10 rounded-md peer-checked:bg-secondary-container transition-colors flex items-center justify-center border border-outline/20">
+                      <span className="material-symbols-outlined text-surface-variant/80 text-[16px] hidden peer-checked:block">check</span>
+                    </div>
+                    <span className="ml-3 text-sm font-medium text-surface-variant/80 group-hover:text-surface transition-colors">
+                      Recordar este dispositivo
+                    </span>
+                  </label>
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* Submit Button */}
           <button 
-            type="submit" 
+            className="w-full bg-linear-to-r from-secondary-container to-secondary py-4 px-6 rounded-xl text-white font-headline font-bold text-lg flex items-center justify-center gap-3 shadow-lg shadow-secondary/20 hover:shadow-secondary/40 active:scale-[0.98] transition-all group mt-8 disabled:opacity-70 disabled:hover:scale-100 disabled:shadow-none hover:cursor-pointer" 
+            type="submit"
             disabled={isLoading}
-            className="w-full py-4 bg-linear-to-r from-primary to-primary-container text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:hover:scale-100"
           >
             {isLoading ? 'Iniciando Sesión...' : 'Iniciar Sesión'}
-            <span className="material-symbols-outlined">arrow_forward</span>
+            <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
           </button>
         </form>
       </Form>
 
-      {/* Footer / Helper Links */}
-      <div className="mt-8 pt-8 border-t border-outline-variant/10">
-        <p className="text-sm text-on-surface-variant text-center">
-          ¿Eres nuevo?{' '}
-          <Link href="/auth/signup" className="font-bold text-primary hover:underline underline-offset-4">
-            Contacta al administrador
-          </Link>
-        </p>
+      {/* Footer Stats for Mobile only */}
+      <div className="mt-12 lg:hidden grid grid-cols-2 gap-4">
+        <div className="bg-surface-container-highest/10 p-4 rounded-lg">
+          <div className="text-[10px] uppercase text-outline mb-1">Flota</div>
+          <div className="font-bold text-surface">1.2k+</div>
+        </div>
+        <div className="bg-surface-container-highest/10 p-4 rounded-lg">
+          <div className="text-[10px] uppercase text-outline mb-1">Uptime</div>
+          <div className="font-bold text-surface">99.9%</div>
+        </div>
       </div>
 
-      {/* Container Footer */}
-      <div className="mt-8 w-full max-w-md">
-        <p className="text-[10px] tracking-wider text-outline text-center uppercase font-medium">
-          © {new Date().getFullYear()} TRANSPORTES BRITO. TODOS LOS DERECHOS RESERVADOS.
+      <div className="mt-16 text-center">
+        <p className="text-xs text-outline font-label tracking-wide">
+          © {new Date().getFullYear()} Transportes Brito. Todos los derechos reservados.
         </p>
       </div>
     </div>

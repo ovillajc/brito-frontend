@@ -14,25 +14,18 @@ export const metadata: Metadata = {
 export default function LoginPage() {
   return (
     <>
-      {/* TopNavBar */}
-      <nav className="w-full absolute top-0 z-50 bg-transparent flex justify-between items-center px-8 py-6 font-headline antialiased">
-        <div className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2 ml-4 mt-4">
-          <span className="w-8 h-8 bg-linear-to-br from-primary to-primary-container rounded-lg flex items-center justify-center text-white">
-            <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>fluid_med</span>
-          </span>
-          Transportes Brito
-        </div>
-        <div className="hidden md:flex items-center gap-6">
-          <a className="text-slate-600 hover:text-primary transition-colors text-sm font-medium" href="#">Soporte</a>
-        </div>
-      </nav>
+      {/* Decorative Elements */}
+      <div className="absolute top-0 right-0 p-8 flex gap-4 opacity-40 z-50 pointer-events-none">
+        <div className="w-1.5 h-1.5 rounded-full bg-primary-container"></div>
+        <div className="w-1.5 h-1.5 rounded-full bg-primary-container"></div>
+        <div className="w-1.5 h-1.5 rounded-full bg-primary-container"></div>
+      </div>
 
-      <main className="flex min-h-screen w-full">
-        {/* Left Side: Card Style Visual Anchor */}
+      <main className="flex min-h-screen w-full relative">
         <LoginLeftPanel />
 
-        {/* Right Side: Login Canvas */}
-        <section className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 lg:px-16 lg:py-12 xl:p-24 bg-surface overflow-y-auto overflow-x-hidden relative">
+        {/* Right Side: Login Form */}
+        <section className="w-full lg:w-2/5 min-h-screen bg-on-surface flex flex-col items-center justify-center px-8 sm:px-16 md:px-24 relative overflow-y-auto">
           <LoginForm />
         </section>
       </main>
