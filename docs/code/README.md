@@ -18,5 +18,10 @@ Each documentation file must include:
 3. **Architecture**: How it fits into the Clean Architecture layers (Domain, Application, Infrastructure, Presentation).
 4. **Maintenance**: Guidelines for future modifications.
 
+## Feature Directory
+
+- **Auth**: [Documentación](file:///Users/ovillajc/Documents/Desarrollo/projects/netus-devs/brito/docs/code/features/auth/README.md) - Gestión de sesiones y seguridad.
+- **Dashboard**: [Documentación](file:///Users/ovillajc/Documents/Desarrollo/projects/netus-devs/brito/docs/code/features/dashboard/README.md) - Métricas clave y resumen operativo.
+
 > [!NOTE]
-> This repository of documentation serves as the "source of truth" for the implementation's rationale, supplementing the code itself and its JSDoc.
+> Este repositorio de documentación sirve como la "fuente de verdad" para la lógica de la implementación, complementando el propio código y su JSDoc.

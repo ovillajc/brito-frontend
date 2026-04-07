@@ -15,5 +15,15 @@ import type { Either, Failure } from '@/src/core/domain/either'
 export async function GetOperativeKPIsUseCase(
   repo: IDashboardRepository
 ): Promise<Either<Failure, KPIEntity[]>> {
-  return await repo.getOperativeMetrics()
+  try {
+    return await repo.getOperativeMetrics()
+  } catch (error) {
+    return {
+      ok: false,
+      error: {
+        code: 'UNEXPECTED_ERROR',
+        message: error instanceof Error ? error.message : 'Error inesperado al obtener métricas operativas',
+      },
+    }
+  }
 }
