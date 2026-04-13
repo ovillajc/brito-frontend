@@ -1,107 +1,187 @@
 'use client'
 
 import React from 'react'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { Truck, Shovel, ShoppingBag, ShieldCheck, Clock, MapPin } from 'lucide-react'
+import { Truck, Package, ShieldCheck, CheckCircle2 } from 'lucide-react'
 
 const SERVICES = [
   {
-    title: 'Transporte y Logística',
-    description: 'Movimiento de carga pesada y refrigerada con estándares internacionales para retail e industria.',
+    id: 'transporte',
+    badge: 'Servicio Principal',
+    title: 'Transporte a Granel',
+    subtitle: 'en Tolva Presurizada',
+    description:
+      'Movimiento especializado de materiales a granel para la industria petrolera y construcción en todo el Sureste Mexicano. Operamos con estrictos estándares de seguridad avalados por la EMMA.',
+    image: '/assets/images/landin/cta2.jpeg',
+    imageAlt: 'Tolva presurizada naranja de Transportes Brito al atardecer',
     icon: Truck,
-    color: 'green',
-    features: ['Carga Refrigerada', 'Rutas Multi-destino', 'Carga Industrial'],
+    color: 'green' as const,
+    features: [
+      'Barita a granel (grado API)',
+      'Cemento a granel',
+      'Arena sílica presurizada',
+      'Fluidos en pipa de presión y vacío',
+      'Rutas Golfo y Sur de México',
+    ],
+    certifications: ['Tolvas con pruebas hidrostáticas', 'Válvulas certificadas', 'Manómetros certificados', 'Mangueras certificadas'],
   },
   {
+    id: 'barita',
+    badge: 'Barita de la Chontalpa',
     title: 'Suministro de Barita',
-    description: 'Molienda y comercialización de barita de grado API para la industria petrolera y de perforación.',
-    icon: Shovel,
-    color: 'orange',
-    features: ['Grado API', 'Distribución Estratégica', 'Manejo Especializado'],
+    subtitle: 'Extracción · Molienda · Distribución',
+    description:
+      'Como proveedores y maquiladores de barita (sulfato de bario), contamos con concesión y contrato minero para surtir barita en breña, procesarla y vender barita molida a granel de alta calidad.',
+    image: '/assets/images/landin/cta4.jpeg',
+    imageAlt: 'Equipo en operación de extracción de barita de la Chontalpa',
+    icon: Package,
+    color: 'orange' as const,
+    features: [
+      'Extracción de mina propia',
+      'Proceso de molienda industrial',
+      'Cribado y pulverización de barita',
+      'Embarque a tolvas presurizadas',
+      'Entrega directa al cliente final',
+    ],
+    certifications: ['Concesión minera vigente', 'Barita grado API', 'Control de calidad en proceso', 'Producto 100% nacional'],
   },
-  {
-    title: 'Logística para Retail',
-    description: 'Especialistas en la cadena de suministro de Walmart y grandes almacenes con alta exigencia.',
-    icon: ShoppingBag,
-    color: 'green',
-    features: ['Just in Time', 'Monitoreo 24/7', 'Control Documental'],
-  }
 ]
 
 /**
- * Grilla de servicios de la empresa.
- * Expone las 3 unidades de negocio principales.
+ * Sección de servicios con imágenes reales del cliente.
+ * Presenta las 2 unidades de negocio: Transporte a Granel y Barita de la Chontalpa.
  */
 export const ServicesGrid = () => {
   return (
-    <section id="servicios" className="py-24 bg-zinc-50 dark:bg-zinc-900/50">
-      <div className="container mx-auto px-4">
-        <div className="max-w-3xl mb-16">
-          <h2 className="text-sm font-bold text-green-700 dark:text-green-400 uppercase tracking-widest mb-4">CAPACIDADES OPERATIVAS</h2>
-          <h3 className="text-4xl font-bold text-zinc-900 dark:text-white leading-tight">
-            Soluciones integrales para la <span className="text-orange-600">Industria y el Comercio</span>
-          </h3>
-          <p className="mt-4 text-zinc-600 dark:text-zinc-400">
-            Nuestra versatilidad nos permite adaptarnos a las necesidades críticas de suministro y distribución en diversos sectores económicos.
-          </p>
+    <section id="servicios" className="py-24 bg-white">
+      <div className="container mx-auto px-6">
+
+        {/* Header */}
+        <div className="text-center mb-20">
+          <motion.span
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="inline-block text-xs font-bold text-[#e07020] tracking-widest uppercase mb-4 px-4 py-1.5 bg-[#e07020]/10 rounded-full"
+          >
+            Capacidades Operativas
+          </motion.span>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-4xl lg:text-5xl font-black text-stone-900"
+          >
+            Dos unidades, <span className="text-[#1a5c3a]">un solo propósito</span>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="mt-4 text-stone-500 max-w-xl mx-auto"
+          >
+            Transportes Brito y Barita de la Chontalpa trabajan en conjunto para ofrecer una solución integral desde la extracción hasta la entrega final.
+          </motion.p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Service Cards */}
+        <div className="space-y-12">
           {SERVICES.map((service, index) => (
             <motion.div
-              key={service.title}
-              initial={{ opacity: 0, y: 20 }}
+              key={service.id}
+              id={`service-${service.id}`}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
-              className="p-8 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-xl transition-all duration-300 group"
+              className={`grid grid-cols-1 lg:grid-cols-2 gap-0 rounded-3xl overflow-hidden shadow-xl border border-stone-100 ${
+                index % 2 === 1 ? 'lg:[&>*:first-child]:order-2' : ''
+              }`}
             >
-              <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${
-                service.color === 'green' ? 'bg-green-100 dark:bg-green-900/30 text-green-700' : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'
-              }`}>
-                <service.icon className="w-8 h-8" />
+              {/* Image side */}
+              <div className="relative min-h-[320px] lg:min-h-[480px]">
+                <Image
+                  src={service.image}
+                  alt={service.imageAlt}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent" />
+                <div className="absolute top-6 left-6">
+                  <span
+                    className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                      service.color === 'green'
+                        ? 'bg-[#1a5c3a] text-white'
+                        : 'bg-[#e07020] text-white'
+                    }`}
+                  >
+                    {service.badge}
+                  </span>
+                </div>
               </div>
-              
-              <h4 className="text-xl font-bold text-zinc-900 dark:text-white mb-3">{service.title}</h4>
-              <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-6">
-                {service.description}
-              </p>
-              
-              <ul className="space-y-3 pt-6 border-t border-zinc-100 dark:border-zinc-800">
-                {service.features.map(feature => (
-                  <li key={feature} className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-                    <ShieldCheck className={`w-4 h-4 ${service.color === 'green' ? 'text-green-600' : 'text-orange-500'}`} />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
+
+              {/* Content side */}
+              <div className="bg-stone-50 p-8 lg:p-12 flex flex-col justify-center">
+                <div
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${
+                    service.color === 'green'
+                      ? 'bg-[#1a5c3a]/10 text-[#1a5c3a]'
+                      : 'bg-[#e07020]/10 text-[#e07020]'
+                  }`}
+                >
+                  <service.icon className="w-6 h-6" />
+                </div>
+
+                <h3 className="text-3xl font-black text-stone-900 leading-tight mb-1">{service.title}</h3>
+                <p
+                  className={`text-sm font-bold uppercase tracking-wider mb-4 ${
+                    service.color === 'green' ? 'text-[#1a5c3a]' : 'text-[#e07020]'
+                  }`}
+                >
+                  {service.subtitle}
+                </p>
+                <p className="text-stone-600 leading-relaxed mb-6 text-sm">{service.description}</p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">Servicios incluidos</h4>
+                    <ul className="space-y-2">
+                      {service.features.map((f) => (
+                        <li key={f} className="flex items-start gap-2 text-sm text-stone-700">
+                          <CheckCircle2
+                            className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                              service.color === 'green' ? 'text-[#1a5c3a]' : 'text-[#e07020]'
+                            }`}
+                          />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">Certificaciones</h4>
+                    <ul className="space-y-2">
+                      {service.certifications.map((c) => (
+                        <li key={c} className="flex items-start gap-2 text-sm text-stone-700">
+                          <ShieldCheck
+                            className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                              service.color === 'green' ? 'text-[#1a5c3a]' : 'text-[#e07020]'
+                            }`}
+                          />
+                          {c}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </motion.div>
           ))}
-        </div>
-
-        <div className="mt-20 p-10 bg-green-800 rounded-3xl relative overflow-hidden text-center md:text-left">
-          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 text-white">
-            <div className="flex-1 space-y-4">
-              <h4 className="text-3xl font-bold">Llegamos a todo el sureste mexicano</h4>
-              <p className="text-green-100 opacity-90 max-w-xl">
-                Base operativa en Cárdenas, Tabasco. Ubicación estratégica para la distribución hacia campos petroleros y centros logísticos nacionales.
-              </p>
-            </div>
-            <div className="flex items-center gap-12 font-bold whitespace-nowrap">
-              <div className="flex flex-col items-center gap-2 text-center md:text-left">
-                <Clock className="w-6 h-6 text-orange-400" />
-                <span className="text-sm">Operación 24/7</span>
-              </div>
-              <div className="flex flex-col items-center gap-2 text-center md:text-left">
-                <MapPin className="w-6 h-6 text-orange-400" />
-                <span className="text-sm">Cárdenas, Tab.</span>
-              </div>
-            </div>
-          </div>
-          
-          {/* Decorative element */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-green-700 rounded-full -mr-20 -mt-20 blur-3xl z-0" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-600/20 rounded-full -ml-20 -mb-20 blur-3xl z-0" />
         </div>
       </div>
     </section>

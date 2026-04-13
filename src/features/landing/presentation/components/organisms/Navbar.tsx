@@ -2,51 +2,148 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import Image from 'next/image'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Menu, X, Phone } from 'lucide-react'
 import { Button } from '@/src/core/presentation/components/ui/button'
 
+const NAV_LINKS = [
+  { href: '#nosotros', label: 'Nosotros' },
+  { href: '#servicios', label: 'Servicios' },
+  { href: '#proceso', label: 'Proceso' },
+  { href: '#seguridad', label: 'Seguridad' },
+  { href: '#clientes', label: 'Clientes' },
+  { href: '#contacto', label: 'Contacto' },
+]
+
 /**
- * Navbar principal con navegación suave y branding.
+ * Navbar principal de Transportes Brito.
+ * Incluye menú responsive, branding real y efectos de scroll.
  */
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
+  const [isMobileOpen, setIsMobileOpen] = useState(false)
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20)
-    }
+    const handleScroll = () => setIsScrolled(window.scrollY > 30)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   return (
-    <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        isScrolled 
-          ? 'bg-white/90 backdrop-blur-md border-b border-zinc-200 py-4 shadow-sm' 
-          : 'bg-transparent py-6'
-      }`}
-    >
-      <div className="container mx-auto px-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 bg-green-700 rounded-lg flex items-center justify-center transition-transform group-hover:rotate-3">
-            <span className="text-white font-bold text-xl">B</span>
+    <>
+      <motion.nav
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className={`fixed top-0 w-full z-50 transition-all duration-400 ${
+          isScrolled
+            ? 'bg-white/95 backdrop-blur-md border-b border-stone-200 py-3 shadow-sm'
+            : 'bg-transparent py-5'
+        }`}
+      >
+        <div className="container mx-auto px-6 flex items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-3 group" id="nav-logo">
+            <div className="relative w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-md p-1 group-hover:scale-105 transition-transform">
+              <Image
+                src="/assets/images/logo.png"
+                alt="Logo Transportes Brito"
+                fill
+                className="object-contain p-1"
+                sizes="48px"
+              />
+            </div>
+            <div className="flex flex-col leading-none">
+              <span className={`text-base font-black tracking-tight uppercase transition-colors ${isScrolled ? 'text-stone-900' : 'text-white'}`}>
+                Transportes <span className="text-[#e07020]">Brito</span>
+              </span>
+              <span className={`text-[10px] font-medium tracking-widest uppercase transition-colors ${isScrolled ? 'text-stone-500' : 'text-white/70'}`}>
+                Barita de la Chontalpa
+              </span>
+            </div>
+          </Link>
+
+          {/* Desktop Nav */}
+          <div className="hidden lg:flex items-center gap-6">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`text-sm font-medium transition-colors hover:text-[#e07020] ${
+                  isScrolled ? 'text-stone-600' : 'text-white/90'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <a
+              href="tel:9171281337"
+              className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${isScrolled ? 'text-stone-600' : 'text-white/80'}`}
+            >
+              <Phone className="w-3.5 h-3.5" />
+              917-128-1337
+            </a>
+            <Button
+              id="nav-cta"
+              variant="orange"
+              size="sm"
+              className="rounded-full px-5 shadow-md"
+              onClick={() => {
+                document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            >
+              Solicitar Cotización
+            </Button>
           </div>
-          <span className="text-xl font-bold tracking-tighter text-zinc-900 uppercase">
-            Sociedad <span className="text-orange-600">Brito</span>
-          </span>
-        </Link>
-        
-        <div className="hidden md:flex items-center gap-8">
-          <Link href="#servicios" className="text-sm font-medium text-zinc-600 hover:text-green-700 transition-colors">Servicios</Link>
-          <Link href="#contacto" className="text-sm font-medium text-zinc-600 hover:text-green-700 transition-colors">Contacto</Link>
-          <Button variant="orange" size="sm" className="rounded-full">
-            Cotizar Ahora
-          </Button>
+
+          {/* Mobile toggle */}
+          <button
+            id="nav-mobile-toggle"
+            className={`lg:hidden transition-colors ${isScrolled ? 'text-stone-800' : 'text-white'}`}
+            onClick={() => setIsMobileOpen((v) => !v)}
+            aria-label="Abrir menú"
+          >
+            {isMobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
-      </div>
-    </motion.nav>
+      </motion.nav>
+
+      {/* Mobile Drawer */}
+      <AnimatePresence>
+        {isMobileOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.25 }}
+            className="fixed top-[68px] inset-x-0 z-40 bg-white border-b border-stone-200 shadow-xl lg:hidden"
+          >
+            <div className="container mx-auto px-6 py-6 flex flex-col gap-4">
+              {NAV_LINKS.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setIsMobileOpen(false)}
+                  className="text-base font-medium text-stone-700 hover:text-[#1a5c3a] py-2 border-b border-stone-100 last:border-0"
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <Button
+                variant="orange"
+                className="rounded-full mt-2 w-full"
+                onClick={() => {
+                  setIsMobileOpen(false)
+                  document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })
+                }}
+              >
+                Solicitar Cotización
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   )
 }

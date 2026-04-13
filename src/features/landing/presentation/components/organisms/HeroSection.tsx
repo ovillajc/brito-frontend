@@ -1,74 +1,133 @@
 'use client'
 
 import React from 'react'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { Truck } from 'lucide-react'
+import { ArrowRight, ChevronDown, Shield, Award, MapPin } from 'lucide-react'
 import { Button } from '@/src/core/presentation/components/ui/button'
 
+const STATS = [
+  { value: '+25', label: 'Años de operación', icon: Award },
+  { value: '100%', label: 'Tolvas certificadas', icon: Shield },
+  { value: 'Sureste', label: 'México cubierto', icon: MapPin },
+]
+
 /**
- * Sección Hero de la Landing Page.
- * Presenta la propuesta de valor principal con una estética clara y profesional.
+ * Hero section rediseñada con imagen real de flota, overlay premium
+ * y estadísticas clave de Transportes Brito.
  */
 export const HeroSection = () => {
+  const scrollToServices = () => {
+    document.getElementById('servicios')?.scrollIntoView({ behavior: 'smooth' })
+  }
+  const scrollToContact = () => {
+    document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
   return (
-    <section className="relative min-h-screen flex items-center pt-24 pb-16 overflow-hidden bg-zinc-50">
-      {/* Background Decorative Elements */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-green-100/50 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[0%] right-[-5%] w-[30%] h-[30%] bg-orange-100/50 rounded-full blur-[100px]" />
+    <section className="relative min-h-screen flex flex-col justify-end overflow-hidden" id="inicio">
+      {/* Background Image */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="/assets/images/landin/hero.jpeg"
+          alt="Flota de Transportes Brito — dos tractocamiones al amanecer"
+          fill
+          priority
+          className="object-cover object-center"
+          sizes="100vw"
+        />
+        {/* Multi-layer overlay para legibilidad */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
       </div>
 
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
+
+
+      {/* Main content */}
+      <div className="relative z-10 container mx-auto px-6 pb-28 lg:pb-36">
+        <div className="max-w-4xl">
+          <motion.h1
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.3 }}
+            className="text-5xl sm:text-6xl lg:text-8xl font-black text-white leading-[1.0] tracking-tight mb-6"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-50 border border-green-100 mb-6 font-bold text-xs text-green-700 tracking-wide uppercase">
-              <span className="w-2 h-2 rounded-full bg-green-600 animate-pulse" />
-              Operador Logístico Industrial
-            </div>
-            
-            <h1 className="text-5xl lg:text-7xl font-extrabold text-zinc-900 leading-[1.1] tracking-tight">
-              Impulsando la <br /> 
-              <span className="text-green-700">Excelencia</span> en el <br />
-              <span className="text-orange-600">Sureste</span>
-            </h1>
-            
-            <p className="mt-8 text-lg text-zinc-600 leading-relaxed max-w-xl">
-              En Sociedad Brito combinamos transporte especializado de carga pesada con el suministro estratégico de barita para la industria petrolera. Solidez y confianza desde Cárdenas para todo México.
-            </p>
+            Transporte Industrial
+            <br />
+            <span className="text-[#e07020]">de Confianza</span>
+            <br />
+            <span className="text-white/70 text-3xl sm:text-4xl lg:text-5xl font-bold">en el Sureste de México</span>
+          </motion.h1>
 
-            <div className="mt-10 flex flex-col sm:flex-row gap-4">
-              <Button variant="green" size="lg" className="rounded-full shadow-lg shadow-green-900/10">
-                Nuestros Servicios
-              </Button>
-              <Button variant="outline" size="lg" className="rounded-full border-zinc-300 text-zinc-700 hover:bg-zinc-100">
-                Conoce más
-              </Button>
-            </div>
-          </motion.div>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="text-stone-300 text-lg lg:text-xl leading-relaxed max-w-2xl mb-10"
+          >
+            Especialistas en transporte de carga a granel en tolva presurizada y suministro de barita para la industria petrolera. Operamos desde Huimanguillo, Tabasco hacia toda la República Mexicana.
+          </motion.p>
 
-          <div className="relative mt-12 lg:mt-0 items-center justify-center flex">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.7, ease: 'easeOut' }}
-              className="relative z-10 w-full max-w-[500px] aspect-square bg-white rounded-3xl overflow-hidden border-8 border-white shadow-2xl flex items-center justify-center"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+            className="flex flex-col sm:flex-row gap-4"
+          >
+            <Button
+              id="hero-cta-servicios"
+              variant="orange"
+              size="lg"
+              className="rounded-full px-8 shadow-2xl shadow-[#e07020]/30 gap-2 font-bold"
+              onClick={scrollToServices}
             >
-              <div className="absolute inset-0 bg-linear-to-tr from-green-50 to-orange-50" />
-              <Truck className="w-48 h-48 text-zinc-200 relative z-10" />
-              
-              {/* Visual labels */}
-              <div className="absolute bottom-6 left-6 p-4 bg-white/90 backdrop-blur-sm rounded-2xl border border-zinc-100 shadow-xl max-w-[180px] z-20">
-                <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">CAPACIDAD</p>
-                <p className="text-sm font-bold text-zinc-900 leading-tight">+200 Unidades Activas en Ruta</p>
-              </div>
-            </motion.div>
-          </div>
+              Ver Servicios
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+            <Button
+              id="hero-cta-contacto"
+              size="lg"
+              className="rounded-full px-8 bg-white/10 backdrop-blur-sm text-white border border-white/30 hover:bg-white/20 font-semibold"
+              onClick={scrollToContact}
+            >
+              Solicitar Cotización
+            </Button>
+          </motion.div>
         </div>
+
+        {/* Stats row */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.8 }}
+          className="mt-16 flex flex-col sm:flex-row gap-6 sm:gap-12"
+        >
+          {STATS.map((stat, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#e07020]/20 border border-[#e07020]/30 flex items-center justify-center flex-shrink-0">
+                <stat.icon className="w-5 h-5 text-[#e07020]" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-white leading-none">{stat.value}</p>
+                <p className="text-xs text-stone-400 mt-0.5">{stat.label}</p>
+              </div>
+            </div>
+          ))}
+        </motion.div>
       </div>
+
+      {/* Scroll indicator */}
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.2 }}
+        onClick={scrollToServices}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 text-white/50 hover:text-white/80 transition-colors"
+        aria-label="Ver más"
+      >
+        <span className="text-xs tracking-widest uppercase font-medium">Descubrir</span>
+        <ChevronDown className="w-5 h-5 animate-bounce" />
+      </motion.button>
     </section>
   )
 }
