@@ -80,8 +80,8 @@ export const Footer = () => {
               <li>
                 <p className="text-[10px] font-bold text-stone-500 uppercase tracking-widest mb-1">Gerencia</p>
                 <a href="tel:9171281337" className="flex items-center gap-2 hover:text-white transition-colors">
-                  <Phone className="w-4 h-4 text-[#e07020]" />
-                  917-128-1337
+                  <Mail className="w-4 h-4 text-[#e07020]" />
+                  joseaaron_88@hotmail.com
                 </a>
               </li>
               <li>
@@ -116,10 +116,10 @@ export const Footer = () => {
                 <p className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Razón Social</p>
                 <p className="text-white text-xs mt-0.5">José Aarón Brito Frías</p>
               </li>
-              <li>
+              {/* <li>
                 <p className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">RFC</p>
                 <p className="text-white text-xs mt-0.5">BIFA 880916IP8</p>
-              </li>
+              </li> */}
               <li>
                 <Link href="/privacidad" className="hover:text-white transition-colors">Aviso de Privacidad</Link>
               </li>

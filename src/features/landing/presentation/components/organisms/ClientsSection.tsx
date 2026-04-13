@@ -15,12 +15,12 @@ const FEATURED_CLIENTS = [
     color: 'green' as const,
   },
   {
-    name: 'QMAX México',
-    location: 'Villahermosa, Tab. · Piedras Negras, Ver.',
-    period: '2008 – Presente',
-    service: 'Barita a granel · Fluidos en pipa de presión y vacío',
-    sector: 'Industria Petrolera',
-    since: 2008,
+    name: 'Walmart',
+    location: 'Villahermosa, Tab',
+    period: '2024 – Presente',
+    service: 'Fletes de productos perecederos',
+    sector: 'Retail',
+    since: 2024,
     color: 'orange' as const,
   },
   {
@@ -65,7 +65,7 @@ const ALL_CLIENTS = [
   'CEMEX México', 'Chemiservis', 'CEMOC Servicios', 'Dowell Schlumberger',
   'Weatherford de México', 'Integridad Mexicana del Norte', 'Mogel Fluidos',
   'Global Drilling de México', 'Servicios Integrales GSM', 'Azul Cerámica',
-  'Barisur', 'Minerales y Arcillas',
+  'Barisur', 'Minerales y Arcillas', 'Walmart', 'Holcim',
 ]
 
 /**

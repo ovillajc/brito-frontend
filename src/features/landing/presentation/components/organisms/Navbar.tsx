@@ -77,13 +77,6 @@ export const Navbar = () => {
                 {link.label}
               </Link>
             ))}
-            <a
-              href="tel:9171281337"
-              className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${isScrolled ? 'text-stone-600' : 'text-white/80'}`}
-            >
-              <Phone className="w-3.5 h-3.5" />
-              917-128-1337
-            </a>
             <Button
               id="nav-cta"
               variant="orange"
