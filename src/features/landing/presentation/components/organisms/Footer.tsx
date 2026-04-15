@@ -59,7 +59,7 @@ export const Footer = () => {
                 { href: '#nosotros', label: 'Quiénes Somos' },
                 { href: '#servicios', label: 'Servicios' },
                 { href: '#proceso', label: 'Proceso Productivo' },
-                { href: '#seguridad', label: 'Seguridad SSMA' },
+                { href: '#seguridad', label: 'Seguridad SSPA' },
                 { href: '#clientes', label: 'Clientes' },
                 { href: '#organigrama', label: 'Organigrama' },
                 { href: '#contacto', label: 'Contacto' },

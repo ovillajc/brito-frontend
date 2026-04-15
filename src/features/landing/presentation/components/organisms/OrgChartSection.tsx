@@ -86,7 +86,7 @@ const DEPARTMENTS: OrgDepartment[] = [
     ],
   },
   {
-    name: 'SSMA',
+    name: 'SSPA',
     color: 'orange',
     members: [
       {

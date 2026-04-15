@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, Phone } from 'lucide-react'
 import { Button } from '@/src/core/presentation/components/ui/button'
+import { BrandLogo } from '@/src/core/presentation/components/ui/brand-logo'
 
 const NAV_LINKS = [
   { href: '#nosotros', label: 'Nosotros' },
@@ -44,25 +45,7 @@ export const Navbar = () => {
       >
         <div className="container mx-auto px-6 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group" id="nav-logo">
-            <div className="relative w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-md p-1 group-hover:scale-105 transition-transform">
-              <Image
-                src="/assets/images/logo.png"
-                alt="Logo Transportes Brito"
-                fill
-                className="object-contain p-1"
-                sizes="48px"
-              />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className={`text-base font-black tracking-tight uppercase transition-colors ${isScrolled ? 'text-stone-900' : 'text-white'}`}>
-                Transportes <span className="text-[#e07020]">Brito</span>
-              </span>
-              <span className={`text-[10px] font-medium tracking-widest uppercase transition-colors ${isScrolled ? 'text-stone-500' : 'text-white/70'}`}>
-                Barita de la Chontalpa
-              </span>
-            </div>
-          </Link>
+          <BrandLogo theme={isScrolled ? 'dark' : 'light'} />
 
           {/* Desktop Nav */}
           <div className="hidden lg:flex items-center gap-6">

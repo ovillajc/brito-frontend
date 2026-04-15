@@ -1,9 +1,12 @@
 'use client'
 
+import { Truck, Package, TrendingUp, ShieldCheck } from 'lucide-react'
+import { BrandLogo } from '@/src/core/presentation/components/ui/brand-logo'
+
 /**
  * @fileoverview LoginLeftPanel.
  * Proporciona el ancla visual de la marca y las estadísticas clave
- * mediante un diseño basado en PetroFlow pero adaptado a Transportes Brito.
+ * mediante un diseño alineado con la Landing Page de Transportes Brito.
  */
 
 export function LoginLeftPanel() {
@@ -16,80 +19,81 @@ export function LoginLeftPanel() {
       <img 
         alt="Modern logistics truck on a highway" 
         className="absolute inset-0 w-full h-full object-cover z-0" 
-        src="/assets/images/hero-login.jpeg"
+        src="/assets/images/landin/hero.jpeg"
       />
       
       {/* Dark overlay adapting Brito's colors for reading contrast */}
-      <div className="absolute inset-0 bg-on-surface/55 z-0" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30 z-0" />
 
-      {/* Accent line like Petro */}
-      <div className="absolute left-0 top-0 h-full w-1 bg-primary-container z-10" />
+      {/* Accent line */}
+      <div className="absolute left-0 top-0 h-full w-1.5 bg-[#e07020] z-10" />
 
       {/* Top content */}
-      <div className="relative z-10 p-10">
-        <span className="text-primary-container font-headline text-3xl font-extrabold tracking-tight">Transportes Brito</span>
+      <div className="relative z-10 p-10 flex-shrink-0">
+        <BrandLogo theme="light" size="lg" />
       </div>
 
       {/* Center content */}
-      <div className="relative z-10 flex flex-col gap-6 px-10 pb-6 mt-96">
-        <div className="flex flex-col gap-3">
-          <p className="text-xs font-medium tracking-[0.3em] uppercase text-primary-fixed">
+      <div className="relative z-10 flex flex-col justify-end pb-8 flex-1 px-10">
+        <div className="flex flex-col gap-4">
+          <p className="text-xs font-bold tracking-[0.3em] uppercase text-[#e07020]">
             Control Logístico
           </p>
-          <h1 className="text-4xl font-bold leading-tight text-surface-bright font-headline text-balance xl:text-5xl">
-            La plataforma que impulsa tus operaciones logísticas
+          <h1 className="text-4xl md:text-5xl font-black leading-tight text-white mb-2">
+            La plataforma que impulsa<br />
+            tus operaciones logísticas
           </h1>
-          <p className="max-w-md text-sm leading-relaxed text-surface-variant font-body">
+          <p className="max-w-md text-base leading-relaxed text-stone-300 font-medium">
             Monitoreo en tiempo real, análisis predictivo y gestión centralizada para optimizar cada kilómetro de tu flota.
           </p>
         </div>
       </div>
 
-      {/* Bottom stats layout from Petro */}
-      <div className="relative z-10 p-10 pt-5">
-        <div className="grid grid-cols-2 gap-3 max-w-2xl">
+      {/* Bottom stats layout */}
+      <div className="relative z-10 p-10 pt-6 flex-shrink-0">
+        <div className="grid grid-cols-2 gap-4 max-w-2xl">
           {/* Stat 1 */}
-          <div className="flex flex-col gap-1 rounded-lg border border-outline-variant/30 bg-surface-container/20 backdrop-blur-md p-3">
+          <div className="flex flex-col gap-2 rounded-xl border border-white/20 bg-white/10 backdrop-blur-md p-4 transition-all hover:bg-white/20">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[14px] text-primary-container">local_shipping</span>
-              <span className="text-[10px] text-surface-variant font-medium uppercase tracking-wider">Flota Activa</span>
+              <Truck className="w-4 h-4 text-[#e07020]" />
+              <span className="text-[10px] text-stone-300 font-bold uppercase tracking-widest">Flota Activa</span>
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl font-bold text-surface-bright font-headline tabular-nums">1,284</span>
-              <span className="text-[10px] text-primary-container font-medium">+12%</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-white tabular-nums">1,284</span>
+              <span className="text-xs text-[#e07020] font-bold">+12%</span>
             </div>
           </div>
           {/* Stat 2 */}
-          <div className="flex flex-col gap-1 rounded-lg border border-outline-variant/30 bg-surface-container/20 backdrop-blur-md p-3">
+          <div className="flex flex-col gap-2 rounded-xl border border-white/20 bg-white/10 backdrop-blur-md p-4 transition-all hover:bg-white/20">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[14px] text-secondary-container">package_2</span>
-              <span className="text-[10px] text-surface-variant font-medium uppercase tracking-wider">Entregas Hoy</span>
+              <Package className="w-4 h-4 text-[#1a5c3a]" />
+              <span className="text-[10px] text-stone-300 font-bold uppercase tracking-widest">Entregas Hoy</span>
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl font-bold text-surface-bright font-headline tabular-nums">8,492</span>
-              <span className="text-[10px] text-secondary-container font-medium">unid.</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-white tabular-nums">8,492</span>
+              <span className="text-xs text-[#1a5c3a] font-bold">unid.</span>
             </div>
           </div>
           {/* Stat 3 */}
-          <div className="flex flex-col gap-1 rounded-lg border border-outline-variant/30 bg-surface-container/20 backdrop-blur-md p-3">
+          <div className="flex flex-col gap-2 rounded-xl border border-white/20 bg-white/10 backdrop-blur-md p-4 transition-all hover:bg-white/20">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[14px] text-primary-fixed">speed</span>
-              <span className="text-[10px] text-surface-variant font-medium uppercase tracking-wider">Eficiencia</span>
+              <TrendingUp className="w-4 h-4 text-[#e07020]" />
+              <span className="text-[10px] text-stone-300 font-bold uppercase tracking-widest">Eficiencia</span>
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl font-bold text-surface-bright font-headline tabular-nums">98.2</span>
-              <span className="text-[10px] text-primary-fixed font-medium">%</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-white tabular-nums">98.2</span>
+              <span className="text-xs text-[#e07020] font-bold">%</span>
             </div>
           </div>
           {/* Stat 4 */}
-          <div className="flex flex-col gap-1 rounded-lg border border-outline-variant/30 bg-surface-container/20 backdrop-blur-md p-3">
+          <div className="flex flex-col gap-2 rounded-xl border border-white/20 bg-white/10 backdrop-blur-md p-4 transition-all hover:bg-white/20">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[14px] text-tertiary-fixed">health_and_safety</span>
-              <span className="text-[10px] text-surface-variant font-medium uppercase tracking-wider">Seguridad</span>
+              <ShieldCheck className="w-4 h-4 text-[#1a5c3a]" />
+              <span className="text-[10px] text-stone-300 font-bold uppercase tracking-widest">Seguridad</span>
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl font-bold text-surface-bright font-headline tabular-nums">99.9</span>
-              <span className="text-[10px] text-tertiary-fixed font-medium">%</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-white tabular-nums">99.9</span>
+              <span className="text-xs text-[#1a5c3a] font-bold">%</span>
             </div>
           </div>
         </div>

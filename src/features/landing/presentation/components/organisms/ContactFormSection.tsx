@@ -128,7 +128,6 @@ export const ContactFormSection = () => {
             <div className="p-5 bg-[#1a5c3a] rounded-2xl text-white">
               <p className="text-xs font-bold text-white/60 uppercase tracking-widest mb-2">Razón Social</p>
               <p className="font-bold text-base">José Aarón Brito Frías</p>
-              {/* <p className="text-sm text-white/70 mt-0.5">RFC: BIFA 880916IP8</p> */}
               <p className="text-sm text-white/70 mt-0.5">Giro: Transporte de Carga en General</p>
             </div>
           </motion.div>

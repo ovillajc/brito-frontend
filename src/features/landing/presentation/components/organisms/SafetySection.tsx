@@ -58,15 +58,15 @@ export const SafetySection = () => {
 
             {/* Floating badge */}
             <div className="absolute -bottom-6 -right-6 bg-[#1a5c3a] text-white rounded-2xl p-5 shadow-xl max-w-[200px]">
-              <p className="text-3xl font-black text-[#e07020]">SSMA</p>
+              <p className="text-3xl font-black text-[#e07020]">SSPA</p>
               <p className="text-xs font-medium leading-tight mt-1 text-white/80">
-                Salud, Seguridad Industrial y Medio Ambiente
+                Salud, Seguridad y Protección Ambiental
               </p>
             </div>
 
             {/* Name card */}
             <div className="absolute top-6 -left-4 bg-white rounded-xl shadow-lg px-4 py-3 border border-stone-100">
-              <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Responsable SSMA</p>
+              <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Responsable SSPA</p>
               <p className="text-sm font-bold text-stone-900">Keila C. Arias de la Cruz</p>
               <p className="text-xs text-stone-500">933-156-8867</p>
             </div>

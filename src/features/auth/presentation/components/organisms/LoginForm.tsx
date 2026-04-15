@@ -10,10 +10,11 @@ import {
 } from '@/src/core/presentation/components/ui/form'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
 
 /**
  * @fileoverview LoginForm.
- * Formulario basándose en el diseño limpio de PetroFlow, utilizando colores de Brito.
+ * Formulario basándose en el diseño de Landing Page de Brito.
  */
 
 export function LoginForm() {
@@ -40,7 +41,7 @@ export function LoginForm() {
           name="email"
           render={({ field }) => (
             <FormItem className="flex flex-col gap-2 space-y-0">
-              <label htmlFor="email" className="text-on-surface-variant text-xs tracking-widest uppercase font-medium">
+              <label htmlFor="email" className="text-stone-500 text-xs tracking-widest uppercase font-bold">
                 Correo corporativo
               </label>
               <div className="relative">
@@ -49,12 +50,12 @@ export function LoginForm() {
                     id="email"
                     type="email"
                     placeholder="usuario@transportesbrito.com"
-                    className="h-12 w-full px-3 border border-outline-variant/50 bg-surface-container-highest/30 text-on-surface placeholder:text-outline focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-lg text-sm transition-colors"
+                    className="h-12 w-full px-4 border border-stone-200 bg-stone-50 text-stone-900 placeholder:text-stone-400 focus-visible:outline-hidden focus-visible:border-[#1a5c3a] focus-visible:ring-1 focus-visible:ring-[#1a5c3a]/20 rounded-xl text-sm font-medium transition-colors"
                     {...field}
                   />
                 </FormControl>
               </div>
-              <FormMessage className="text-error text-xs" />
+              <FormMessage className="text-red-600 text-xs font-bold" />
             </FormItem>
           )}
         />
@@ -66,12 +67,12 @@ export function LoginForm() {
           render={({ field }) => (
             <FormItem className="flex flex-col gap-2 space-y-0">
               <div className="flex items-center justify-between">
-                <label htmlFor="password" className="text-on-surface-variant text-xs tracking-widest uppercase font-medium">
+                <label htmlFor="password" className="text-stone-500 text-xs tracking-widest uppercase font-bold">
                   Contraseña
                 </label>
                 <Link
                   href="/auth/forgot-password"
-                  className="text-xs text-primary hover:text-primary/80 transition-colors"
+                  className="text-xs font-bold text-[#e07020] hover:text-[#e07020]/80 transition-colors"
                 >
                   Recuperar acceso
                 </Link>
@@ -82,22 +83,24 @@ export function LoginForm() {
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Ingresa tu contraseña"
-                    className="h-12 w-full pl-3 pr-10 border border-outline-variant/50 bg-surface-container-highest/30 text-on-surface placeholder:text-outline focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-lg text-sm transition-colors"
+                    className="h-12 w-full pl-4 pr-12 border border-stone-200 bg-stone-50 text-stone-900 placeholder:text-stone-400 focus-visible:outline-hidden focus-visible:border-[#1a5c3a] focus-visible:ring-1 focus-visible:ring-[#1a5c3a]/20 rounded-xl text-sm font-medium transition-colors"
                     {...field}
                   />
                 </FormControl>
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition-colors"
                   aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
-                  <span className="material-symbols-outlined text-[20px]">
-                    {showPassword ? 'visibility_off' : 'visibility'}
-                  </span>
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
-              <FormMessage className="text-error text-xs" />
+              <FormMessage className="text-red-600 text-xs font-bold" />
             </FormItem>
           )}
         />
@@ -106,17 +109,17 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="h-12 w-full mt-2 rounded-lg bg-primary text-on-primary hover:bg-primary/90 font-semibold text-sm tracking-wide transition-all duration-300 group flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
+          className="h-12 w-full mt-4 rounded-xl bg-[#1a5c3a] text-white hover:bg-[#1a5c3a]/90 font-bold text-sm tracking-wide transition-all duration-300 group flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-[#1a5c3a]/20"
         >
           {isLoading ? (
             <span className="flex items-center gap-2">
-              <span className="material-symbols-outlined animate-spin text-[18px]">refresh</span>
+              <Loader2 className="w-5 h-5 animate-spin" />
               Verificando...
             </span>
           ) : (
             <span className="flex items-center gap-2">
               Iniciar Sesión
-              <span className="material-symbols-outlined text-[18px] transition-transform group-hover:translate-x-1">arrow_forward</span>
+              <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
             </span>
           )}
         </button>
