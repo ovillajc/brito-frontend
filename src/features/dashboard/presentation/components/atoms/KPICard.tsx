@@ -64,62 +64,52 @@ export function KPICard({
   trend,
   description,
   iconName = 'Activity',
-  colorClass = 'text-primary',
+  colorClass = 'text-[#1a5c3a]',
   isLoading = false,
 }: KPICardProps) {
   const Icon = ICON_MAP[iconName] ?? Activity
 
   if (isLoading) {
     return (
-      <Card className="border-outline-variant/20 hover:border-primary/20 transition-colors duration-200">
-        <CardContent className="flex flex-col gap-3 p-4 animate-pulse">
-          <div className="flex items-center gap-2">
-            <div className="size-8 rounded-md bg-surface-container-high" />
-            <div className="h-3 w-20 rounded bg-surface-container-high" />
-          </div>
-          <div className="flex items-baseline gap-1.5">
-            <div className="h-8 w-24 rounded bg-surface-container" />
-            <div className="h-3 w-8 rounded bg-surface-container-high" />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-12 rounded bg-surface-container-high" />
-            <div className="h-3 w-16 rounded bg-surface-container-high" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col gap-3 p-4 animate-pulse">
+        <div className="flex items-center gap-2">
+          <div className="size-4 rounded-md bg-stone-200/50" />
+          <div className="h-3 w-20 rounded bg-stone-200/50" />
+        </div>
+        <div className="h-8 w-16 rounded bg-stone-100" />
+        <div className="h-3 w-24 rounded bg-stone-200/50" />
+      </div>
     )
   }
 
   return (
-    <Card className="border-outline-variant/20 hover:border-primary/20 transition-colors duration-200">
-      <CardContent className="flex flex-col gap-3 p-4">
-        {/* Top row: icon + label */}
-        <div className="flex items-center gap-2">
-          <div className={cn('flex items-center justify-center size-8 rounded-md bg-primary/10', colorClass.replace('text-', 'bg-').concat('/10'))}>
-            <Icon className={cn('size-4', colorClass)} />
-          </div>
-          <span className="text-[10px] font-medium tracking-[0.15em] uppercase text-on-surface-variant">
-            {title}
-          </span>
-        </div>
+    <div className="flex flex-col relative px-6 py-4 justify-between h-full bg-transparent">
+      {/* Top row: icon + label */}
+      <div className="flex items-center gap-2 mb-3">
+        <Icon className="size-4 text-stone-500" />
+        <span className="text-[13px] font-bold text-stone-600">
+          {title}
+        </span>
+      </div>
 
+      <div className="flex flex-col mt-auto gap-0.5">
         {/* Value */}
         <div className="flex items-baseline gap-1.5">
-          <span className="text-3xl font-bold text-on-surface font-headline tabular-nums">
+          <span className="text-[32px] font-black text-stone-900 leading-none tracking-tight">
             {value}
           </span>
           {unit && (
-            <span className="text-xs text-on-surface-variant">{unit}</span>
+            <span className="text-sm font-bold text-stone-400">{unit}</span>
           )}
         </div>
 
-        {/* Change */}
-        {trend && (
-          <div className="flex items-center gap-2">
+        {/* Change / Description */}
+        <div className="flex items-center gap-2">
+          {trend && (
             <div
               className={cn(
-                'flex items-center gap-0.5 text-[11px] font-medium',
-                trend.isPositive ? 'text-emerald-500' : 'text-red-400',
+                'flex items-center gap-0.5 text-[11px] font-bold',
+                trend.isPositive ? 'text-[#1a5c3a]' : 'text-[#e07020]',
               )}
             >
               {trend.isPositive ? (
@@ -129,14 +119,14 @@ export function KPICard({
               )}
               {trend.isPositive ? '+' : '-'}{trend.value}%
             </div>
-            {description && (
-              <span className="text-[10px] text-on-surface-variant">
-                {description}
-              </span>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+          {description && (
+            <span className="text-[11px] font-medium text-stone-500">
+              {description}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }

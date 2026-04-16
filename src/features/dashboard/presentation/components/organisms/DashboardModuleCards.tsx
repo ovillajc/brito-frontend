@@ -90,16 +90,16 @@ export function DashboardModuleCards() {
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {MODULES.map((mod) => (
         <Link key={mod.title} href={mod.href} className="group">
-          <Card className="h-full border-outline-variant/20 hover:border-primary/30 hover:bg-surface-container-low/50 transition-all duration-300 cursor-pointer">
+          <Card className="h-full bg-white border-stone-200 hover:border-[#1a5c3a]/30 hover:bg-stone-50 hover:shadow-md transition-all duration-300 cursor-pointer shadow-sm">
             <CardContent className="flex flex-col gap-4 p-5">
               {/* Icon + Badge row */}
               <div className="flex items-start justify-between">
-                <div className="flex items-center justify-center size-10 rounded-lg bg-primary/10 border border-primary/20 group-hover:bg-primary/15 transition-colors">
-                  <mod.icon className="size-5 text-primary" />
+                <div className="flex items-center justify-center size-10 rounded-lg bg-[#1a5c3a]/10 border border-[#1a5c3a]/20 group-hover:bg-[#1a5c3a]/15 transition-colors">
+                  <mod.icon className="size-5 text-[#1a5c3a]" />
                 </div>
                 <Badge
                   variant={mod.badgeVariant}
-                  className="text-[9px] tracking-wider uppercase"
+                  className="text-[9px] tracking-wider uppercase border-stone-200"
                 >
                   {mod.badge}
                 </Badge>
@@ -107,20 +107,20 @@ export function DashboardModuleCards() {
 
               {/* Title + Description */}
               <div className="flex flex-col gap-1.5">
-                <h3 className="text-sm font-semibold text-on-surface font-headline group-hover:text-primary transition-colors">
+                <h3 className="text-sm font-black text-stone-900 font-headline group-hover:text-[#1a5c3a] transition-colors">
                   {mod.title}
                 </h3>
-                <p className="text-xs leading-relaxed text-on-surface-variant line-clamp-2">
+                <p className="text-xs leading-relaxed text-stone-500 font-medium line-clamp-2">
                   {mod.description}
                 </p>
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20">
-                <span className="text-[10px] font-medium text-on-surface-variant tracking-wide">
+              <div className="flex items-center justify-between pt-3 border-t border-stone-100">
+                <span className="text-[10px] font-bold text-stone-400 tracking-wide uppercase">
                   {mod.stat}
                 </span>
-                <ArrowRight className="size-3.5 text-on-surface-variant group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                <ArrowRight className="size-3.5 text-stone-400 group-hover:text-[#e07020] group-hover:translate-x-1 transition-all" />
               </div>
             </CardContent>
           </Card>

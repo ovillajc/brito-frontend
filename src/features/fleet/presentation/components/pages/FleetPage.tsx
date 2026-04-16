@@ -4,44 +4,49 @@
 
 'use client'
 
-import React from 'react'
 import { useFleetSummary } from '@/src/features/fleet/presentation/hooks/use-fleet'
 import { KPICard } from '@/src/features/dashboard/presentation/components/atoms/KPICard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/core/presentation/components/ui/card'
-import { Truck, Package, Users, Activity, FileText } from 'lucide-react'
+import { Truck, Users, Activity, FileText } from 'lucide-react'
 
 export default function FleetPage() {
   const { data: summary, isLoading } = useFleetSummary()
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard
-          title="Tractocamiones"
-          value={summary?.tractorsCount ?? 0}
-          iconName="Truck"
-          isLoading={isLoading}
-        />
-        <KPICard
-          title="Remolques"
-          value={summary?.trailersCount ?? 0}
-          iconName="Package"
-          isLoading={isLoading}
-        />
-        <KPICard
-          title="Operadores"
-          value={summary?.operatorsCount ?? 0}
-          iconName="Users"
-          isLoading={isLoading}
-        />
-        <KPICard
-          title="Unidades Armadas"
-          value={summary?.activeAssembliesCount ?? 0}
-          iconName="Activity"
-          isLoading={isLoading}
-          colorClass="text-emerald-500"
-        />
+      {/* Summary Cards - Horizon Style */}
+      <div className="flex flex-col bg-white border border-stone-200 rounded-[16px] shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-stone-200">
+           <h2 className="text-sm font-bold text-stone-900">
+             Resumen Operativo
+           </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-stone-200 border-b border-stone-200 last:border-0 hover:[&>div]:bg-stone-50/50 transition-colors">
+          <KPICard
+            title="Tractocamiones"
+            value={summary?.tractorsCount ?? 0}
+            iconName="Truck"
+            isLoading={isLoading}
+          />
+          <KPICard
+            title="Remolques"
+            value={summary?.trailersCount ?? 0}
+            iconName="Package"
+            isLoading={isLoading}
+          />
+          <KPICard
+            title="Operadores"
+            value={summary?.operatorsCount ?? 0}
+            iconName="Users"
+            isLoading={isLoading}
+          />
+          <KPICard
+            title="Unidades Armadas"
+            value={summary?.activeAssembliesCount ?? 0}
+            iconName="Activity"
+            isLoading={isLoading}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

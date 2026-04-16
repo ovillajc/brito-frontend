@@ -19,12 +19,14 @@ export function DashboardKPICards() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Operative KPIs */}
-      <div className="flex flex-col gap-3">
-        <h2 className="text-xs font-medium tracking-[0.2em] uppercase text-on-surface-variant">
-          Métricas Operativas
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Operative KPIs Container */}
+      <div className="flex flex-col bg-white border border-stone-200 rounded-[16px] shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-stone-200">
+           <h2 className="text-sm font-bold text-stone-900">
+             Métricas Operativas
+           </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-stone-200 border-b border-stone-200 last:border-0 hover:[&>div]:bg-stone-50/50 transition-colors">
           {operativeQuery.isLoading
             ? Array.from({ length: 4 }).map((_, i) => (
                 <KPICard key={`op-skeleton-${i}`} title="" value="" isLoading />
@@ -43,20 +45,22 @@ export function DashboardKPICards() {
               ))}
         </div>
         {operativeQuery.isError && (
-          <div className="p-4 text-center rounded-xl bg-error/10 border border-error/20">
-            <p className="text-error text-sm font-medium">
+          <div className="p-4 text-center bg-red-50">
+            <p className="text-red-500 text-sm font-bold">
               Error al cargar métricas operativas: {operativeQuery.error?.message}
             </p>
           </div>
         )}
       </div>
 
-      {/* Financial KPIs */}
-      <div className="flex flex-col gap-3">
-        <h2 className="text-xs font-medium tracking-[0.2em] uppercase text-on-surface-variant">
-          Métricas Financieras
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Financial KPIs Container */}
+      <div className="flex flex-col bg-white border border-stone-200 rounded-[16px] shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-stone-200">
+           <h2 className="text-sm font-bold text-stone-900">
+             Métricas Financieras
+           </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-stone-200 border-b border-stone-200 last:border-0 hover:[&>div]:bg-stone-50/50 transition-colors">
           {financialQuery.isLoading
             ? Array.from({ length: 4 }).map((_, i) => (
                 <KPICard key={`fin-skeleton-${i}`} title="" value="" isLoading />
@@ -75,8 +79,8 @@ export function DashboardKPICards() {
               ))}
         </div>
         {financialQuery.isError && (
-          <div className="p-4 text-center rounded-xl bg-error/10 border border-error/20">
-            <p className="text-error text-sm font-medium">
+          <div className="p-4 text-center bg-error/10">
+            <p className="text-error text-sm font-bold">
               Error al cargar métricas financieras: {financialQuery.error?.message}
             </p>
           </div>

@@ -24,8 +24,32 @@ export const metadata: Metadata = {
  */
 function DashboardPage() {
   return (
-    <main className="p-6 lg:p-8">
-      <DashboardContainer />
+    <main className="p-6 lg:p-8 min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Header estilo Horizon (Flat y Limpio) */}
+        <div className="flex items-center justify-between pb-4 border-b border-stone-300">
+          <div className="flex items-center gap-3">
+             <h1 className="text-xl font-bold text-stone-900 tracking-tight">
+               Warehouse Operations
+             </h1>
+             {/* Small visual separator */}
+             <div className="h-4 w-px bg-stone-300" />
+             <span className="text-sm font-medium text-stone-500">
+               Vista general (Sociedad Brito)
+             </span>
+          </div>
+          <div className="flex items-center gap-2">
+             {/* Additional context actions could go here */}
+          </div>
+        </div>
+
+        {/* Contenedor Limpio sin blurs ni glassmorphism */}
+        <div className="w-full">
+           <DashboardContainer />
+        </div>
+
+      </div>
     </main>
   )
 }

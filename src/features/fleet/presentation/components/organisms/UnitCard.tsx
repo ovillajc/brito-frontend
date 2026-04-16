@@ -1,64 +1,68 @@
 import React from 'react'
-import { Card, CardContent } from '@/src/core/presentation/components/ui/card'
-import { Badge } from '@/src/core/presentation/components/ui/badge'
-import { Button } from '@/src/core/presentation/components/ui/button'
-import { Truck, Package, Users, Building2, Edit2, Trash2 } from 'lucide-react'
+import { Truck, Search, MoreVertical } from 'lucide-react'
 
 export function UnitCard({ assembly }: { assembly: any }) {
-  return (
-    <Card className="overflow-hidden border-outline-variant/30 hover:shadow-xl hover:shadow-primary/5 transition-all group">
-      <CardContent className="p-0">
-        <div className="p-4 bg-surface-container-low flex items-center justify-between border-b border-outline-variant/10">
-          <div className="flex items-center gap-3">
-             <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                <Truck className="size-5" />
-             </div>
-             <div className="flex flex-col">
-                <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Unidad Activa</span>
-                <span className="text-sm font-bold text-on-surface font-mono">{assembly.tractor.plates}</span>
-             </div>
-          </div>
-          <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">En Operación</Badge>
-        </div>
-        
-        <div className="p-4 flex flex-col gap-4">
-          <div className="grid grid-cols-1 gap-3">
-            <InfoRow icon={Package} label="Remolque" value={assembly.trailer.type} sub={assembly.trailer.economicNumber} />
-            <InfoRow icon={Users} label="Operador" value={`${assembly.operator.firstName} ${assembly.operator.lastName}`} />
-            <InfoRow icon={Building2} label="Cliente" value={assembly.clientName || 'Sin asignar'} />
-          </div>
+  // Simulación de progreso basado en estado
+  const progressValue = assembly.tractor.status === 'active' ? 75 : assembly.tractor.status === 'available' ? 100 : 0
+  const colorClass = assembly.tractor.status === 'active' ? 'bg-[#e07020]' : assembly.tractor.status === 'available' ? 'bg-[#1a5c3a]' : 'bg-stone-300'
+  const textClass = assembly.tractor.status === 'active' ? 'text-[#e07020]' : assembly.tractor.status === 'available' ? 'text-[#1a5c3a]' : 'text-stone-500'
 
-          <div className="flex items-center justify-between pt-4 border-t border-outline-variant/10">
-             <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-on-surface-variant">Desde</span>
-                <span className="text-xs text-on-surface">{new Date(assembly.createdAt).toLocaleDateString()}</span>
-             </div>
-             <div className="flex gap-2">
-                <Button variant="ghost" size="icon" className="size-8 rounded-full hover:bg-surface-container-high transition-colors">
-                  <Edit2 className="size-3.5 text-on-surface-variant" />
-                </Button>
-                <Button variant="ghost" size="icon" className="size-8 rounded-full hover:bg-error-container/20 text-error hover:text-error transition-colors">
-                  <Trash2 className="size-3.5" />
-                </Button>
-             </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function InfoRow({ icon: Icon, label, value, sub }: any) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="size-7 rounded-lg bg-surface-container flex items-center justify-center shrink-0">
-        <Icon className="size-3.5 text-on-surface-variant" />
+    <div className="bg-white border border-stone-200 p-5 rounded-[16px] shadow-sm hover:shadow-md hover:border-stone-300 transition-all flex flex-col group cursor-pointer">
+      
+      {/* Top Row: Status Dot */}
+      <div className="flex items-center justify-between mb-4">
+         <div className="flex items-center gap-1.5 bg-stone-50 px-2.5 py-1 rounded-md border border-stone-100">
+            <span className={`size-1.5 rounded-full ${colorClass}`} />
+            <span className="text-[11px] font-bold text-stone-700 capitalize">
+               {assembly.tractor.status === 'available' ? 'Ready' : assembly.tractor.status === 'active' ? 'Loading' : 'Not started'}
+            </span>
+         </div>
       </div>
-      <div className="flex flex-col min-w-0">
-        <span className="text-[10px] uppercase font-bold text-on-surface-variant leading-tight">{label}</span>
-        <span className="text-xs text-on-surface font-medium truncate">{value}</span>
-        {sub && <span className="text-[10px] text-on-surface-variant font-mono">{sub}</span>}
+
+      {/* Middle: Title & Image mock */}
+      <div className="flex items-center justify-between mb-5">
+         <div className="flex flex-col">
+            <h3 className="text-[16px] font-black text-stone-900 tracking-tight leading-none mb-1.5">
+               {assembly.tractor.plates}
+            </h3>
+            <span className="text-[11px] font-medium text-stone-500 tracking-wide">
+               30,000 kg • ({progressValue}%)
+            </span>
+         </div>
+         <div className="opacity-80 group-hover:opacity-100 transition-opacity">
+            {/* Si hubieran imágenes de camiones, irían aquí. Por ahora, un icono pulido. */}
+            <Truck className="size-10 text-stone-300" strokeWidth={1} />
+         </div>
       </div>
+
+      <hr className="border-t border-dashed border-stone-200 my-4" />
+
+      {/* Route & Operator */}
+      <div className="flex items-center justify-between mb-6">
+         <div className="font-bold text-stone-900 text-xs">
+            VSA <span className="mx-1 text-stone-400">→</span> CDC
+         </div>
+         <div className="text-[11px] font-medium text-stone-500">
+            {assembly.operator.firstName} • <span className="font-bold">Dock #3</span>
+         </div>
+      </div>
+
+      {/* Bottom: Progress Bar */}
+      <div className="flex flex-col gap-1.5 w-full mt-auto">
+         <div className="flex items-center justify-between text-[11px]">
+            <span className="text-stone-500 font-medium">Load progress</span>
+            <span className="font-bold text-stone-900">{progressValue}%</span>
+         </div>
+         <div className="h-1.5 w-full bg-stone-100 rounded-full overflow-hidden flex">
+            <div 
+               className={`h-full ${colorClass}`} 
+               style={{ width: `${progressValue}%` }} 
+            />
+            {/* The rest is implicitly gray from background */}
+         </div>
+      </div>
+
     </div>
   )
 }

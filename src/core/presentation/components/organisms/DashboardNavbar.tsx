@@ -53,57 +53,60 @@ export function DashboardNavbar() {
   const unreadCount = NOTIFICATIONS.filter((n) => n.unread).length
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-outline-variant/20 bg-surface-container-lowest/80 backdrop-blur-md px-4 isolation-isolate">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-stone-200 bg-white px-4">
       {/* Sidebar trigger */}
       <button
         type="button"
         onClick={toggleCollapsed}
-        className="relative z-10 flex items-center justify-center size-8 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
+        className="relative z-10 flex items-center justify-center size-8 rounded-md text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
         aria-label="Toggle sidebar"
       >
         <PanelLeftIcon className="size-4 pointer-events-none" />
       </button>
 
       {/* Separator */}
-      <div className="h-5 w-px bg-outline-variant/30" />
+      <div className="h-4 w-px bg-stone-200" />
 
       {/* Search */}
       <div className="relative flex-1 max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-on-surface-variant pointer-events-none" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-stone-400 pointer-events-none" />
         <input
           type="text"
           placeholder="Buscar módulos, viajes, unidades..."
-          className="h-9 w-full pl-9 pr-4 rounded-lg bg-surface-container border border-outline-variant/20 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-colors"
+          className="h-9 w-full pl-9 pr-4 rounded-[10px] bg-stone-50 border border-stone-200 text-[13px] text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#1a5c3a]/50 focus:ring-1 focus:ring-[#1a5c3a]/20 focus:bg-white transition-all shadow-sm"
         />
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1">
+           <span className="px-1.5 py-0.5 rounded text-[10px] font-medium text-stone-400 bg-white border border-stone-200 shadow-sm">⌘F</span>
+        </div>
       </div>
 
-      <div className="flex items-center gap-1.5 ml-auto">
-        {/* Live indicator */}
-        <div className="hidden lg:flex items-center gap-2 rounded-md border border-outline-variant/20 bg-surface-container/30 px-3 py-1.5">
-          <span className="relative flex size-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-          </span>
-          <span className="text-[10px] font-medium tracking-wider uppercase text-on-surface-variant">
-            Sistema activo
-          </span>
+      <div className="flex items-center gap-3 ml-auto">
+        <div className="hidden lg:flex items-center gap-2">
+          {/* Refresh Button Mock */}
+          <button className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] text-[12px] font-medium text-stone-600 hover:bg-stone-50 hover:text-stone-900 border border-stone-200 transition-colors shadow-sm">
+             <span className="flex items-center justify-center size-3.5 rounded-full border border-current border-t-transparent animate-spin" />
+             Refresh
+          </button>
+          {/* Filter Button Mock */}
+          <button className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] text-[12px] font-medium text-stone-600 hover:bg-stone-50 hover:text-stone-900 border border-stone-200 transition-colors shadow-sm">
+             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+             Filter
+          </button>
         </div>
 
         {/* Separator */}
-        <div className="hidden lg:block h-5 w-px bg-outline-variant/30 mx-1" />
+        <div className="hidden lg:block h-4 w-px bg-stone-200" />
 
         {/* Notifications */}
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
-            className="relative flex items-center justify-center size-9 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
+            className="relative flex items-center justify-center size-9 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer border border-transparent hover:border-stone-200"
             aria-label="Notificaciones"
           >
             <Bell className="size-4 pointer-events-none" />
             {unreadCount > 0 && (
-              <Badge className="absolute -top-0.5 -right-0.5 size-4 items-center justify-center rounded-full p-0 text-[9px]">
-                {unreadCount}
-              </Badge>
+              <span className="absolute top-2 right-2 size-1.5 rounded-full bg-[#e07020] ring-2 ring-white" />
             )}
           </button>
 
@@ -116,43 +119,43 @@ export function DashboardNavbar() {
                 onClick={() => setShowNotifications(false)}
                 aria-hidden="true"
               />
-              <div className="absolute right-0 top-full mt-2 w-80 z-50 rounded-xl border border-outline-variant/20 bg-surface-container-lowest shadow-lg overflow-hidden">
-                <div className="flex items-center justify-between border-b border-outline-variant/20 p-3">
-                  <span className="text-xs font-semibold text-on-surface tracking-wide uppercase">
+              <div className="absolute right-0 top-full mt-2 w-80 z-50 rounded-2xl border border-stone-200 bg-white shadow-xl overflow-hidden">
+                <div className="flex items-center justify-between border-b border-stone-100 p-4">
+                  <span className="text-xs font-bold text-stone-900 tracking-wide uppercase">
                     Notificaciones
                   </span>
-                  <Badge variant="secondary" className="text-[10px]">
+                  <Badge className="text-[10px] bg-stone-100 text-stone-600 border-none shadow-none">
                     {unreadCount} nuevas
                   </Badge>
                 </div>
                 {NOTIFICATIONS.map((notification) => (
                   <button
                     key={notification.id}
-                    className="flex flex-col items-start gap-1 p-3 w-full text-left cursor-pointer hover:bg-surface-container/50 transition-colors"
+                    className="flex flex-col items-start gap-1 p-3 w-full text-left cursor-pointer hover:bg-stone-50 transition-colors"
                   >
                     <div className="flex items-center gap-2 w-full">
                       {notification.unread && (
-                        <span className="size-1.5 rounded-full bg-primary shrink-0" />
+                        <span className="size-1.5 rounded-full bg-[#1a5c3a] shrink-0" />
                       )}
                       <span
                         className={cn(
-                          'text-xs font-medium',
-                          notification.unread ? 'text-on-surface' : 'text-on-surface-variant',
+                          'text-xs font-bold',
+                          notification.unread ? 'text-stone-900' : 'text-stone-500',
                         )}
                       >
                         {notification.title}
                       </span>
-                      <span className="ml-auto text-[10px] text-on-surface-variant shrink-0">
+                      <span className="ml-auto text-[10px] text-stone-400 shrink-0">
                         {notification.time}
                       </span>
                     </div>
-                    <span className="text-[11px] text-on-surface-variant pl-3.5">
+                    <span className="text-[11px] text-stone-500 pl-3.5 leading-snug">
                       {notification.description}
                     </span>
                   </button>
                 ))}
-                <div className="border-t border-outline-variant/20 p-2">
-                  <span className="block w-full text-center text-[11px] font-medium text-primary cursor-pointer hover:text-primary/80 py-1 transition-colors">
+                <div className="border-t border-stone-100 p-2">
+                  <span className="block w-full text-center text-[11px] font-bold text-[#1a5c3a] cursor-pointer hover:text-[#1a5c3a]/80 py-1 transition-colors">
                     Ver todas las notificaciones
                   </span>
                 </div>
@@ -160,6 +163,12 @@ export function DashboardNavbar() {
             </>
           )}
         </div>
+        
+        {/* Primary Action Button */}
+        <button className="hidden lg:flex items-center gap-2 bg-[#1a5c3a] hover:bg-[#1a5c3a]/90 text-white px-4 py-1.5 rounded-[8px] text-[12px] font-bold transition-all shadow-sm">
+           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+           Quick Action
+        </button>
       </div>
     </header>
   )

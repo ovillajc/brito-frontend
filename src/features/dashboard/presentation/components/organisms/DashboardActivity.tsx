@@ -51,14 +51,14 @@ const RECENT_ACTIVITY: ActivityItem[] = [
   },
   {
     icon: TrendingUp,
-    iconColor: 'text-primary',
+    iconColor: 'text-[#1a5c3a]',
     title: 'Reporte de facturación generado',
     description: 'Periodo Marzo 2026 — $1,240,500 MXN facturados',
     time: 'Hace 3 horas',
   },
   {
     icon: Clock,
-    iconColor: 'text-on-surface-variant',
+    iconColor: 'text-stone-400',
     title: 'Orden de servicio creada',
     description: 'Cliente Pemex — Suministro de barita API 20 toneladas',
     time: 'Hace 5 horas',
@@ -87,37 +87,37 @@ export function DashboardActivity() {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
       {/* Recent Activity */}
-      <Card className="lg:col-span-3 border-outline-variant/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold font-headline text-on-surface">
+      <Card className="lg:col-span-3 border-stone-200 shadow-sm bg-white">
+        <CardHeader className="pb-3 lg:pb-4 border-b border-stone-100">
+          <CardTitle className="text-sm font-black font-headline text-stone-900">
             Actividad Reciente
           </CardTitle>
-          <CardDescription className="text-xs text-on-surface-variant">
+          <CardDescription className="text-xs font-medium text-stone-500">
             Últimos eventos registrados en la plataforma
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-0">
+        <CardContent className="flex flex-col gap-0 pt-2 lg:pt-3">
           {RECENT_ACTIVITY.map((item, index) => (
             <div
               key={item.title}
               className={`flex items-start gap-3 py-3 ${
                 index < RECENT_ACTIVITY.length - 1
-                  ? 'border-b border-outline-variant/20'
+                  ? 'border-b border-stone-100'
                   : ''
               }`}
             >
-              <div className="flex items-center justify-center size-8 rounded-md bg-surface-container shrink-0 mt-0.5">
+              <div className="flex items-center justify-center size-8 rounded-md bg-stone-50 border border-stone-100 shrink-0 mt-0.5">
                 <item.icon className={`size-4 ${item.iconColor}`} />
               </div>
               <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                <span className="text-xs font-medium text-on-surface">
+                <span className="text-xs font-bold text-stone-900">
                   {item.title}
                 </span>
-                <span className="text-[11px] text-on-surface-variant truncate">
+                <span className="text-[11px] font-medium text-stone-500 truncate">
                   {item.description}
                 </span>
               </div>
-              <span className="text-[10px] text-on-surface-variant shrink-0">
+              <span className="text-[10px] font-medium text-stone-400 shrink-0">
                 {item.time}
               </span>
             </div>
@@ -126,33 +126,33 @@ export function DashboardActivity() {
       </Card>
 
       {/* Quick Stats */}
-      <Card className="lg:col-span-2 border-outline-variant/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold font-headline text-on-surface">
+      <Card className="lg:col-span-2 border-stone-200 shadow-sm bg-white">
+        <CardHeader className="pb-3 lg:pb-4 border-b border-stone-100">
+          <CardTitle className="text-sm font-black font-headline text-stone-900">
             Resumen Rápido
           </CardTitle>
-          <CardDescription className="text-xs text-on-surface-variant">
+          <CardDescription className="text-xs font-medium text-stone-500">
             Métricas clave del sistema
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-0">
+        <CardContent className="flex flex-col gap-0 pt-2 lg:pt-3">
           {QUICK_STATS.map((stat, index) => (
             <div
               key={stat.label}
               className={`flex items-center justify-between py-3 ${
                 index < QUICK_STATS.length - 1
-                  ? 'border-b border-outline-variant/20'
+                  ? 'border-b border-stone-100'
                   : ''
               }`}
             >
-              <span className="text-xs text-on-surface-variant">{stat.label}</span>
+              <span className="text-xs font-bold text-stone-500">{stat.label}</span>
               <span
-                className={`text-sm font-bold font-headline tabular-nums ${
+                className={`text-sm font-black font-headline tabular-nums ${
                   stat.status === 'success'
-                    ? 'text-emerald-500'
+                    ? 'text-[#1a5c3a]'
                     : stat.status === 'warning'
-                      ? 'text-amber-500'
-                      : 'text-on-surface'
+                      ? 'text-[#e07020]'
+                      : 'text-stone-900'
                 }`}
               >
                 {stat.value}

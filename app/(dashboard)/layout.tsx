@@ -21,7 +21,7 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       <AppSidebar />
-      <div className="relative flex w-full flex-1 flex-col min-w-0">
+      <div className="relative flex w-full flex-1 flex-col min-w-0 bg-stone-50">
         <DashboardNavbar />
         <div className="flex-1 overflow-auto">{children}</div>
         <DashboardFooter />
