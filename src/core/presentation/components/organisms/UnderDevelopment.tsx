@@ -101,7 +101,7 @@ export function UnderDevelopment({
             </Link>
             
             <Link href="..">
-              <Button variant="outline" className="gap-2 px-6">
+              <Button variant="orange" className="gap-2 px-6">
                 <ArrowLeft className="size-4" />
                 Volver
               </Button>

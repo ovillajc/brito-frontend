@@ -90,13 +90,13 @@ export function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition-colors hover:cursor-pointer"
                   aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
                   {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
+                    <EyeOff className="w-5 h-5 hover:cursor-pointer" />
                   ) : (
-                    <Eye className="w-5 h-5" />
+                    <Eye className="w-5 h-5 hover:cursor-pointer" />
                   )}
                 </button>
               </div>
@@ -109,7 +109,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="h-12 w-full mt-4 rounded-xl bg-[#1a5c3a] text-white hover:bg-[#1a5c3a]/90 font-bold text-sm tracking-wide transition-all duration-300 group flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-[#1a5c3a]/20"
+          className="h-12 w-full mt-4 rounded-xl bg-[#1a5c3a] text-white hover:bg-[#1a5c3a]/90 font-bold text-sm tracking-wide transition-all duration-300 group flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-[#1a5c3a]/20 hover:cursor-pointer"
         >
           {isLoading ? (
             <span className="flex items-center gap-2">

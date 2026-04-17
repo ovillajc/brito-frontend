@@ -17,8 +17,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       secondary: 'bg-zinc-100 text-zinc-900 hover:bg-zinc-100/80 dark:bg-zinc-800 dark:text-zinc-50 dark:hover:bg-zinc-800/80',
       outline: 'border border-zinc-200 bg-white hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-800 dark:hover:text-zinc-50',
       ghost: 'hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50',
-      orange: 'bg-orange-600 text-white hover:bg-orange-700 shadow-sm transition-all active:scale-95',
-      green: 'bg-green-700 text-white hover:bg-green-800 shadow-sm transition-all active:scale-95',
+      orange: 'bg-[#e07020] text-white hover:bg-[#c05a18] shadow-sm transition-all active:scale-95',
+      green: 'bg-[#1a5c3a] text-white hover:bg-[#14472d] shadow-sm transition-all active:scale-95',
     }
 
     const sizes = {

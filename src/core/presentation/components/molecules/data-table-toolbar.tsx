@@ -4,6 +4,8 @@ import { Button } from '@/src/core/presentation/components/ui/button'
 
 interface DataTableToolbarProps {
   searchPlaceholder?: string
+  searchValue?: string
+  onSearchChange?: (value: string) => void
   actionLabel?: string
   onAction?: () => void
   actionIcon?: React.ReactNode
@@ -11,6 +13,8 @@ interface DataTableToolbarProps {
 
 export function DataTableToolbar({
   searchPlaceholder = 'Buscar...',
+  searchValue,
+  onSearchChange,
   actionLabel = 'Nuevo',
   onAction,
   actionIcon = <Plus className="size-4" />,
@@ -21,6 +25,8 @@ export function DataTableToolbar({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-on-surface-variant" />
         <input
           type="text"
+          value={searchValue}
+          onChange={(e) => onSearchChange?.(e.target.value)}
           placeholder={searchPlaceholder}
           className="w-full pl-10 pr-4 py-2 text-sm rounded-lg border border-outline-variant/30 bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
         />

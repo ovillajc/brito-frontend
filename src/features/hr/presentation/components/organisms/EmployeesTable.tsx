@@ -8,11 +8,12 @@ import {
   TableRow, 
   TableHead, 
   TableBody, 
-  TableCell 
+  TableCell,
+  TableContainer
 } from '@/src/core/presentation/components/ui/table'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
-import { Input } from '@/src/core/presentation/components/ui/input'
-import { Search } from 'lucide-react'
+import { DataTableToolbar } from '@/src/core/presentation/components/molecules/data-table-toolbar'
+import { CreateEmployeeWizard } from './CreateEmployeeWizard'
 
 interface EmployeesTableProps {
   initialData: EmployeeEntity[]
@@ -20,6 +21,7 @@ interface EmployeesTableProps {
 
 export function EmployeesTable({ initialData }: EmployeesTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
+  const [isWizardOpen, setIsWizardOpen] = useState(false)
 
   const filteredEmployees = initialData.filter(emp => 
     emp.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -29,28 +31,24 @@ export function EmployeesTable({ initialData }: EmployeesTableProps) {
   return (
     <div className="flex flex-col gap-4">
       {/* Table Actions / Toolbar */}
-      <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-stone-200">
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-stone-400" />
-          <Input 
-            placeholder="Buscar por nombre o área..." 
-            className="pl-9 bg-stone-50 border-stone-200 text-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
+      <DataTableToolbar 
+        searchPlaceholder="Buscar por nombre o área..."
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        actionLabel="Nuevo Empleado"
+        onAction={() => setIsWizardOpen(true)}
+      />
 
       {/* Data Table */}
-      <div className="rounded-xl border border-stone-200 bg-white overflow-hidden">
+      <TableContainer>
         <Table>
-          <TableHeader className="bg-stone-50/50">
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="font-semibold text-stone-600">Nombre</TableHead>
-              <TableHead className="font-semibold text-stone-600">Alta</TableHead>
-              <TableHead className="font-semibold text-stone-600">Área</TableHead>
-              <TableHead className="font-semibold text-stone-600">Rol</TableHead>
-              <TableHead className="font-semibold text-stone-600 text-right">Estado</TableHead>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Alta</TableHead>
+              <TableHead>Área</TableHead>
+              <TableHead>Rol</TableHead>
+              <TableHead className="text-right">Estado</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -96,7 +94,12 @@ export function EmployeesTable({ initialData }: EmployeesTableProps) {
             )}
           </TableBody>
         </Table>
-      </div>
+      </TableContainer>
+
+      <CreateEmployeeWizard 
+        isOpen={isWizardOpen} 
+        onClose={() => setIsWizardOpen(false)} 
+      />
     </div>
   )
 }

@@ -9,7 +9,7 @@ export default async function AttendancePage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold tracking-tight text-on-surface">Gestión Pre-Nómina y Asistencia</h2>
-        <Button variant="outline" className="border-stone-200 text-stone-700 bg-white">
+        <Button variant="green" className="shadow-stone-200">
           <FileDown className="mr-2 h-4 w-4" /> Exportar Reporte
         </Button>
       </div>

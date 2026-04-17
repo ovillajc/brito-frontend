@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react'
+import { Suspense } from 'react'
 import { getHrKpisMockUseCase } from '@/src/features/hr/application/mock-hr-use-cases'
 import { Card, CardHeader, CardTitle, CardContent } from '@/src/core/presentation/components/ui/card'
 import { Users, Truck, Briefcase, FileWarning } from 'lucide-react'

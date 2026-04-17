@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { QueryProvider } from "@/src/core/presentation/providers/query-provider";
+import { ThemeProvider } from "@/src/core/presentation/providers/theme-provider";
 
 export default function RootLayout({
   children,
@@ -27,16 +28,20 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${inter.variable} ${manrope.variable} h-full antialiased light`}
+      className={`${inter.variable} ${manrope.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
       <body className="min-h-full flex flex-col font-body selection:bg-primary-container selection:text-on-primary-container">
-        <QueryProvider>
-          {children}
-        </QueryProvider>
+        <ThemeProvider>
+          <QueryProvider>
+            {children}
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
 }
+
