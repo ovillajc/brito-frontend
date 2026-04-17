@@ -45,7 +45,7 @@ export const SafetySection = () => {
             viewport={{ once: true }}
             className="relative"
           >
-            <div className="relative rounded-3xl overflow-hidden aspect-[4/5] shadow-2xl">
+            <div className="relative rounded-3xl overflow-hidden aspect-4/5 shadow-2xl">
               <Image
                 src="/assets/images/landin/cta1.jpeg"
                 alt="Oficial de seguridad con operador de Transportes Brito"
@@ -53,7 +53,7 @@ export const SafetySection = () => {
                 className="object-cover object-center"
                 sizes="(max-width: 1024px) 100vw, 50vw"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-black/50 via-transparent to-transparent" />
             </div>
 
             {/* Floating badge */}
@@ -62,13 +62,6 @@ export const SafetySection = () => {
               <p className="text-xs font-medium leading-tight mt-1 text-white/80">
                 Salud, Seguridad y Protección Ambiental
               </p>
-            </div>
-
-            {/* Name card */}
-            <div className="absolute top-6 -left-4 bg-white rounded-xl shadow-lg px-4 py-3 border border-stone-100">
-              <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Responsable SSPA</p>
-              <p className="text-sm font-bold text-stone-900">Keila C. Arias de la Cruz</p>
-              <p className="text-xs text-stone-500">933-156-8867</p>
             </div>
           </motion.div>
 

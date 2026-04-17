@@ -6,12 +6,66 @@ import { Building2, Calendar, Truck } from 'lucide-react'
 
 const FEATURED_CLIENTS = [
   {
-    name: 'PRODEXA de México',
+    name: 'Baker Hughes',
+    location: 'Paraíso, Tabasco · CDMX',
+    period: '2014 – Presente',
+    service: 'Barita y cemento granel en tolva presurizada',
+    sector: 'Servicios Petroleros',
+    since: 2014,
+    color: 'green' as const,
+  },
+  {
+    name: 'Servicios Integrales GSM',
+    location: 'Villahermosa, Tabasco',
+    period: '2016 – Presente',
+    service: 'Transporte logístico especializado',
+    sector: 'Servicios de Energía',
+    since: 2016,
+    color: 'orange' as const,
+  },
+  {
+    name: 'Prodexa',
     location: 'Nanchital, Veracruz',
     period: '2008 – Presente',
     service: 'Transporte de barita a granel en tolva presurizada',
     sector: 'Industria Petrolera',
     since: 2008,
+    color: 'green' as const,
+  },
+  {
+    name: 'Altopetrum',
+    location: 'Comalcalco, Tabasco',
+    period: '2018 – Presente',
+    service: 'Movimiento de material y fluidos industriales',
+    sector: 'Energía / Petróleo',
+    since: 2018,
+    color: 'orange' as const,
+  },
+  {
+    name: 'Global Maya Fluidos',
+    location: 'Paraíso, Tabasco',
+    period: '2019 – Presente',
+    service: 'Manejo terrestre de fluidos de perforación',
+    sector: 'Sector Energético',
+    since: 2019,
+    color: 'green' as const,
+  },
+  {
+    name: 'Solinmar Thechdrill Fluid Systems',
+    location: 'Ciudad del Carmen, Camp.',
+    period: '2017 – Presente',
+    service: 'Traslado de sistemas de fluidos y aditivos químicos',
+    sector: 'Petróleo y Gas',
+    since: 2017,
+    color: 'orange' as const,
+  },
+  {
+    name: 'MIMySSA',
+    location: 'Sureste Mexicano',
+    period: '2015 – Presente',
+    service: 'Minerales micronizados y suministro para industria minera',
+    sector: 'Industria Minera',
+    since: 2015,
     color: 'green' as const,
   },
   {
@@ -23,49 +77,14 @@ const FEATURED_CLIENTS = [
     since: 2024,
     color: 'orange' as const,
   },
-  {
-    name: 'Baker Hughes Operations',
-    location: 'Paraíso, Tabasco · CDMX',
-    period: '2014 – Presente',
-    service: 'Barita y cemento granel en tolva presurizada',
-    sector: 'Servicios Petroleros',
-    since: 2014,
-    color: 'green' as const,
-  },
-  {
-    name: 'ABK Logistika / Baramin',
-    location: 'Nanchital, Veracruz',
-    period: '2008 – Presente',
-    service: 'Transporte de barita a granel en tolva presurizada',
-    sector: 'Logística Industrial',
-    since: 2008,
-    color: 'orange' as const,
-  },
-  {
-    name: 'Protexa',
-    location: 'Cárdenas, Tabasco',
-    period: '2011 – Presente',
-    service: 'Barita a granel hacia el sureste mexicano',
-    sector: 'Construcción Industrial',
-    since: 2011,
-    color: 'green' as const,
-  },
-  {
-    name: 'Bustaher Systems México',
-    location: 'Acayucan, Veracruz',
-    period: '2012 – Presente',
-    service: 'Arena sílica en tolva presurizada',
-    sector: 'Industria Petrolera',
-    since: 2012,
-    color: 'orange' as const,
-  },
 ]
 
 const ALL_CLIENTS = [
+  'ABK Logistika / Baramin', 'Protexa', 'Bustaher Systems México',
   'CEMEX México', 'Chemiservis', 'CEMOC Servicios', 'Dowell Schlumberger',
   'Weatherford de México', 'Integridad Mexicana del Norte', 'Mogel Fluidos',
-  'Global Drilling de México', 'Servicios Integrales GSM', 'Azul Cerámica',
-  'Barisur', 'Minerales y Arcillas', 'Walmart', 'Holcim',
+  'Global Drilling de México', 'Azul Cerámica', 'Barisur', 'Minerales y Arcillas',
+  'Holcim'
 ]
 
 /**
@@ -109,7 +128,7 @@ export const ClientsSection = () => {
         </div>
 
         {/* Featured clients grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-20">
           {FEATURED_CLIENTS.map((client, i) => (
             <motion.div
               key={client.name}
@@ -133,14 +152,14 @@ export const ClientsSection = () => {
               {/* Company initial */}
               <div className="flex items-start gap-4 mb-4">
                 <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-lg flex-shrink-0 ${
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-lg shrink-0 ${
                     client.color === 'green' ? 'bg-[#1a5c3a]' : 'bg-[#e07020]'
                   }`}
                 >
                   {client.name.charAt(0)}
                 </div>
                 <div>
-                  <h3 className="font-black text-stone-900 leading-tight text-lg">{client.name}</h3>
+                  <h3 className="font-black text-stone-900 leading-tight text-lg max-w-[180px] line-clamp-2" title={client.name}>{client.name}</h3>
                   <p className="text-xs text-stone-500 flex items-center gap-1 mt-1">
                     <Building2 className="w-3 h-3" />
                     {client.location}
@@ -172,8 +191,8 @@ export const ClientsSection = () => {
           </p>
           <div className="overflow-hidden relative">
             {/* Fades laterales */}
-            <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-stone-50 to-transparent z-10" />
-            <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-stone-50 to-transparent z-10" />
+            <div className="absolute left-0 top-0 bottom-0 w-16 bg-linear-to-r from-stone-50 to-transparent z-10" />
+            <div className="absolute right-0 top-0 bottom-0 w-16 bg-linear-to-l from-stone-50 to-transparent z-10" />
 
             <motion.div
               animate={{ x: ['0%', '-50%'] }}

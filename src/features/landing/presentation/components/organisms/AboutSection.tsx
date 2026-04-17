@@ -64,7 +64,7 @@ export const AboutSection = () => {
                 <h3 className="text-lg font-bold text-stone-900">Nuestra Misión</h3>
               </div>
               <p className="text-stone-600 leading-relaxed text-sm">
-                Atender las demandas y necesidades de nuestros clientes en cuanto a proveedora de materiales y servicios de transporte de carga a granel, con los más altos estándares de seguridad, eficiencia y calidad.
+                Proporcionar un servicio superior y soluciones en abastecimiento y logística de material a granel alcanzando una total satisfacción de los clientes, adaptándonos a diferentes ambientes operativos, asegurando la integridad del personal y medio ambiente, y cumpliendo con los estándares de calidad más exigentes.
               </p>
             </div>
 
@@ -105,7 +105,7 @@ export const AboutSection = () => {
             viewport={{ once: true }}
             className="relative"
           >
-            <div className="relative rounded-3xl overflow-hidden aspect-[4/5] shadow-2xl">
+            <div className="relative rounded-3xl overflow-hidden aspect-4/5 shadow-2xl">
               <Image
                 src="/assets/images/landin/cta3.jpeg"
                 alt="Equipo de Transportes Brito en sesión de seguridad industrial"
@@ -113,7 +113,7 @@ export const AboutSection = () => {
                 className="object-cover object-center"
                 sizes="(max-width: 1024px) 100vw, 50vw"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
               <div className="absolute bottom-6 left-6 right-6 text-white">
                 <p className="text-sm font-bold uppercase tracking-widest text-[#e07020] mb-1">Equipo Capacitado</p>
                 <p className="text-xl font-black leading-tight">Desde Tabasco para todo el Sureste Mexicano</p>
