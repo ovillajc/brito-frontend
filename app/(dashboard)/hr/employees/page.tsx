@@ -21,7 +21,7 @@ async function EmployeesContent() {
 
   if (!result.ok) {
     return (
-      <div className="p-4 bg-red-50 text-red-600 rounded-lg">
+      <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg border border-red-100 dark:border-red-900/30">
         Error al cargar empleados: {result.error.message}
       </div>
     )
@@ -33,8 +33,8 @@ async function EmployeesContent() {
 function TableSkeleton() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="h-16 w-full animate-pulse bg-stone-100 rounded-xl"></div>
-      <div className="h-[400px] w-full animate-pulse bg-stone-100 rounded-xl"></div>
+      <div className="h-16 w-full animate-pulse bg-stone-100 dark:bg-zinc-800/50 rounded-xl"></div>
+      <div className="h-[400px] w-full animate-pulse bg-stone-100 dark:bg-zinc-800/50 rounded-xl"></div>
     </div>
   )
 }

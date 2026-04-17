@@ -7,21 +7,31 @@ import { CreateEmployeeUseCase } from '../../application/CreateEmployeeUseCase'
 import { UpdateEmployeeUseCase } from '../../application/UpdateEmployeeUseCase'
 import { DeleteEmployeeUseCase } from '../../application/DeleteEmployeeUseCase'
 import { CreateEmployeeInput, UpdateEmployeeInput } from '../../domain/schemas/employee.schema'
+import { GetDepartmentsUseCase } from '../../application/GetDepartmentsUseCase'
+import { SupabaseDepartmentRepository } from '../../infrastructure/repositories/SupabaseDepartmentRepository'
 
-const repository = new SupabaseEmployeeRepository()
+const employeeRepository = new SupabaseEmployeeRepository()
+const departmentRepository = new SupabaseDepartmentRepository()
+
+/**
+ * Action para obtener la lista de departamentos.
+ */
+export async function getDepartmentsAction() {
+  return GetDepartmentsUseCase(departmentRepository)
+}
 
 /**
  * Action para obtener la lista de empleados.
  */
 export async function getEmployeesAction() {
-  return GetEmployeesUseCase(repository)
+  return GetEmployeesUseCase(employeeRepository)
 }
 
 /**
  * Action para crear un nuevo empleado.
  */
 export async function createEmployeeAction(input: CreateEmployeeInput) {
-  const result = await CreateEmployeeUseCase(repository, input)
+  const result = await CreateEmployeeUseCase(employeeRepository, input)
   if (result.ok) {
     revalidatePath('/hr/employees')
   }
@@ -32,7 +42,7 @@ export async function createEmployeeAction(input: CreateEmployeeInput) {
  * Action para actualizar un empleado.
  */
 export async function updateEmployeeAction(input: UpdateEmployeeInput) {
-  const result = await UpdateEmployeeUseCase(repository, input)
+  const result = await UpdateEmployeeUseCase(employeeRepository, input)
   if (result.ok) {
     revalidatePath('/hr/employees')
   }
@@ -43,7 +53,7 @@ export async function updateEmployeeAction(input: UpdateEmployeeInput) {
  * Action para eliminar un empleado.
  */
 export async function deleteEmployeeAction(id: string) {
-  const result = await DeleteEmployeeUseCase(repository, id)
+  const result = await DeleteEmployeeUseCase(employeeRepository, id)
   if (result.ok) {
     revalidatePath('/hr/employees')
   }

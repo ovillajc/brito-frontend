@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { AttendanceEntity, IncidentType, incidentTypeSchema } from '../../../domain/entities'
+import { AttendanceEntity, IncidentType } from '../../../domain/entities'
 import { 
   Table, 
   TableHeader, 
@@ -58,25 +58,25 @@ export function AttendanceLog({ initialData }: AttendanceLogProps) {
           <TableBody>
             {filteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-stone-500">
+                <TableCell colSpan={4} className="text-center py-8 text-stone-500 dark:text-zinc-500">
                   No se encontraron registros de asistencia.
                 </TableCell>
               </TableRow>
             ) : (
               filteredData.map((log) => (
-                <TableRow key={log.id} className="hover:bg-stone-50/50">
+                <TableRow key={log.id} className="hover:bg-stone-50/50 dark:hover:bg-zinc-800/30 transition-colors">
                   <TableCell>
-                    <span className="font-medium text-stone-900">{log.employeeName}</span>
+                    <span className="font-medium text-stone-900 dark:text-zinc-100">{log.employeeName}</span>
                   </TableCell>
-                  <TableCell className="text-sm text-stone-600">
+                  <TableCell className="text-sm text-stone-600 dark:text-zinc-400">
                     {new Intl.DateTimeFormat('es-MX', { dateStyle: 'long' }).format(log.incidentDate)}
                   </TableCell>
                   <TableCell>
-                    <Badge className={`${incidentColors[log.incidentType]} hover:opacity-90 capitalize`}>
+                    <Badge className={`${incidentColors[log.incidentType]} hover:opacity-90 capitalize border-none`}>
                       {log.incidentType.replace(/_/g, ' ')}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-stone-500 italic">
+                  <TableCell className="text-sm text-stone-500 dark:text-zinc-500 italic">
                     {log.notes || '—'}
                   </TableCell>
                 </TableRow>

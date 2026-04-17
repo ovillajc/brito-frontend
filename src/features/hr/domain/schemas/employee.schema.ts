@@ -8,6 +8,7 @@ import { z } from 'zod'
 // Zod schema for creating an employee
 export const createEmployeeSchema = z.object({
   fullName: z.string().min(1, 'El nombre completo es requerido'),
+  birthDate: z.string().optional().or(z.literal('')),
   contactEmail: z.string().email('Debe ser un email válido').optional().or(z.literal('')),
   contactPhone: z.string().optional().or(z.literal('')),
   rfc: z.string().optional().or(z.literal('')),
@@ -15,7 +16,9 @@ export const createEmployeeSchema = z.object({
   nss: z.string().optional().or(z.literal('')),
   isOperator: z.boolean(),
   departmentId: z.string().uuid().optional().or(z.literal('')),
-  
+  jobTitle: z.string().optional().or(z.literal('')),
+  hireDate: z.string().optional().or(z.literal('')),
+
   // Emergency info
   emergencyContactName: z.string().optional().or(z.literal('')),
   emergencyContactPhone: z.string().optional().or(z.literal('')),

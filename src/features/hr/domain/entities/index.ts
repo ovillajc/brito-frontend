@@ -6,6 +6,14 @@
 export type EmployeeType = 'operativo' | 'administrativo'
 export type EmployeeStatus = 'activo' | 'suspendido' | 'baja' | 'vacaciones'
 
+export interface DepartmentEntity {
+  id: string
+  name: string
+  description?: string | null
+  responsibleId?: string | null
+  createdAt: Date
+}
+
 export interface EmployeeEntity {
   id: string
   fullName: string
@@ -20,6 +28,7 @@ export interface EmployeeEntity {
   contactPhone?: string | null
   contactEmail?: string | null
   birthDate?: Date | null
+  jobTitle?: string | null
   emergencyContactName?: string | null
   emergencyContactPhone?: string | null
   bloodType?: string | null

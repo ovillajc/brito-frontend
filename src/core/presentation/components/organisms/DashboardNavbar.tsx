@@ -59,10 +59,17 @@ export function DashboardNavbar() {
     setMounted(true)
   }, [])
 
+  // Evitamos cálculos innecesarios si no ha montado
+  if (!mounted) {
+    return <div className="size-8" /> // O un skeleton/espacio vacío
+  }
+
+  const toggleTheme = () => {
+      // Es mejor usar 'theme' directamente o validar resolvedTheme
+      setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
+    }
+
   const unreadCount = NOTIFICATIONS.filter((n) => n.unread).length
-
-  const isDark = mounted && (resolvedTheme === 'dark' || theme === 'dark')
-
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 transition-colors">
       {/* Sidebar trigger */}
@@ -109,16 +116,15 @@ export function DashboardNavbar() {
 
           {/* Theme Toggle */}
           <button
-            className="flex items-center justify-center size-8 rounded-md text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors"
-            title="Cambiar tema"
-            aria-label="Cambiar tema"
-            onClick={() => setTheme(isDark ? 'light' : 'dark')}
+          className="..." // tus clases de Tailwind
+          onClick={toggleTheme}
+          aria-label="Cambiar tema"
           >
-            {mounted ? (
-              isDark ? <Moon className="size-4" /> : <Sun className="size-4" />
-            ) : (
-              <div className="size-4" />
-            )}
+          {resolvedTheme === 'dark' ? (
+            <Moon className="size-4" />
+          ) : (
+            <Sun className="size-4" />
+          )}
           </button>
 
           {/* Fullscreen Toggle */}

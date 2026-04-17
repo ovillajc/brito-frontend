@@ -15,9 +15,11 @@ import {
 } from '@/src/core/presentation/components/ui/table'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { DataTableToolbar } from '@/src/core/presentation/components/molecules/data-table-toolbar'
-import { CreateEmployeeWizard } from './CreateEmployeeWizard'
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { deleteEmployeeAction } from '../../actions/employee.actions'
+import { EmployeeWizard } from './EmployeeWizard'
+import { EmployeeDetailsDialog } from './EmployeeDetailsDialog'
+import { ConfirmDialog } from '@/src/core/presentation/components/molecules/confirm-dialog'
 
 interface EmployeesTableProps {
   initialData: EmployeeEntity[]
@@ -26,7 +28,35 @@ interface EmployeesTableProps {
 export function EmployeesTable({ initialData }: EmployeesTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [isWizardOpen, setIsWizardOpen] = useState(false)
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeEntity | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
+
+  // Confirm-delete dialog state
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  
+  // Details Modal State
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [selectedDetailEmployee, setSelectedDetailEmployee] = useState<EmployeeEntity | null>(null)
+
+  const handleEdit = (employee: EmployeeEntity) => {
+    setSelectedEmployee(employee)
+    setIsWizardOpen(true)
+  }
+
+  const handleCloseWizard = () => {
+    setIsWizardOpen(false)
+    setSelectedEmployee(null)
+  }
+
+  const handleViewDetails = (employee: EmployeeEntity) => {
+    setSelectedDetailEmployee(employee)
+    setIsDetailsOpen(true)
+  }
+
+  const handleCloseDetails = () => {
+    setIsDetailsOpen(false)
+    setSelectedDetailEmployee(null)
+  }
 
   const filteredEmployees = initialData.filter(emp => 
     emp.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -34,21 +64,30 @@ export function EmployeesTable({ initialData }: EmployeesTableProps) {
     emp.rfc?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este registro?')) return
-    
+  const handleDeleteRequest = (id: string) => {
+    setPendingDeleteId(id)
+  }
+
+  const handleCancelDelete = () => {
+    setPendingDeleteId(null)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDeleteId) return
+    const id = pendingDeleteId
     setIsDeleting(id)
     try {
       const result = await deleteEmployeeAction(id)
       if (result.ok) {
-        toast.success('Empleado eliminado')
+        toast.success('Empleado eliminado correctamente')
       } else {
         toast.error(result.error.message || 'Error al eliminar')
       }
-    } catch (error) {
-      toast.error('Error inesperado')
+    } catch {
+      toast.error('Error inesperado al eliminar')
     } finally {
       setIsDeleting(null)
+      setPendingDeleteId(null)
     }
   }
 
@@ -88,10 +127,16 @@ export function EmployeesTable({ initialData }: EmployeesTableProps) {
               </TableRow>
             ) : (
               filteredEmployees.map((emp) => (
-                <TableRow key={emp.id} className="hover:bg-stone-50/50 dark:hover:bg-zinc-800/30 transition-colors">
+                <TableRow 
+                  key={emp.id} 
+                  className="hover:bg-stone-50/50 dark:hover:bg-zinc-800/30 transition-colors cursor-pointer group"
+                  onClick={() => handleViewDetails(emp)}
+                >
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-bold text-stone-900 dark:text-zinc-100">{emp.fullName}</span>
+                      <span className="font-bold text-stone-900 dark:text-zinc-100 group-hover:text-[#1a5c3a] dark:group-hover:text-[#2ecc71] transition-colors">
+                        {emp.fullName}
+                      </span>
                       <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider font-semibold text-stone-400 dark:text-zinc-500 mt-0.5">
                         <span>{emp.rfc || 'SIN RFC'}</span>
                         <span className="size-1 rounded-full bg-stone-300 dark:bg-zinc-700" />
@@ -127,16 +172,27 @@ export function EmployeesTable({ initialData }: EmployeesTableProps) {
                       <Badge variant="secondary" className="bg-stone-200 dark:bg-zinc-800 text-stone-700 dark:text-zinc-400">Inactivo</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="size-8 text-stone-400 hover:text-stone-900 dark:hover:text-zinc-100">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="size-8 text-stone-400 hover:text-stone-900 dark:hover:text-zinc-100"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEdit(emp)
+                        }}
+                      >
                         <Edit2 className="size-3.5" />
                       </Button>
                       <Button 
                         variant="ghost" 
                         size="icon" 
                         className="size-8 text-stone-400 hover:text-red-600 dark:hover:text-red-400"
-                        onClick={() => handleDelete(emp.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteRequest(emp.id)
+                        }}
                         disabled={isDeleting === emp.id}
                       >
                         <Trash2 className={`size-3.5 ${isDeleting === emp.id ? 'animate-pulse' : ''}`} />
@@ -150,11 +206,28 @@ export function EmployeesTable({ initialData }: EmployeesTableProps) {
         </Table>
       </TableContainer>
 
-      <CreateEmployeeWizard 
+      <EmployeeWizard 
         isOpen={isWizardOpen} 
-        onClose={() => setIsWizardOpen(false)} 
+        employee={selectedEmployee || undefined}
+        onClose={handleCloseWizard} 
+      />
+
+      <EmployeeDetailsDialog
+        isOpen={isDetailsOpen}
+        employee={selectedDetailEmployee}
+        onClose={handleCloseDetails}
+      />
+
+      <ConfirmDialog
+        isOpen={!!pendingDeleteId}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        isLoading={!!isDeleting}
+        title="¿Eliminar empleado?"
+        description="Esta acción es irreversible. El registro del empleado y toda su información serán eliminados permanentemente del sistema."
+        confirmLabel="Sí, eliminar"
+        cancelLabel="No, cancelar"
       />
     </div>
   )
 }
-

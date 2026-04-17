@@ -18,6 +18,12 @@ interface DialogProps {
   children: React.ReactNode
   className?: string
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
+  headerClassName?: string
+  titleClassName?: string
+  descriptionClassName?: string
+  closeButtonClassName?: string
+  /** When true, suppresses the default header so custom components can render their own */
+  hideDefaultHeader?: boolean
 }
 
 const SIZE_CLASSES = {
@@ -35,7 +41,12 @@ export function Dialog({
   description, 
   children, 
   className,
-  size = 'md'
+  size = 'md',
+  headerClassName,
+  titleClassName,
+  descriptionClassName,
+  closeButtonClassName,
+  hideDefaultHeader = false,
 }: DialogProps) {
   
   // Close on Escape key
@@ -75,18 +86,23 @@ export function Dialog({
           className
         )}
       >
-        <div className="flex items-center justify-between p-6 pb-2">
-          <div>
-            {title && <h2 className="text-xl font-bold text-on-surface">{title}</h2>}
-            {description && <p className="text-sm text-on-surface-variant font-medium mt-1">{description}</p>}
+        {!hideDefaultHeader && (
+          <div className={cn('flex items-center justify-between p-6 pb-2', headerClassName)}>
+            <div>
+              {title && <h2 className={cn('text-xl font-bold text-on-surface', titleClassName)}>{title}</h2>}
+              {description && <p className={cn('text-sm font-medium mt-1 text-on-surface-variant', descriptionClassName)}>{description}</p>}
+            </div>
+            <button 
+              onClick={onClose}
+              className={cn(
+                'size-8 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors',
+                closeButtonClassName
+              )}
+            >
+              <X className="size-5" />
+            </button>
           </div>
-          <button 
-            onClick={onClose}
-            className="size-8 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors"
-          >
-            <X className="size-5 text-on-surface-variant" />
-          </button>
-        </div>
+        )}
         
         <div className="flex-1 overflow-y-auto min-h-0">
           {children}

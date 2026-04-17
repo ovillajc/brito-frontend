@@ -33,7 +33,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarContext.Provider value={value}>
-      <div className="flex min-h-svh w-full bg-surface-container-lowest">
+      <div className="flex min-h-svh w-full">
         {children}
       </div>
     </SidebarContext.Provider>
