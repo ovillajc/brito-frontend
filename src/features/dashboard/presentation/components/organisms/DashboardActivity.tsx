@@ -87,12 +87,12 @@ export function DashboardActivity() {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
       {/* Recent Activity */}
-      <Card className="lg:col-span-3 border-stone-200 shadow-sm bg-white">
-        <CardHeader className="pb-3 lg:pb-4 border-b border-stone-100">
-          <CardTitle className="text-sm font-black font-headline text-stone-900">
+      <Card className="lg:col-span-3 border-stone-200 dark:border-zinc-800 shadow-sm bg-white dark:bg-zinc-900">
+        <CardHeader className="pb-3 lg:pb-4 border-b border-stone-100 dark:border-zinc-800">
+          <CardTitle className="text-sm font-black font-headline text-stone-900 dark:text-zinc-100">
             Actividad Reciente
           </CardTitle>
-          <CardDescription className="text-xs font-medium text-stone-500">
+          <CardDescription className="text-xs font-medium text-stone-500 dark:text-zinc-400">
             Últimos eventos registrados en la plataforma
           </CardDescription>
         </CardHeader>
@@ -106,18 +106,18 @@ export function DashboardActivity() {
                   : ''
               }`}
             >
-              <div className="flex items-center justify-center size-8 rounded-md bg-stone-50 border border-stone-100 shrink-0 mt-0.5">
+              <div className="flex items-center justify-center size-8 rounded-md bg-stone-50 dark:bg-zinc-800 border border-stone-100 dark:border-zinc-700 shrink-0 mt-0.5">
                 <item.icon className={`size-4 ${item.iconColor}`} />
               </div>
               <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                <span className="text-xs font-bold text-stone-900">
+                <span className="text-xs font-bold text-stone-900 dark:text-zinc-100">
                   {item.title}
                 </span>
-                <span className="text-[11px] font-medium text-stone-500 truncate">
+                <span className="text-[11px] font-medium text-stone-500 dark:text-zinc-400 truncate">
                   {item.description}
                 </span>
               </div>
-              <span className="text-[10px] font-medium text-stone-400 shrink-0">
+              <span className="text-[10px] font-medium text-stone-400 dark:text-zinc-500 shrink-0">
                 {item.time}
               </span>
             </div>
@@ -126,12 +126,12 @@ export function DashboardActivity() {
       </Card>
 
       {/* Quick Stats */}
-      <Card className="lg:col-span-2 border-stone-200 shadow-sm bg-white">
-        <CardHeader className="pb-3 lg:pb-4 border-b border-stone-100">
-          <CardTitle className="text-sm font-black font-headline text-stone-900">
+      <Card className="lg:col-span-2 border-stone-200 dark:border-zinc-800 shadow-sm bg-white dark:bg-zinc-900">
+        <CardHeader className="pb-3 lg:pb-4 border-b border-stone-100 dark:border-zinc-800">
+          <CardTitle className="text-sm font-black font-headline text-stone-900 dark:text-zinc-100">
             Resumen Rápido
           </CardTitle>
-          <CardDescription className="text-xs font-medium text-stone-500">
+          <CardDescription className="text-xs font-medium text-stone-500 dark:text-zinc-400">
             Métricas clave del sistema
           </CardDescription>
         </CardHeader>
@@ -145,14 +145,14 @@ export function DashboardActivity() {
                   : ''
               }`}
             >
-              <span className="text-xs font-bold text-stone-500">{stat.label}</span>
+              <span className="text-xs font-bold text-stone-500 dark:text-zinc-400">{stat.label}</span>
               <span
                 className={`text-sm font-black font-headline tabular-nums ${
                   stat.status === 'success'
-                    ? 'text-[#1a5c3a]'
+                    ? 'text-[#1a5c3a] dark:text-[#2ecc71]'
                     : stat.status === 'warning'
-                      ? 'text-[#e07020]'
-                      : 'text-stone-900'
+                      ? 'text-[#e07020] dark:text-[#ffb783]'
+                      : 'text-stone-900 dark:text-zinc-100'
                 }`}
               >
                 {stat.value}

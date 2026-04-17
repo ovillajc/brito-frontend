@@ -1,0 +1,52 @@
+import { z } from 'zod'
+
+/**
+ * @fileoverview Esquemas de validación Zod para el módulo de Recursos Humanos.
+ * Sigue las reglas de Clean Architecture de AGENTS.md.
+ */
+
+// Zod schema for creating an employee
+export const createEmployeeSchema = z.object({
+  fullName: z.string().min(1, 'El nombre completo es requerido'),
+  contactEmail: z.string().email('Debe ser un email válido').optional().or(z.literal('')),
+  contactPhone: z.string().optional().or(z.literal('')),
+  rfc: z.string().optional().or(z.literal('')),
+  curp: z.string().optional().or(z.literal('')),
+  nss: z.string().optional().or(z.literal('')),
+  isOperator: z.boolean(),
+  departmentId: z.string().uuid().optional().or(z.literal('')),
+  
+  // Emergency info
+  emergencyContactName: z.string().optional().or(z.literal('')),
+  emergencyContactPhone: z.string().optional().or(z.literal('')),
+  bloodType: z.string().optional().or(z.literal('')),
+  medicalNotes: z.string().optional().or(z.literal('')),
+})
+
+export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>
+
+// Zod schema for updating an employee
+export const updateEmployeeSchema = createEmployeeSchema.partial().extend({
+  id: z.string().uuid('ID inválido'),
+  isActive: z.boolean().optional(),
+})
+
+export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>
+
+export const atsStageSchema = z.enum([
+  'postulado',
+  'entrevista',
+  'prueba_tecnica',
+  'oferta',
+  'contratado',
+  'rechazado'
+])
+
+export const incidentTypeSchema = z.enum([
+  'asistencia',
+  'falta',
+  'retardo',
+  'vacaciones',
+  'incapacidad',
+  'permiso_sin_sueldo'
+])

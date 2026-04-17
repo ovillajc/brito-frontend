@@ -20,13 +20,13 @@ export function DashboardKPICards() {
   return (
     <div className="flex flex-col gap-6">
       {/* Operative KPIs Container */}
-      <div className="flex flex-col bg-white border border-stone-200 rounded-[16px] shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-stone-200">
-           <h2 className="text-sm font-bold text-stone-900">
+      <div className="flex flex-col bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-[16px] shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-stone-200 dark:border-zinc-800">
+           <h2 className="text-sm font-bold text-stone-900 dark:text-zinc-100">
              Métricas Operativas
            </h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-stone-200 border-b border-stone-200 last:border-0 hover:[&>div]:bg-stone-50/50 transition-colors">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-stone-200 dark:divide-zinc-800 border-b border-stone-200 dark:border-zinc-800 last:border-0 hover:[&>div]:bg-stone-50/50 dark:hover:[&>div]:bg-zinc-800/50 transition-colors">
           {operativeQuery.isLoading
             ? Array.from({ length: 4 }).map((_, i) => (
                 <KPICard key={`op-skeleton-${i}`} title="" value="" isLoading />
@@ -54,13 +54,13 @@ export function DashboardKPICards() {
       </div>
 
       {/* Financial KPIs Container */}
-      <div className="flex flex-col bg-white border border-stone-200 rounded-[16px] shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-stone-200">
-           <h2 className="text-sm font-bold text-stone-900">
+      <div className="flex flex-col bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-[16px] shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-stone-200 dark:border-zinc-800">
+           <h2 className="text-sm font-bold text-stone-900 dark:text-zinc-100">
              Métricas Financieras
            </h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-stone-200 border-b border-stone-200 last:border-0 hover:[&>div]:bg-stone-50/50 transition-colors">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-stone-200 dark:divide-zinc-800 border-b border-stone-200 dark:border-zinc-800 last:border-0 hover:[&>div]:bg-stone-50/50 dark:hover:[&>div]:bg-zinc-800/50 transition-colors">
           {financialQuery.isLoading
             ? Array.from({ length: 4 }).map((_, i) => (
                 <KPICard key={`fin-skeleton-${i}`} title="" value="" isLoading />

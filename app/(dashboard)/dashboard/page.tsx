@@ -28,14 +28,14 @@ function DashboardPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Header estilo Horizon (Flat y Limpio) */}
-        <div className="flex items-center justify-between pb-4 border-b border-stone-300">
+        <div className="flex items-center justify-between pb-4 border-b border-stone-300 dark:border-zinc-800">
           <div className="flex items-center gap-3">
-             <h1 className="text-xl font-bold text-stone-900 tracking-tight">
+             <h1 className="text-xl font-bold text-stone-900 dark:text-zinc-100 tracking-tight">
                Warehouse Operations
              </h1>
              {/* Small visual separator */}
-             <div className="h-4 w-px bg-stone-300" />
-             <span className="text-sm font-medium text-stone-500">
+             <div className="h-4 w-px bg-stone-300 dark:bg-zinc-700" />
+             <span className="text-sm font-medium text-stone-500 dark:text-zinc-400">
                Vista general (Sociedad Brito)
              </span>
           </div>

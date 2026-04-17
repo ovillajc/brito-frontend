@@ -1,12 +1,12 @@
 import React, { Suspense } from 'react'
-import { getEmployeesMockUseCase } from '@/src/features/hr/application/mock-hr-use-cases'
+import { getEmployeesAction } from '@/src/features/hr/presentation/actions/employee.actions'
 import { EmployeesTable } from '@/src/features/hr/presentation/components/organisms/EmployeesTable'
 
 export default async function EmployeesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold tracking-tight text-on-surface">Expediente de Empleados</h2>
+        <h2 className="text-xl font-bold tracking-tight text-on-surface dark:text-zinc-100">Expediente de Empleados</h2>
       </div>
       
       <Suspense fallback={<TableSkeleton />}>
@@ -17,7 +17,7 @@ export default async function EmployeesPage() {
 }
 
 async function EmployeesContent() {
-  const result = await getEmployeesMockUseCase()
+  const result = await getEmployeesAction()
 
   if (!result.ok) {
     return (

@@ -22,7 +22,7 @@ export function DashboardContainer() {
 
       {/* Modules Grid */}
       <div className="flex flex-col gap-3">
-        <h2 className="text-xs font-bold tracking-[0.2em] uppercase text-stone-400">
+        <h2 className="text-xs font-bold tracking-[0.2em] uppercase text-stone-400 dark:text-zinc-500">
           Módulos del Sistema
         </h2>
         <DashboardModuleCards />

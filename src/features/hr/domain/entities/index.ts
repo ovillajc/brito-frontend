@@ -1,8 +1,7 @@
-import { z } from 'zod'
-
-// ==========================================
-// HR Domain Entities
-// ==========================================
+/**
+ * @fileoverview Entidades de dominio para el módulo de Recursos Humanos.
+ * Sigue las reglas de Clean Architecture de AGENTS.md.
+ */
 
 export type EmployeeType = 'operativo' | 'administrativo'
 export type EmployeeStatus = 'activo' | 'suspendido' | 'baja' | 'vacaciones'
@@ -10,18 +9,24 @@ export type EmployeeStatus = 'activo' | 'suspendido' | 'baja' | 'vacaciones'
 export interface EmployeeEntity {
   id: string
   fullName: string
-  rfc?: string
-  curp?: string
-  departmentId?: string
-  departmentName?: string
+  rfc?: string | null
+  nss?: string | null
+  curp?: string | null
+  departmentId?: string | null
+  departmentName?: string | null
   isOperator: boolean
   isActive: boolean
-  hireDate: Date
-  contactPhone?: string
-  contactEmail?: string
-  birthDate?: Date
-  bloodType?: string
+  hireDate?: Date | null
+  contactPhone?: string | null
+  contactEmail?: string | null
+  birthDate?: Date | null
+  emergencyContactName?: string | null
+  emergencyContactPhone?: string | null
+  bloodType?: string | null
+  medicalNotes?: string | null
+  profileId?: string | null
   createdAt: Date
+  updatedAt: Date
 }
 
 export type AtsStage = 'postulado' | 'entrevista' | 'prueba_tecnica' | 'oferta' | 'contratado' | 'rechazado'
@@ -51,25 +56,3 @@ export interface AttendanceEntity {
   notes?: string
   createdAt: Date
 }
-
-// ==========================================
-// Zod Schemas for Validation
-// ==========================================
-
-export const atsStageSchema = z.enum([
-  'postulado',
-  'entrevista',
-  'prueba_tecnica',
-  'oferta',
-  'contratado',
-  'rechazado'
-])
-
-export const incidentTypeSchema = z.enum([
-  'asistencia',
-  'falta',
-  'retardo',
-  'vacaciones',
-  'incapacidad',
-  'permiso_sin_sueldo'
-])

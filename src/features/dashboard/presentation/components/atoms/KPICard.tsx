@@ -73,11 +73,11 @@ export function KPICard({
     return (
       <div className="flex flex-col gap-3 p-4 animate-pulse">
         <div className="flex items-center gap-2">
-          <div className="size-4 rounded-md bg-stone-200/50" />
-          <div className="h-3 w-20 rounded bg-stone-200/50" />
+          <div className="size-4 rounded-md bg-stone-200/50 dark:bg-zinc-800/50" />
+          <div className="h-3 w-20 rounded bg-stone-200/50 dark:bg-zinc-800/50" />
         </div>
-        <div className="h-8 w-16 rounded bg-stone-100" />
-        <div className="h-3 w-24 rounded bg-stone-200/50" />
+        <div className="h-8 w-16 rounded bg-stone-100 dark:bg-zinc-800" />
+        <div className="h-3 w-24 rounded bg-stone-200/50 dark:bg-zinc-800/50" />
       </div>
     )
   }
@@ -86,8 +86,8 @@ export function KPICard({
     <div className="flex flex-col relative px-6 py-4 justify-between h-full bg-transparent">
       {/* Top row: icon + label */}
       <div className="flex items-center gap-2 mb-3">
-        <Icon className="size-4 text-stone-500" />
-        <span className="text-[13px] font-bold text-stone-600">
+        <Icon className="size-4 text-stone-500 dark:text-zinc-400" />
+        <span className="text-[13px] font-bold text-stone-600 dark:text-zinc-400">
           {title}
         </span>
       </div>
@@ -95,11 +95,11 @@ export function KPICard({
       <div className="flex flex-col mt-auto gap-0.5">
         {/* Value */}
         <div className="flex items-baseline gap-1.5">
-          <span className="text-[32px] font-black text-stone-900 leading-none tracking-tight">
+          <span className="text-[32px] font-black text-stone-900 dark:text-zinc-100 leading-none tracking-tight">
             {value}
           </span>
           {unit && (
-            <span className="text-sm font-bold text-stone-400">{unit}</span>
+            <span className="text-sm font-bold text-stone-400 dark:text-zinc-500">{unit}</span>
           )}
         </div>
 
@@ -121,7 +121,7 @@ export function KPICard({
             </div>
           )}
           {description && (
-            <span className="text-[11px] font-medium text-stone-500">
+            <span className="text-[11px] font-medium text-stone-500 dark:text-zinc-500">
               {description}
             </span>
           )}
