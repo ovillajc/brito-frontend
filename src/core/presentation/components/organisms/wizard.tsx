@@ -52,7 +52,7 @@ export function Wizard({
       <div className="flex items-center justify-between px-8 pt-7 pb-6 border-b border-stone-100 dark:border-zinc-800">
         <div className="flex items-center gap-4">
           {/* Brand icon */}
-          <div className="size-11 rounded-xl bg-[#006d37]/10 dark:bg-[#1a5c3a]/25 flex items-center justify-center text-[#006d37] dark:text-[#2ecc71] flex-shrink-0">
+          <div className="size-11 rounded-xl bg-[#006d37]/10 dark:bg-[#1a5c3a]/25 flex items-center justify-center text-[#006d37] dark:text-primary-container shrink-0">
             {icon ?? <Users className="size-5" />}
           </div>
           <div>
@@ -106,7 +106,7 @@ export function Wizard({
                     className={cn(
                       'text-[10px] font-bold uppercase tracking-wider whitespace-nowrap',
                       isActive
-                        ? 'text-[#006d37] dark:text-[#2ecc71]'
+                        ? 'text-[#006d37] dark:text-primary-container'
                         : isCompleted
                           ? 'text-stone-600 dark:text-zinc-400'
                           : 'text-stone-400 dark:text-zinc-600'

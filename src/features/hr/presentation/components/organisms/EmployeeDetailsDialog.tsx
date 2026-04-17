@@ -52,7 +52,7 @@ export function EmployeeDetailsDialog({ isOpen, onClose, employee }: EmployeeDet
   const SectionTitle = ({ title, icon: Icon }: { title: string; icon: React.ElementType }) => (
     <div className="flex items-center gap-2.5 mb-5">
       <div className="size-8 rounded-lg bg-[#006d37]/8 dark:bg-[#1a5c3a]/20 flex items-center justify-center">
-        <Icon className="size-4 text-[#006d37] dark:text-[#2ecc71]" />
+        <Icon className="size-4 text-[#006d37] dark:text-primary-container" />
       </div>
       <h3 className="text-xs font-bold text-stone-900 dark:text-zinc-100 uppercase tracking-widest">{title}</h3>
     </div>
@@ -102,7 +102,7 @@ export function EmployeeDetailsDialog({ isOpen, onClose, employee }: EmployeeDet
       hideDefaultHeader
     >
       {/* ── Gradient Header with identity + tabs ── */}
-      <div className="bg-gradient-to-br from-[#006d37] via-[#005027] to-[#004020]">
+      <div className="bg-linear-to-br from-[#006d37] via-on-primary-container to-[#004020]">
         {/* Top bar: name + close */}
         <div className="flex items-start justify-between px-8 pt-7 pb-4">
           <div className="flex items-center gap-4">
@@ -231,7 +231,7 @@ export function EmployeeDetailsDialog({ isOpen, onClose, employee }: EmployeeDet
                 <SectionTitle title="Expediente Digital" icon={Paperclip} />
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 text-xs font-bold text-[#1a5c3a] dark:text-[#2ecc71] hover:opacity-80 transition-opacity"
+                  className="flex items-center gap-1.5 text-xs font-bold text-[#1a5c3a] dark:text-primary-container hover:opacity-80 transition-opacity"
                 >
                   <Paperclip className="size-3.5" />
                   SUBIR ARCHIVO

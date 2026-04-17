@@ -20,7 +20,8 @@ const mockEmployees: EmployeeEntity[] = [
     contactPhone: '555-010-2020',
     contactEmail: 'juan.perez@example.com',
     bloodType: 'O+',
-    createdAt: new Date('2023-01-15T00:00:00Z')
+    createdAt: new Date('2023-01-15T00:00:00Z'),
+    updatedAt: new Date('2023-01-15T00:00:00Z')
   },
   {
     id: 'emp-2',
@@ -32,7 +33,8 @@ const mockEmployees: EmployeeEntity[] = [
     contactPhone: '555-030-4040',
     contactEmail: 'maria.g@example.com',
     bloodType: 'A+',
-    createdAt: new Date('2024-02-10T00:00:00Z')
+    createdAt: new Date('2024-02-10T00:00:00Z'),
+    updatedAt: new Date('2024-02-10T00:00:00Z')
   }
 ]
 

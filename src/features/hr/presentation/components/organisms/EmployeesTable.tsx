@@ -134,7 +134,7 @@ export function EmployeesTable({ initialData }: EmployeesTableProps) {
                 >
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-bold text-stone-900 dark:text-zinc-100 group-hover:text-[#1a5c3a] dark:group-hover:text-[#2ecc71] transition-colors">
+                      <span className="font-bold text-stone-900 dark:text-zinc-100 group-hover:text-[#1a5c3a] dark:group-hover:text-primary-container transition-colors">
                         {emp.fullName}
                       </span>
                       <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider font-semibold text-stone-400 dark:text-zinc-500 mt-0.5">
@@ -167,7 +167,7 @@ export function EmployeesTable({ initialData }: EmployeesTableProps) {
                   </TableCell>
                   <TableCell>
                     {emp.isActive ? (
-                      <Badge className="bg-[#1a5c3a] dark:bg-[#2ecc71]/80 hover:bg-[#1a5c3a]/90 text-white dark:text-zinc-950 font-bold">Activo</Badge>
+                      <Badge className="bg-[#1a5c3a] dark:bg-primary-container/80 hover:bg-[#1a5c3a]/90 text-white dark:text-zinc-950 font-bold">Activo</Badge>
                     ) : (
                       <Badge variant="secondary" className="bg-stone-200 dark:bg-zinc-800 text-stone-700 dark:text-zinc-400">Inactivo</Badge>
                     )}

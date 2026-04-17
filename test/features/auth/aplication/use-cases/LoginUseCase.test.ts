@@ -29,8 +29,7 @@ describe('LoginWithEmailUseCase', () => {
     const result = await LoginWithEmailUseCase(mockAuthRepository, { 
       email: 'test@test.com', 
       password: 'password123',
-      rememberMe: false,
-      acceptTerms: true
+      rememberMe: false
     })
 
     expect(result.ok).toBe(true)
@@ -49,8 +48,7 @@ describe('LoginWithEmailUseCase', () => {
     const result = await LoginWithEmailUseCase(mockAuthRepository, { 
       email: 'test@test.com', 
       password: 'wrongpassword',
-      rememberMe: false,
-      acceptTerms: true
+      rememberMe: false
     })
 
     expect(result.ok).toBe(false)
@@ -65,8 +63,7 @@ describe('LoginWithEmailUseCase', () => {
     const result = await LoginWithEmailUseCase(mockAuthRepository, { 
       email: 'test@test.com', 
       password: 'password123',
-      rememberMe: false,
-      acceptTerms: true
+      rememberMe: false
     })
 
     expect(result.ok).toBe(false)
