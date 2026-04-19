@@ -8,6 +8,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { MockFleetRepository } from '../../infrastructure/repositories/MockFleetRepository'
 import { GetFleetSummaryUseCase } from '../../application/use-cases/GetFleetSummaryUseCase'
+import { getTrucksActions } from '../actions/truck.actions'
+import { TruckEntity } from '../../domain/entities'
 
 const fleetRepo = new MockFleetRepository()
 
@@ -33,9 +35,9 @@ export function useTractors() {
   return useQuery({
     queryKey: ['fleet', 'tractors'],
     queryFn: async () => {
-      const result = await fleetRepo.getTractors()
+      const result = await getTrucksActions()
       if (!result.ok) throw new Error(result.error.message)
-      return result.data
+      return result.data as TruckEntity[]
     },
   })
 }

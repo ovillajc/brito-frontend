@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import TractorsPage from '@/src/features/fleet/presentation/components/pages/TractorsPage'
+import TractorsPage from '@/src/features/fleet/presentation/components/pages/TrucksPage'
 import { useTractors } from '@/src/features/fleet/presentation/hooks/use-fleet'
 
 vi.mock('@/src/features/fleet/presentation/hooks/use-fleet', () => ({

@@ -13,7 +13,7 @@ import {
   useClients 
 } from '@/src/features/fleet/presentation/hooks/use-fleet'
 import type { 
-  TractorEntity, 
+  TruckEntity, 
   TrailerEntity, 
   OperatorEntity, 
   ClientEntity 
@@ -52,13 +52,15 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
   const [currentStep, setCurrentStep] = useState(1)
   
   // Store
-  const { 
-    selectedTractor, setSelectedTractor,
-    selectedTrailer, setSelectedTrailer,
-    selectedOperator, setSelectedOperator,
-    selectedClient, setSelectedClient,
-    resetSelection
-  } = useFleetStore()
+  const selectedTruck = useFleetStore((state) => state.selectedTruck)
+  const setSelectedTruck = useFleetStore((state) => state.setSelectedTruck)
+  const selectedTrailer = useFleetStore((state) => state.selectedTrailer)
+  const setSelectedTrailer = useFleetStore((state) => state.setSelectedTrailer)
+  const selectedOperator = useFleetStore((state) => state.selectedOperator)
+  const setSelectedOperator = useFleetStore((state) => state.setSelectedOperator)
+  const selectedClient = useFleetStore((state) => state.selectedClient)
+  const setSelectedClient = useFleetStore((state) => state.setSelectedClient)
+  const resetSelection = useFleetStore((state) => state.resetSelection)
 
   // Queries
   const { data: tractors, isLoading: loadingTractors } = useTractors()
@@ -70,7 +72,7 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1))
 
   const isStepComplete = (step: number) => {
-    if (step === 1) return !!selectedTractor
+    if (step === 1) return !!selectedTruck
     if (step === 2) return !!selectedTrailer
     if (step === 3) return !!selectedOperator
     if (step === 4) return !!selectedClient
@@ -133,7 +135,7 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
           {currentStep === 1 && (
             <SelectionList 
               items={tractors?.filter(t => t.status === 'available') || []}
-              renderItem={(item: TractorEntity) => (
+              renderItem={(item: TruckEntity) => (
                 <div className="flex items-center justify-between w-full">
                   <div className="flex flex-col">
                     <span className="font-semibold text-sm">{item.brand} {item.model}</span>
@@ -142,8 +144,8 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
                   <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Disponible</Badge>
                 </div>
               )}
-              selectedId={selectedTractor?.id}
-              onSelect={setSelectedTractor}
+              selectedId={selectedTruck?.id}
+              onSelect={setSelectedTruck}
               isLoading={loadingTractors}
             />
           )}
@@ -204,7 +206,7 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
           {currentStep === 5 && (
             <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2">
                <div className="grid grid-cols-2 gap-3">
-                  <SummaryItem label="Tracto" value={`${selectedTractor?.brand} ${selectedTractor?.model}`} sub={selectedTractor?.plates} icon={Truck} />
+                  <SummaryItem label="Tracto" value={`${selectedTruck?.brand} ${selectedTruck?.model}`} sub={selectedTruck?.plates} icon={Truck} />
                   <SummaryItem label="Remolque" value={`${selectedTrailer?.type}`} sub={`Eco: ${selectedTrailer?.economicNumber}`} icon={Package} />
                   <SummaryItem label="Operador" value={`${selectedOperator?.firstName} ${selectedOperator?.lastName}`} sub={`Lic: ${selectedOperator?.licenseNumber}`} icon={Users} />
                   <SummaryItem label="Cliente" value={selectedClient?.name || ''} sub={selectedClient?.type === 'internal' ? 'Interno' : 'Externo'} icon={Building2} />

@@ -76,7 +76,7 @@ export const AboutSection = () => {
                 <h3 className="text-lg font-bold text-stone-900">Nuestra Visión</h3>
               </div>
               <p className="text-stone-600 leading-relaxed text-sm">
-                Establecernos como empresa líder en logística en el Sureste de México, donde el bienestar de todos nuestros colaboradores se transforme en una sólida estructura capaz de satisfacer cualquier necesidad de transporte.
+                Consolidarnos como el aliado logístico y comercial principal y más confiable en la cadena de suministro de barita en México. Como organización transparente y eficiente, impulsamos la eficacia y seguridad de nuestros clientes a través de soluciones integradas que optimizan sus operaciones y agregan valor tangible en cada entrega.
               </p>
             </div>
 

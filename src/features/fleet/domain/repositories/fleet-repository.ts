@@ -5,7 +5,7 @@
 
 import type { Either, Failure } from '@/src/core/domain/either'
 import type { 
-  TractorEntity, 
+  TruckEntity, 
   TrailerEntity, 
   OperatorEntity, 
   UnitAssemblyEntity,
@@ -14,10 +14,10 @@ import type {
 } from '../entities'
 
 export interface IFleetRepository {
-  // Tractores
-  getTractors(): Promise<Either<Failure, TractorEntity[]>>
-  getTractorById(id: string): Promise<Either<Failure, TractorEntity>>
-  saveTractor(tractor: Partial<TractorEntity>): Promise<Either<Failure, TractorEntity>>
+  // Tractores (Trucks)
+  getTractors(): Promise<Either<Failure, TruckEntity[]>>
+  getTractorById(id: string): Promise<Either<Failure, TruckEntity>>
+  saveTractor(truck: Partial<TruckEntity>): Promise<Either<Failure, TruckEntity>>
 
   // Remolques
   getTrailers(): Promise<Either<Failure, TrailerEntity[]>>
@@ -38,6 +38,6 @@ export interface IFleetRepository {
 
   // Armado de Unidades
   getActiveAssemblies(): Promise<Either<Failure, UnitAssemblyEntity[]>>
-  assembleUnit(tractorId: string, trailerId: string, operatorId: string, clientId?: string): Promise<Either<Failure, UnitAssemblyEntity>>
+  assembleUnit(truckId: string, trailerId: string, operatorId: string, clientId?: string): Promise<Either<Failure, UnitAssemblyEntity>>
   disassembleUnit(assemblyId: string): Promise<Either<Failure, void>>
 }

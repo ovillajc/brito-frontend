@@ -5,40 +5,47 @@
 
 import type { Either, Failure } from '@/src/core/domain/either'
 import type { 
-  TractorEntity, 
+  TruckEntity, 
   TrailerEntity, 
   OperatorEntity, 
   UnitAssemblyEntity,
   ClientEntity,
-  FleetDocument 
+  FleetDocument,
+  vehicleStatus
 } from '../../domain/entities'
 import type { IFleetRepository } from '../../domain/repositories/fleet-repository'
 
 /**
  * Datos simulados persistentes en memoria durante la sesión.
  */
-const MOCK_TRACTORS: TractorEntity[] = [
+const MOCK_TRUCKS: TruckEntity[] = [
   {
     id: 't1',
+    economicNumber: 'ECO-001',
     brand: 'Kenworth',
     model: 'T680',
     year: 2023,
     plates: 'ABC-123',
-    vin: 'KW123456789',
-    status: 'active',
-    odometer: 150000,
+    serialNumber: 'KW123456789',
+    status: 'in_trip',
     insurancePolicy: 'POLICY-999',
-    insuranceExpiration: new Date('2025-12-31')
+    companyProfileId: 'cp1',
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
     id: 't2',
+    economicNumber: 'ECO-002',
     brand: 'Freightliner',
     model: 'Cascadia',
     year: 2022,
     plates: 'XYZ-789',
-    vin: 'FL987654321',
+    serialNumber: 'FL987654321',
     status: 'available',
-    odometer: 210000,
+    companyProfileId: 'cp1',
+    insurancePolicy: 'POLICY-888',
+    createdAt: new Date(),
+    updatedAt: new Date()
   }
 ]
 
@@ -100,31 +107,35 @@ export class MockFleetRepository implements IFleetRepository {
     return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
-  async getTractors(): Promise<Either<Failure, TractorEntity[]>> {
+  async getTractors(): Promise<Either<Failure, TruckEntity[]>> {
     await this.sleep()
-    return { ok: true, data: MOCK_TRACTORS }
+    return { ok: true, data: MOCK_TRUCKS }
   }
 
-  async getTractorById(id: string): Promise<Either<Failure, TractorEntity>> {
+  async getTractorById(id: string): Promise<Either<Failure, TruckEntity>> {
     await this.sleep()
-    const tractor = MOCK_TRACTORS.find(t => t.id === id)
-    return tractor 
-      ? { ok: true, data: tractor }
+    const truck = MOCK_TRUCKS.find(t => t.id === id)
+    return truck 
+      ? { ok: true, data: truck }
       : { ok: false, error: { code: 'NOT_FOUND', message: 'Tractor no encontrado' } }
   }
 
-  async saveTractor(tractor: Partial<TractorEntity>): Promise<Either<Failure, TractorEntity>> {
-    const newTractor = {
+  async saveTractor(truck: Partial<TruckEntity>): Promise<Either<Failure, TruckEntity>> {
+    const newTruck = {
       id: Math.random().toString(36).substr(2, 9),
-      brand: tractor.brand || 'Desconocida',
-      model: tractor.model || 'Desconocido',
-      plates: tractor.plates || '---',
-      vin: tractor.vin || '---',
-      status: 'available' as const,
-      ...tractor
-    } as TractorEntity
-    MOCK_TRACTORS.push(newTractor)
-    return { ok: true, data: newTractor }
+      economicNumber: truck.economicNumber || '---',
+      brand: truck.brand || 'Desconocida',
+      model: truck.model || 'Desconocido',
+      plates: truck.plates || '---',
+      serialNumber: truck.serialNumber || '---',
+      status: 'available' as vehicleStatus,
+      companyProfileId: 'cp1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...truck
+    } as TruckEntity
+    MOCK_TRUCKS.push(newTruck)
+    return { ok: true, data: newTruck }
   }
 
   async getTrailers(): Promise<Either<Failure, TrailerEntity[]>> {
@@ -209,19 +220,19 @@ export class MockFleetRepository implements IFleetRepository {
     return { ok: true, data: ASSEMBLED_UNITS }
   }
 
-  async assembleUnit(tractorId: string, trailerId: string, operatorId: string, clientId?: string): Promise<Either<Failure, UnitAssemblyEntity>> {
-    const tractor = MOCK_TRACTORS.find(t => t.id === tractorId)
+  async assembleUnit(truckId: string, trailerId: string, operatorId: string, clientId?: string): Promise<Either<Failure, UnitAssemblyEntity>> {
+    const truck = MOCK_TRUCKS.find(t => t.id === truckId)
     const trailer = MOCK_TRAILERS.find(t => t.id === trailerId)
     const operator = MOCK_OPERATORS.find(o => o.id === operatorId)
     const client = MOCK_CLIENTS.find(c => c.id === clientId)
 
-    if (!tractor || !trailer || !operator) {
+    if (!truck || !trailer || !operator) {
       return { ok: false, error: { code: 'NOT_FOUND', message: 'Uno de los componentes no existe' } }
     }
 
     const assembly: UnitAssemblyEntity = {
       id: Math.random().toString(36).substr(2, 9),
-      tractor,
+      truck,
       trailer,
       operator,
       clientId: client?.id,

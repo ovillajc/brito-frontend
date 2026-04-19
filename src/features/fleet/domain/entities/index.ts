@@ -6,23 +6,33 @@
 /**
  * Estado operativo de un vehículo o componente.
  */
-export type FleetStatus = 'available' | 'maintenance' | 'active' | 'inactive' | 'on_trip' | 'on_leave'
+export type vehicleStatus = 'available' | 'in_trip' | 'maintenance' | 'out_service'
 
 /**
- * Representa un Tractocamión.
+ * Estado operativo de un viaje.
  */
-export interface TractorEntity {
+export type TripStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+
+/**
+ * Representa un Tractocamión (Truck).
+ */
+export interface TruckEntity {
   id: string
+  economicNumber: string
   brand: string
   model: string
-  year?: number
+  year: number
   plates: string
-  vin: string // Número de serie
-  insurancePolicy?: string
-  insuranceExpiration?: Date
-  status: FleetStatus
-  lastMaintenance?: Date
-  odometer?: number
+  serialNumber: string
+  insurancePolicy: string
+  companyProfileId: string
+  status: vehicleStatus
+  createdAt: Date
+  updatedAt: Date
+  engine?: string
+  tireSize?: string
+  tankCapacity?: number
+  theoreticalYield?: number
 }
 
 /**
@@ -36,7 +46,7 @@ export interface TrailerEntity {
   plates: string
   economicNumber: string
   insurancePolicy?: string
-  status: FleetStatus
+  status: TripStatus
 }
 
 /**
@@ -56,7 +66,7 @@ export interface OperatorEntity {
   phone?: string
   bloodType?: string
   fastrackId?: string
-  status: FleetStatus
+  status: TripStatus
 }
 
 /**
@@ -85,7 +95,7 @@ export interface FleetDocument {
  */
 export interface UnitAssemblyEntity {
   id: string
-  tractor: TractorEntity
+  truck: TruckEntity
   trailer: TrailerEntity
   operator: OperatorEntity
   clientId?: string
