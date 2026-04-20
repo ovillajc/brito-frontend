@@ -9,7 +9,8 @@ import { useQuery } from '@tanstack/react-query'
 import { MockFleetRepository } from '../../infrastructure/repositories/MockFleetRepository'
 import { GetFleetSummaryUseCase } from '../../application/use-cases/GetFleetSummaryUseCase'
 import { getTrucksActions } from '../actions/truck.actions'
-import { TruckEntity } from '../../domain/entities'
+import { TruckEntity, TrailerEntity, TrailerModelEntity } from '../../domain/entities'
+import { getTrailersAction, getTrailerModelsAction } from '../actions/trailer.actions'
 
 const fleetRepo = new MockFleetRepository()
 
@@ -49,9 +50,23 @@ export function useTrailers() {
   return useQuery({
     queryKey: ['fleet', 'trailers'],
     queryFn: async () => {
-      const result = await fleetRepo.getTrailers()
+      const result = await getTrailersAction()
       if (!result.ok) throw new Error(result.error.message)
-      return result.data
+      return result.data as TrailerEntity[]
+    },
+  })
+}
+
+/**
+ * Hook para obtener la lista de modelos de remolques.
+ */
+export function useTrailerModels() {
+  return useQuery({
+    queryKey: ['fleet', 'trailer-models'],
+    queryFn: async () => {
+      const result = await getTrailerModelsAction()
+      if (!result.ok) throw new Error(result.error.message)
+      return result.data as TrailerModelEntity[]
     },
   })
 }

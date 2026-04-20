@@ -36,17 +36,46 @@ export interface TruckEntity {
 }
 
 /**
+ * Representa un Modelo de Remolque.
+ */
+export interface TrailerModelEntity {
+  id: string
+  name: string
+  brand?: string | null
+  provider?: string | null
+  capacityKg?: number | null
+  size?: string | null
+  cargoType?: string | null
+  acquisitionYear?: number | null
+  categoryId?: string | null
+  description?: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+/**
  * Representa un Remolque (Trailer).
  */
 export interface TrailerEntity {
   id: string
-  type: string // e.g. 'Dry Van', 'Reefer'
-  brand: string
-  model: string
-  plates: string
   economicNumber: string
-  insurancePolicy?: string
-  status: TripStatus
+  plates?: string | null
+  serialNumber?: string | null
+  insurancePolicy?: string | null
+  companyProfileId?: string | null
+  trailerModelId?: string | null
+  status: vehicleStatus
+  createdAt: Date
+  updatedAt: Date
+  sizeFt?: number | null
+  continuousRefrigeratedYield?: number | null
+  continuousFrozenYield?: number | null
+  ssRefrigeratedYield?: number | null
+  ssFrozenYield?: number | null
+
+  // Join properties (opcionales)
+  trailerModelName?: string
+  companyProfileLegalName?: string
 }
 
 /**
