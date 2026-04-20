@@ -14,9 +14,9 @@ import { Truck, Users, Package, LayoutDashboard, Activity } from 'lucide-react'
 const FLEET_NAV = [
   { name: 'Dashboard', href: '/fleet', icon: LayoutDashboard },
   { name: 'Unidades', href: '/fleet/units', icon: Truck },
-  { name: 'Tractos', href: '/fleet/tractors', icon: Activity },
+  { name: 'Tractos', href: '/fleet/trucks', icon: Activity },
   { name: 'Remolques', href: '/fleet/trailers', icon: Package },
-  { name: 'Operadores', href: '/fleet/operators', icon: Users },
+  // { name: 'Operadores', href: '/fleet/operators', icon: Users },
 ]
 
 export default function FleetLayout({ children }: { children: React.ReactNode }) {

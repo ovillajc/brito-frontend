@@ -112,7 +112,7 @@ export function AppSidebar() {
                   className={cn(
                     'flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-medium transition-all',
                     isActive
-                      ? 'bg-[#1a5c3a]/5 dark:bg-[#2ecc71]/10 text-[#1a5c3a] dark:text-[#2ecc71] font-bold'
+                      ? 'bg-[#1a5c3a]/5 dark:bg-primary-container/10 text-[#1a5c3a] dark:text-primary-container font-bold'
                       : 'text-stone-500 dark:text-zinc-400 hover:bg-stone-50 dark:hover:bg-zinc-800 hover:text-stone-900 dark:hover:text-zinc-100',
                     isCollapsed && 'justify-center px-2',
                   )}

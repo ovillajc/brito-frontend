@@ -8,6 +8,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { MockFleetRepository } from '../../infrastructure/repositories/MockFleetRepository'
 import { GetFleetSummaryUseCase } from '../../application/use-cases/GetFleetSummaryUseCase'
+import { getTrucksActions } from '../actions/truck.actions'
+import { TruckEntity, TrailerEntity, TrailerModelEntity, UnitAssemblyEntity, ClientEntity } from '../../domain/entities'
+import { getTrailersAction, getTrailerModelsAction } from '../actions/trailer.actions'
+import { getUnitAssembliesAction, getUnitAssemblyLogsAction } from '../actions/unit-assembly.actions'
+import { getClientsAction } from '../actions/client.actions'
 
 const fleetRepo = new MockFleetRepository()
 
@@ -33,9 +38,9 @@ export function useTractors() {
   return useQuery({
     queryKey: ['fleet', 'tractors'],
     queryFn: async () => {
-      const result = await fleetRepo.getTractors()
+      const result = await getTrucksActions()
       if (!result.ok) throw new Error(result.error.message)
-      return result.data
+      return result.data as TruckEntity[]
     },
   })
 }
@@ -47,9 +52,23 @@ export function useTrailers() {
   return useQuery({
     queryKey: ['fleet', 'trailers'],
     queryFn: async () => {
-      const result = await fleetRepo.getTrailers()
+      const result = await getTrailersAction()
       if (!result.ok) throw new Error(result.error.message)
-      return result.data
+      return result.data as TrailerEntity[]
+    },
+  })
+}
+
+/**
+ * Hook para obtener la lista de modelos de remolques.
+ */
+export function useTrailerModels() {
+  return useQuery({
+    queryKey: ['fleet', 'trailer-models'],
+    queryFn: async () => {
+      const result = await getTrailerModelsAction()
+      if (!result.ok) throw new Error(result.error.message)
+      return result.data as TrailerModelEntity[]
     },
   })
 }
@@ -75,23 +94,39 @@ export function useClients() {
   return useQuery({
     queryKey: ['fleet', 'clients'],
     queryFn: async () => {
-      const result = await fleetRepo.getClients()
+      const result = await getClientsAction()
       if (!result.ok) throw new Error(result.error.message)
-      return result.data
+      return result.data as ClientEntity[]
     },
   })
 }
 
 /**
- * Hook para obtener las unidades armadas activas.
+ * Hook para obtener las unidades armadas activas desde Supabase.
  */
-export function useActiveAssemblies() {
+export function useUnitAssemblies() {
   return useQuery({
     queryKey: ['fleet', 'assemblies'],
     queryFn: async () => {
-      const result = await fleetRepo.getActiveAssemblies()
+      const result = await getUnitAssembliesAction()
       if (!result.ok) throw new Error(result.error.message)
-      return result.data
+      return result.data as UnitAssemblyEntity[]
     },
   })
 }
+
+export function useUnitAssemblyLogs(unitId?: string) {
+  return useQuery({
+    queryKey: ['unit-assembly-logs', unitId],
+    queryFn: async () => {
+      if (!unitId) return []
+      const result = await getUnitAssemblyLogsAction(unitId)
+      if (!result.ok) throw new Error(result.error.message)
+      return result.data
+    },
+    enabled: !!unitId,
+  })
+}
+
+/** @deprecated Usar useUnitAssemblies */
+export const useActiveAssemblies = useUnitAssemblies

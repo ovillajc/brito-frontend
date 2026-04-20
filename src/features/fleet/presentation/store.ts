@@ -5,7 +5,7 @@
 
 import { create } from 'zustand'
 import type { 
-  TractorEntity, 
+  TruckEntity, 
   TrailerEntity, 
   OperatorEntity, 
   UnitAssemblyEntity,
@@ -14,14 +14,14 @@ import type {
 
 interface FleetState {
   // Listados
-  tractors: TractorEntity[]
+  trucks: TruckEntity[]
   trailers: TrailerEntity[]
   operators: OperatorEntity[]
   clients: ClientEntity[]
   assemblies: UnitAssemblyEntity[]
   
   // Selección para Armado (Wizard)
-  selectedTractor: TractorEntity | null
+  selectedTruck: TruckEntity | null
   selectedTrailer: TrailerEntity | null
   selectedOperator: OperatorEntity | null
   selectedClient: ClientEntity | null
@@ -31,13 +31,13 @@ interface FleetState {
   error: string | null
 
   // Acciones
-  setTractors: (tractors: TractorEntity[]) => void
+  setTrucks: (trucks: TruckEntity[]) => void
   setTrailers: (trailers: TrailerEntity[]) => void
   setOperators: (operators: OperatorEntity[]) => void
   setClients: (clients: ClientEntity[]) => void
   setAssemblies: (assemblies: UnitAssemblyEntity[]) => void
   
-  setSelectedTractor: (tractor: TractorEntity | null) => void
+  setSelectedTruck: (truck: TruckEntity | null) => void
   setSelectedTrailer: (trailer: TrailerEntity | null) => void
   setSelectedOperator: (operator: OperatorEntity | null) => void
   setSelectedClient: (client: ClientEntity | null) => void
@@ -51,13 +51,13 @@ interface FleetState {
  * Store global para el feature de Flotilla.
  */
 export const useFleetStore = create<FleetState>((set) => ({
-  tractors: [],
+  trucks: [],
   trailers: [],
   operators: [],
   clients: [],
   assemblies: [],
   
-  selectedTractor: null,
+  selectedTruck: null,
   selectedTrailer: null,
   selectedOperator: null,
   selectedClient: null,
@@ -65,18 +65,18 @@ export const useFleetStore = create<FleetState>((set) => ({
   isLoading: false,
   error: null,
 
-  setTractors: (tractors) => set({ tractors }),
+  setTrucks: (trucks) => set({ trucks }),
   setTrailers: (trailers) => set({ trailers }),
   setOperators: (operators) => set({ operators }),
   setClients: (clients) => set({ clients }),
   setAssemblies: (assemblies) => set({ assemblies }),
 
-  setSelectedTractor: (tractor) => set({ selectedTractor: tractor }),
+  setSelectedTruck: (truck) => set({ selectedTruck: truck }),
   setSelectedTrailer: (trailer) => set({ selectedTrailer: trailer }),
   setSelectedOperator: (operator) => set({ selectedOperator: operator }),
   setSelectedClient: (client) => set({ selectedClient: client }),
   resetSelection: () => set({ 
-    selectedTractor: null, 
+    selectedTruck: null, 
     selectedTrailer: null, 
     selectedOperator: null, 
     selectedClient: null 

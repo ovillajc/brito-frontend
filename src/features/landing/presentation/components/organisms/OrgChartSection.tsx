@@ -85,18 +85,6 @@ const DEPARTMENTS: OrgDepartment[] = [
       },
     ],
   },
-  {
-    name: 'SSPA',
-    color: 'orange',
-    members: [
-      {
-        name: 'Keila Cristhel Arias de la Cruz',
-        role: 'Seguridad Industrial',
-        phone: '933-156-8867',
-        email: 'seguridad1.brito@outlook.com',
-      },
-    ],
-  },
 ]
 
 /**
@@ -159,11 +147,11 @@ export const OrgChartSection = () => {
 
         {/* Horizontal line */}
         <div className="relative flex justify-center mb-0">
-          <div className="absolute top-0 left-[16%] right-[16%] h-px bg-white/20 hidden lg:block" />
+          <div className="absolute top-0 left-[16.66%] right-[16.66%] h-px bg-white/20 hidden lg:block" />
         </div>
 
         {/* Vertical connectors per dept */}
-        <div className="hidden lg:grid grid-cols-4 gap-6 max-w-5xl mx-auto">
+        <div className="hidden lg:grid grid-cols-3 gap-6 max-w-5xl mx-auto">
           {DEPARTMENTS.map((_, i) => (
             <div key={i} className="flex justify-center">
               <div className="w-px h-10 bg-white/20" />
@@ -172,7 +160,7 @@ export const OrgChartSection = () => {
         </div>
 
         {/* Departments */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {DEPARTMENTS.map((dept, i) => (
             <motion.div
               key={dept.name}
@@ -217,7 +205,7 @@ export const OrgChartSection = () => {
                         href={`mailto:${member.email}`}
                         className="flex items-center gap-1 text-[10px] text-stone-400 hover:text-white transition-colors truncate"
                       >
-                        <Mail className="w-3 h-3 flex-shrink-0" />
+                        <Mail className="w-3 h-3 shrink-0" />
                         <span className="truncate">{member.email}</span>
                       </a>
                     )}
