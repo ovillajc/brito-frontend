@@ -103,8 +103,9 @@ export interface OperatorEntity {
  */
 export interface ClientEntity {
   id: string
-  name: string
-  type: 'internal' | 'external'
+  tradeName?: string | null
+  companyName?: string | null
+  taxRegime?: string | null
 }
 
 /**
@@ -121,14 +122,52 @@ export interface FleetDocument {
 
 /**
  * Representa la combinación (armado) de una unidad operativa.
+ * Refleja la tabla `unit_assemblies` de la base de datos.
  */
 export interface UnitAssemblyEntity {
   id: string
-  truck: TruckEntity
-  trailer: TrailerEntity
-  operator: OperatorEntity
-  clientId?: string
-  clientName?: string
+  name: string
+  economicNumber: string
+  description?: string | null
+
+  // Foreign keys
+  employeeId: string
+  truckId: string
+  trailerId?: string | null
+  trailer2Id?: string | null
+  clientId?: string | null
+  companyProfileId?: string | null
+
   isActive: boolean
   createdAt: Date
+  updatedAt: Date
+
+  // Join properties for display (optional)
+  employeeName?: string
+  truckEconomicNumber?: string
+  trailerEconomicNumber?: string
+  trailer2EconomicNumber?: string
+  clientName?: string
+  companyProfileLegalName?: string
+}
+
+export type UnitAssemblyLogAction = 'CREATED' | 'UPDATED' | 'TRAILER_DETACHED'
+
+export interface UnitAssemblyLogEntity {
+  id: string
+  unitAssemblyId: string
+  employeeId?: string | null
+  truckId?: string | null
+  trailerId?: string | null
+  trailer2Id?: string | null
+  profileId?: string | null
+  action: UnitAssemblyLogAction
+  createdAt: Date
+
+  // Display fields for UI
+  employeeName?: string
+  truckEconomicNumber?: string
+  trailerEconomicNumber?: string
+  trailer2EconomicNumber?: string
+  profileName?: string
 }
