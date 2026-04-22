@@ -9,11 +9,12 @@ import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/src/core/infrastructure/utils/cn'
-import { LayoutDashboard, Map } from 'lucide-react'
+import { LayoutDashboard, Map, Fuel } from 'lucide-react'
 
 const TRIPS_NAV = [
   { name: 'Dashboard', href: '/trips', icon: LayoutDashboard },
   { name: 'Viajes', href: '/trips/list', icon: Map },
+  { name: 'Rendimientos', href: '/trips/fuel', icon: Fuel },
 ]
 
 export default function TripsLayout({ children }: { children: React.ReactNode }) {
