@@ -1,8 +1,5 @@
-import React from 'react'
-import { UnderDevelopment } from '@/src/core/presentation/components/organisms/UnderDevelopment'
+import TripsDashboardPage from '@/src/features/trips/presentation/components/pages/TripsDashboardPage'
 
 export default function TripsPage() {
-  return (
-    <UnderDevelopment />
-  )
+  return <TripsDashboardPage />
 }
