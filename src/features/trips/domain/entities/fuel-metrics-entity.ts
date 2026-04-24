@@ -164,6 +164,68 @@ export interface FuelMetricsCalculated {
   preinvoiceVariance: number | null
 }
 
+export interface TripFuelRowEntity {
+  id: string
+  folio: string
+  tripNumber: number | null
+  clientName: string | null
+  origin: string
+  destination: string
+  departureDate: string | null
+
+  unitEconomicNumber: string | null
+  truckPlates: string | null
+  operatorName: string | null
+  isFullAssembly: boolean
+
+  fuelLoadId: string | null
+
+  kmInitial: number | null
+  kmFinal: number | null
+  kmTraveled: number | null
+
+  ticketFolio: string | null
+  litersEngine: number | null
+  pricePerLiter: number | null
+  totalCostEngine: number | null
+
+  litersRealR1: number | null
+  hoursR1: number | null
+  litersRealR2: number | null
+  hoursR2: number | null
+
+  realYieldEngine: number | null
+  litersTheoreticalEngine: number | null
+  savingsExcessEngine: number | null
+
+  totalDieselCostTrip: number | null
+  totalSavingsExcess: number | null
+
+  preinvoiceKm: number | null
+  preinvoiceVariance: number | null
+
+  status: string
+  observations: string | null
+  monitoredBy: string | null
+}
+
+export interface FuelLoadHistoryRowEntity {
+  id: string
+  tripId: string | null
+  folio: string
+  tripNumber: number | null
+  clientName: string | null
+  unitEconomicNumber: string | null
+  operatorName: string | null
+  loadDate: string | null
+  ticketFolio: string | null
+  litersLoaded: number
+  pricePerLiter: number
+  totalCost: number
+  sourceType: string
+  isFullTankFill: boolean
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Tipos de estado para el Use Case
 // ──────────────────────────────────────────────────────────────────────────────

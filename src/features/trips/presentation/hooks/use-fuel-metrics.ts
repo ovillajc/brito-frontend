@@ -14,6 +14,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   getTripFuelMetricsAction,
+  getFuelMetricsRowsAction,
+  getFuelLoadHistoryAction,
   saveFuelMetricsAction,
   registerFuelLoadAction,
   saveWalmartTripDataAction,
@@ -22,11 +24,14 @@ import {
 import type { SaveFuelMetricsInput } from '../../application/SaveFuelMetrics'
 import type { RegisterFuelLoadInput } from '../../application/RegisterFuelLoad'
 import type { WalmartTripDataInput } from '../../domain/entities/walmart-trip-entity'
+import type { FuelLoadHistoryRowEntity, TripFuelRowEntity } from '../../domain/entities/fuel-metrics-entity'
 
 // ── Keys de caché ─────────────────────────────────────────────────────────────
 
 export const FUEL_METRICS_QUERY_KEYS = {
   metrics: (tripId: string) => ['fuel-metrics', tripId] as const,
+  rows: ['fuel-metrics-rows'] as const,
+  fuelLoads: ['fuel-load-history'] as const,
   stores: ['walmart-stores'] as const,
 } as const
 
@@ -56,6 +61,32 @@ export function useFuelMetrics(
     },
     enabled: Boolean(tripId) && Boolean(truckId),
     staleTime: 1000 * 60 * 2, // 2 minutos
+  })
+}
+
+export function useFuelMetricsRows(initialData?: TripFuelRowEntity[]) {
+  return useQuery({
+    queryKey: FUEL_METRICS_QUERY_KEYS.rows,
+    queryFn: async () => {
+      const result = await getFuelMetricsRowsAction()
+      if (!result.ok) throw new Error(result.error.message)
+      return result.data
+    },
+    initialData,
+    staleTime: 1000 * 30,
+  })
+}
+
+export function useFuelLoadHistory(limit: number, initialData?: FuelLoadHistoryRowEntity[]) {
+  return useQuery({
+    queryKey: [...FUEL_METRICS_QUERY_KEYS.fuelLoads, limit] as const,
+    queryFn: async () => {
+      const result = await getFuelLoadHistoryAction(limit)
+      if (!result.ok) throw new Error(result.error.message)
+      return result.data
+    },
+    initialData,
+    staleTime: 1000 * 15,
   })
 }
 
@@ -117,6 +148,7 @@ export function useRegisterFuelLoad() {
       if (result.data.tripId) {
         queryClient.invalidateQueries({ queryKey: FUEL_METRICS_QUERY_KEYS.metrics(result.data.tripId) })
       }
+      queryClient.invalidateQueries({ queryKey: FUEL_METRICS_QUERY_KEYS.fuelLoads })
     },
     onError: () => {
       toast.error('Error inesperado al registrar la carga')

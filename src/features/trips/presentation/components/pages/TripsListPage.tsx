@@ -5,10 +5,17 @@
  */
 
 import React from 'react'
-import { MapPin } from 'lucide-react'
 import { TripsTable } from '../organisms/TripsTable'
+import { ClientEntity, UnitAssemblyEntity } from '@/src/features/fleet/domain/entities'
+import type { TripWithRelations } from '@/src/features/trips/domain/entities/trip-entity'
 
-export default function TripsListPage() {
+interface TripsListPageProps {
+  clients?: ClientEntity[]
+  units?: UnitAssemblyEntity[]
+  trips?: TripWithRelations[]
+}
+
+export default function TripsListPage({ clients = [], units = [], trips = [] }: TripsListPageProps) {
   return (
     <div className="flex flex-col gap-6">
       {/* ── Header ──────────────────────────────────────────────── */}
@@ -25,7 +32,7 @@ export default function TripsListPage() {
       </div>
 
       {/* ── Tabla principal ─────────────────────────────────────── */}
-      <TripsTable />
+      <TripsTable clients={clients} units={units} trips={trips} />
     </div>
   )
 }

@@ -30,13 +30,13 @@ describe('ContactFormSection Component', () => {
     expect(screen.getByLabelText(/teléfono/i)).toBeDefined()
     expect(screen.getByLabelText(/empresa/i)).toBeDefined()
     expect(screen.getByLabelText(/mensaje/i)).toBeDefined()
-    expect(screen.getByRole('button', { name: /enviar mensaje/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /enviar solicitud/i })).toBeDefined()
   })
 
   it('debe mostrar errores de validación si los campos están vacíos', async () => {
     render(<ContactFormSection />)
     
-    const submitButton = screen.getByRole('button', { name: /enviar mensaje/i })
+    const submitButton = screen.getByRole('button', { name: /enviar solicitud/i })
     fireEvent.click(submitButton)
 
     await waitFor(() => {
@@ -54,7 +54,7 @@ describe('ContactFormSection Component', () => {
     fireEvent.change(screen.getByLabelText(/empresa/i), { target: { value: 'Brito Test' } })
     fireEvent.change(screen.getByLabelText(/mensaje/i), { target: { value: 'Hola, me interesa.' } })
 
-    fireEvent.click(screen.getByRole('button', { name: /enviar mensaje/i }))
+    fireEvent.click(screen.getByRole('button', { name: /enviar solicitud/i }))
 
     await waitFor(() => {
       expect(mockSubmit).toHaveBeenCalledWith({
@@ -77,6 +77,6 @@ describe('ContactFormSection Component', () => {
 
     render(<ContactFormSection />)
     
-    expect(screen.getByText(/¡mensaje enviado con éxito!/i)).toBeDefined()
+    expect(screen.getByText(/¡mensaje enviado!/i)).toBeDefined()
   })
 })

@@ -6,9 +6,9 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useTheme } from 'next-themes'
-import { Bell, Search, PanelLeftIcon, Sun, Moon } from 'lucide-react'
+import { useState } from 'react'
+import { Bell, Search, PanelLeftIcon } from 'lucide-react'
+import { ModeToggle } from '@/src/core/presentation/components/ui/mode-toggle'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 import { useSidebar } from '@/src/core/presentation/context/SidebarContext'
@@ -51,23 +51,8 @@ const NOTIFICATIONS: Notification[] = [
  */
 export function DashboardNavbar() {
   const { toggleCollapsed } = useSidebar()
-  const { theme, setTheme, resolvedTheme } = useTheme()
   const [showNotifications, setShowNotifications] = useState(false)
-  const [mounted, setMounted] = useState(false)
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Evitamos cálculos innecesarios si no ha montado
-  if (!mounted) {
-    return <div className="size-8" /> // O un skeleton/espacio vacío
-  }
-
-  const toggleTheme = () => {
-      // Es mejor usar 'theme' directamente o validar resolvedTheme
-      setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
-    }
 
   const unreadCount = NOTIFICATIONS.filter((n) => n.unread).length
   return (
@@ -115,17 +100,7 @@ export function DashboardNavbar() {
           </button>
 
           {/* Theme Toggle */}
-          <button
-          className="..." // tus clases de Tailwind
-          onClick={toggleTheme}
-          aria-label="Cambiar tema"
-          >
-          {resolvedTheme === 'dark' ? (
-            <Moon className="size-4" />
-          ) : (
-            <Sun className="size-4" />
-          )}
-          </button>
+          <ModeToggle />
 
           {/* Fullscreen Toggle */}
           <button

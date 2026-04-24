@@ -21,6 +21,9 @@ import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { Button } from '@/src/core/presentation/components/ui/button'
 import type { TripsTableRowEntity } from './TripsTable'
+import { ClientEntity, UnitAssemblyEntity } from '@/src/features/fleet/domain/entities'
+import { toast } from 'sonner'
+import { upsertTripWithClientDataAction } from '../../actions/trips.actions'
 
 // ── Schema Zod ────────────────────────────────────────────────────────────────
 
@@ -57,17 +60,19 @@ interface TripWizardProps {
   isOpen: boolean
   onClose: () => void
   tripRow?: TripsTableRowEntity
-  clients: { id: string, tradeName: string, companyName: string }[]
+  clients?: ClientEntity[]
+  units?: UnitAssemblyEntity[]
 }
 
 type SubmissionStatus = 'idle' | 'success' | 'error'
 
 // ── Componente ────────────────────────────────────────────────────────────────
 
-export function TripWizard({ isOpen, onClose, tripRow, clients }: TripWizardProps) {
+export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] }: TripWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('idle')
+  const [submissionError, setSubmissionError] = useState<string | null>(null)
 
   const isEdit = !!tripRow
 
@@ -78,6 +83,7 @@ export function TripWizard({ isOpen, onClose, tripRow, clients }: TripWizardProp
     reset,
     watch,
     control,
+    setValue,
     formState: { errors },
   } = useForm<TripWizardValues>({
     resolver: zodResolver(tripWizardSchema),
@@ -104,7 +110,18 @@ export function TripWizard({ isOpen, onClose, tripRow, clients }: TripWizardProp
   // Watchers para lógica condicional
   const selectedClientId = watch('clientId')
   const selectedClient = clients.find(c => c.id === selectedClientId)
-  const isWalmart = selectedClient?.tradeName.toLowerCase().includes('walmart')
+  const isWalmart = selectedClient?.tradeName?.toLowerCase().includes('walmart')
+
+  const selectedUnitNumber = watch('unitEconomicNumber')
+
+  useEffect(() => {
+    if (selectedUnitNumber && !isEdit) {
+      const selectedUnit = units.find(u => u.economicNumber === selectedUnitNumber)
+      if (selectedUnit?.employeeName) {
+        setValue('operatorName', selectedUnit.employeeName, { shouldValidate: true })
+      }
+    }
+  }, [selectedUnitNumber, units, setValue, isEdit])
 
   // Pre-poblar al editar
   useEffect(() => {
@@ -145,13 +162,58 @@ export function TripWizard({ isOpen, onClose, tripRow, clients }: TripWizardProp
 
   const goBack = () => setActiveStep((p) => p - 1)
 
-  const handleFinish = handleSubmit(async (_data) => {
+  const handleFinish = handleSubmit(async (data) => {
     setIsSubmitting(true)
     try {
-      // Simular llamada a API
-      await new Promise((r) => setTimeout(r, 1200))
+      const selectedUnit = units.find(u => u.economicNumber === data.unitEconomicNumber)
+      const unitAssemblyId = selectedUnit?.id ?? null
+      if (!unitAssemblyId) {
+        toast.error('No se encontró la unidad seleccionada')
+        setSubmissionError('No se encontró la unidad seleccionada')
+        setSubmissionStatus('error')
+        return
+      }
+
+      const departureDate = data.departureDate ? new Date(data.departureDate) : null
+
+      const result = await upsertTripWithClientDataAction({
+        trip: {
+          id: isEdit ? tripRow?.id : undefined,
+          clientId: data.clientId,
+          origin: data.origin,
+          destination: data.destination,
+          departureDate,
+          unitAssemblyId,
+          status: isEdit ? tripRow?.status : 'scheduled',
+        },
+        walmart: isWalmart
+          ? {
+              coordinatorName: data.coordinatorName?.trim() || null,
+              route: data.route?.trim() || null,
+              cartaPorteWalmart: data.cartaPorteWalmart?.trim() || null,
+              numStores: typeof data.numStores === 'number' ? data.numStores : null,
+              dettesLog: (data.dettesLog ?? []).map((d) => ({
+                storeId: d.storeName,
+                storeName: d.storeName,
+                appointmentAt: d.appointmentAt ? new Date(d.appointmentAt).toISOString() : null,
+              })),
+            }
+          : undefined,
+      })
+
+      if (!result.ok) {
+        toast.error(result.error.message)
+        setSubmissionError(result.error.message)
+        setSubmissionStatus('error')
+        return
+      }
+
+      toast.success(isEdit ? 'Viaje actualizado' : 'Viaje creado')
+      setSubmissionError(null)
       setSubmissionStatus('success')
     } catch {
+      toast.error('Error inesperado al guardar el viaje')
+      setSubmissionError('Error inesperado al guardar el viaje')
       setSubmissionStatus('error')
     } finally {
       setIsSubmitting(false)
@@ -161,12 +223,14 @@ export function TripWizard({ isOpen, onClose, tripRow, clients }: TripWizardProp
   const handleClose = () => {
     setActiveStep(0)
     setSubmissionStatus('idle')
+    setSubmissionError(null)
     onClose()
   }
 
   const handleReset = () => {
     setSubmissionStatus('idle')
     setActiveStep(0)
+    setSubmissionError(null)
     if (!isEdit) reset()
   }
 
@@ -185,7 +249,7 @@ export function TripWizard({ isOpen, onClose, tripRow, clients }: TripWizardProp
           <select id="clientId" className={inputClass} {...register('clientId')}>
             <option value="">Selecciona un cliente</option>
             {clients.map(c => (
-              <option key={c.id} value={c.id}>{c.tradeName} ({c.companyName})</option>
+              <option key={c.id} value={c.id}>{c.tradeName || c.companyName} ({c.companyName || c.tradeName})</option>
             ))}
           </select>
           {errors.clientId && <p className={errorClass}>{errors.clientId.message}</p>}
@@ -207,7 +271,12 @@ export function TripWizard({ isOpen, onClose, tripRow, clients }: TripWizardProp
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
             <Label htmlFor="unitEconomicNumber">Unidad (Tracto)</Label>
-            <Input id="unitEconomicNumber" placeholder="Ej. ECO-105" {...register('unitEconomicNumber')} />
+            <select id="unitEconomicNumber" className={inputClass} {...register('unitEconomicNumber')}>
+              <option value="">Selecciona una unidad</option>
+              {units.map(u => (
+                <option key={u.id} value={u.economicNumber}>{u.name} ({u.economicNumber})</option>
+              ))}
+            </select>
             {errors.unitEconomicNumber && <p className={errorClass}>{errors.unitEconomicNumber.message}</p>}
           </div>
           <div className="grid gap-2">
@@ -352,7 +421,7 @@ export function TripWizard({ isOpen, onClose, tripRow, clients }: TripWizardProp
               : 'Error al procesar'}
             message={submissionStatus === 'success'
               ? `El viaje ha sido ${isEdit ? 'actualizado' : 'registrado'} correctamente.`
-              : 'No pudimos completar la operación en este momento.'}
+              : (submissionError ?? 'No pudimos completar la operación en este momento.')}
             primaryActionLabel="Finalizar"
             onPrimaryAction={handleClose}
             secondaryActionLabel={submissionStatus === 'success' && !isEdit ? 'Crear otro' : undefined}

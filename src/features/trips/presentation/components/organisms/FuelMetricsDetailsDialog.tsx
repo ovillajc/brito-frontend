@@ -21,7 +21,7 @@ import {
   X, Fuel, Gauge, TrendingDown, TrendingUp, Truck,
   Hash, Calendar, User, MapPin, FileText, BarChart2,
 } from 'lucide-react'
-import type { TripFuelRowEntity } from './FuelMetricsTable'
+import type { TripFuelRowEntity } from '@/src/features/trips/domain/entities/fuel-metrics-entity'
 
 interface FuelMetricsDetailsDialogProps {
   isOpen: boolean

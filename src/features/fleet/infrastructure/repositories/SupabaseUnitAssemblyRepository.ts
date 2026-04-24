@@ -5,6 +5,30 @@ import { UnitAssemblyMapper } from '../mappers/UnitAssemblyMapper'
 
 const SELECT_QUERY = '*, employees(full_name), trucks(economic_number), trailers!unit_assemblies_trailer_id_fkey(economic_number), trailer2:trailers!unit_assemblies_trailer2_id_fkey(economic_number), clients(trade_name, company_name), company_profile(legal_name)'
 
+type UnitAssemblyPersistPayload = {
+  employee_id?: string | null
+  truck_id?: string | null
+  trailer_id?: string | null
+  trailer2_id?: string | null
+}
+
+type UnitAssemblyLogRow = {
+  id: string
+  unit_assembly_id: string
+  employee_id: string | null
+  truck_id: string | null
+  trailer_id: string | null
+  trailer2_id: string | null
+  profile_id: string | null
+  action: string
+  created_at: string
+  employees: { full_name: string | null } | null
+  trucks: { economic_number: string | null } | null
+  trailers: { economic_number: string | null } | null
+  trailer2: { economic_number: string | null } | null
+  profiles: { full_name: string | null } | null
+}
+
 export class SupabaseUnitAssemblyRepository implements IUnitAssemblyRepository {
   async findAll(): Promise<UnitAssemblyEntity[]> {
     const supabase = await createClient()
@@ -50,7 +74,7 @@ export class SupabaseUnitAssemblyRepository implements IUnitAssemblyRepository {
   private async logAction(
     action: UnitAssemblyLogAction,
     unitId: string,
-    payload: any,
+    payload: UnitAssemblyPersistPayload,
     profileId?: string
   ) {
     const supabase = await createClient()
@@ -131,7 +155,7 @@ export class SupabaseUnitAssemblyRepository implements IUnitAssemblyRepository {
     }
     if (!data) return []
 
-    return data.map((r) => ({
+    return (data as unknown as UnitAssemblyLogRow[]).map((r) => ({
       id: r.id,
       unitAssemblyId: r.unit_assembly_id,
       employeeId: r.employee_id,
@@ -141,11 +165,11 @@ export class SupabaseUnitAssemblyRepository implements IUnitAssemblyRepository {
       profileId: r.profile_id,
       action: r.action as UnitAssemblyLogAction,
       createdAt: new Date(r.created_at),
-      employeeName: r.employees ? (r.employees as any).full_name : undefined,
-      truckEconomicNumber: r.trucks ? (r.trucks as any).economic_number : undefined,
-      trailerEconomicNumber: r.trailers ? (r.trailers as any).economic_number : undefined,
-      trailer2EconomicNumber: r.trailer2 ? (r.trailer2 as any).economic_number : undefined,
-      profileName: r.profiles ? (r.profiles as any).full_name : undefined,
+      employeeName: r.employees?.full_name ?? undefined,
+      truckEconomicNumber: r.trucks?.economic_number ?? undefined,
+      trailerEconomicNumber: r.trailers?.economic_number ?? undefined,
+      trailer2EconomicNumber: r.trailer2?.economic_number ?? undefined,
+      profileName: r.profiles?.full_name ?? undefined,
     }))
   }
 }

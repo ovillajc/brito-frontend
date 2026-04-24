@@ -9,13 +9,14 @@ import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/src/core/infrastructure/utils/cn'
-import { Truck, Users, Package, LayoutDashboard, Activity } from 'lucide-react'
+import { Truck, Users, Package, LayoutDashboard, Activity, Layers } from 'lucide-react'
 
 const FLEET_NAV = [
   { name: 'Dashboard', href: '/fleet', icon: LayoutDashboard },
   { name: 'Unidades', href: '/fleet/units', icon: Truck },
   { name: 'Tractos', href: '/fleet/trucks', icon: Activity },
   { name: 'Remolques', href: '/fleet/trailers', icon: Package },
+  { name: 'Pools', href: '/fleet/pools', icon: Layers },
   // { name: 'Operadores', href: '/fleet/operators', icon: Users },
 ]
 

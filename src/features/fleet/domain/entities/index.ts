@@ -95,7 +95,7 @@ export interface OperatorEntity {
   phone?: string
   bloodType?: string
   fastrackId?: string
-  status: TripStatus
+  status: vehicleStatus
 }
 
 /**
@@ -136,6 +136,7 @@ export interface UnitAssemblyEntity {
   trailerId?: string | null
   trailer2Id?: string | null
   clientId?: string | null
+  clientPoolId?: string | null
   companyProfileId?: string | null
 
   isActive: boolean
@@ -170,4 +171,21 @@ export interface UnitAssemblyLogEntity {
   trailerEconomicNumber?: string
   trailer2EconomicNumber?: string
   profileName?: string
+}
+
+/**
+ * Representa un Pool de Clientes para agrupar unidades armadas.
+ */
+export interface ClientPoolEntity {
+  id: string
+  name: string
+  clientId: string
+  description?: string | null
+  createdAt: Date
+  updatedAt: Date
+  
+  // Datos opcionales del join
+  clientTradeName?: string
+  clientCompanyName?: string
+  unitsCount?: number
 }

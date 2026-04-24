@@ -25,9 +25,9 @@ export interface RegisterFuelLoadInput {
   ticketFolio: string
   loadDate: Date
   litersEngine: number
-  pricePerLiter: number
+  pricePerLiter: number | null
   isFullTankFill: boolean
-  sourceType?: string
+  sourceType?: 'EXTERNAL' | 'INTERNAL_TANK'
 }
 
 export async function RegisterFuelLoad(
@@ -48,14 +48,29 @@ export async function RegisterFuelLoad(
     }
   }
 
-  if (data.pricePerLiter <= 0) {
-    return {
-      ok: false,
-      error: {
-        code: 'INVALID_PRICE',
-        message: 'El precio por litro debe ser mayor a 0',
-        statusCode: 400,
-      },
+  const sourceType = data.sourceType ?? 'EXTERNAL'
+  const pricePerLiter = data.pricePerLiter
+  if (sourceType === 'EXTERNAL') {
+    if (pricePerLiter == null || pricePerLiter <= 0) {
+      return {
+        ok: false,
+        error: {
+          code: 'INVALID_PRICE',
+          message: 'El precio por litro debe ser mayor a 0',
+          statusCode: 400,
+        },
+      }
+    }
+  } else {
+    if (pricePerLiter == null || pricePerLiter <= 0) {
+      return {
+        ok: false,
+        error: {
+          code: 'MISSING_TANK_COST',
+          message: 'No se pudo calcular el costo por litro del tanque',
+          statusCode: 400,
+        },
+      }
     }
   }
 
@@ -70,7 +85,7 @@ export async function RegisterFuelLoad(
     }
   }
 
-  const totalCost = data.litersEngine * data.pricePerLiter
+  const totalCost = data.litersEngine * pricePerLiter
 
   return repo.registerFuelLoad(
     {
@@ -82,14 +97,14 @@ export async function RegisterFuelLoad(
       loadDate: data.loadDate,
       ticketFolio: data.ticketFolio.trim(),
       litersEngine: data.litersEngine,
-      pricePerLiter: data.pricePerLiter,
+      pricePerLiter,
       totalCost,
       litersR1: 0,
       hoursR1: 0,
       litersR2: 0,
       hoursR2: 0,
       isFullTankFill: data.isFullTankFill,
-      sourceType: data.sourceType ?? 'EXTERNAL',
+      sourceType,
       createdBy,
     },
     supervisedBy

@@ -25,7 +25,9 @@ import { Wizard, type WizardStep } from '@/src/core/presentation/components/orga
 import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
-import type { TripFuelRowEntity } from './FuelMetricsTable'
+import type { TripFuelRowEntity } from '@/src/features/trips/domain/entities/fuel-metrics-entity'
+import { useSaveFuelMetrics } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
+import { toast } from 'sonner'
 
 // ── Schema Zod (Zod v4: usa `error` en lugar de `invalid_type_error`) ─────────
 
@@ -36,10 +38,6 @@ const fuelMetricsSchema = z.object({
   kmInitial: z.number({ error: 'Ingresa el km inicial' }).min(0),
   kmFinal: z.number({ error: 'Ingresa el km final' }).min(0),
   totalKmPreinvoice: z.number().min(0).nullable().optional(),
-
-  ticketFolio: z.string().min(1, 'El folio del ticket es obligatorio'),
-  litersEngine: z.number({ error: 'Ingresa los litros' }).min(0.01, 'Los litros deben ser > 0'),
-  pricePerLiter: z.number({ error: 'Ingresa el precio' }).min(0.01, 'El precio debe ser > 0'),
 
   litersRealR1: z.number().min(0).optional(),
   hoursR1: z.number().min(0).optional(),
@@ -62,6 +60,29 @@ interface FuelMetricsWizardProps {
 
 type SubmissionStatus = 'idle' | 'success' | 'error'
 
+function PreviewCard({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div
+      className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
+        accent
+          ? 'bg-[#006d37]/5 border-[#006d37]/20'
+          : 'bg-stone-50 dark:bg-zinc-800/50 border-stone-100 dark:border-zinc-700'
+      }`}
+    >
+      <span className="text-sm text-stone-600 dark:text-zinc-400">{label}</span>
+      <span
+        className={`text-base font-bold ${
+          accent
+            ? 'text-[#006d37] dark:text-primary-container'
+            : 'text-stone-900 dark:text-zinc-100'
+        }`}
+      >
+        {value}
+      </span>
+    </div>
+  )
+}
+
 // ── Componente ────────────────────────────────────────────────────────────────
 
 export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizardProps) {
@@ -69,6 +90,8 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('idle')
   const isEdit = !!tripRow
+  const tripId = tripRow?.id ?? ''
+  const saveFuelMetrics = useSaveFuelMetrics(tripId)
 
   const {
     register,
@@ -82,7 +105,6 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
     defaultValues: {
       monitoredBy: '', observations: '',
       kmInitial: undefined, kmFinal: undefined, totalKmPreinvoice: null,
-      ticketFolio: '', litersEngine: undefined, pricePerLiter: undefined,
       litersRealR1: 0, hoursR1: 0, litersRealR2: 0, hoursR2: 0,
     },
   })
@@ -96,9 +118,6 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
         kmInitial: tripRow.kmInitial ?? undefined,
         kmFinal: tripRow.kmFinal ?? undefined,
         totalKmPreinvoice: tripRow.preinvoiceKm ?? null,
-        ticketFolio: tripRow.ticketFolio ?? '',
-        litersEngine: tripRow.litersEngine ?? undefined,
-        pricePerLiter: tripRow.pricePerLiter ?? undefined,
         litersRealR1: tripRow.litersRealR1 ?? 0,
         hoursR1: tripRow.hoursR1 ?? 0,
         litersRealR2: tripRow.litersRealR2 ?? 0,
@@ -112,16 +131,12 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
   // Cálculos en tiempo real
   const kmI = watch('kmInitial')
   const kmF = watch('kmFinal')
-  const liters = watch('litersEngine')
-  const price = watch('pricePerLiter')
   const kmTraveled = kmI != null && kmF != null && kmF >= kmI ? kmF - kmI : null
-  const totalCost = liters && price ? liters * price : null
 
   const goNext = async () => {
     const fieldMap: Record<number, (keyof FuelMetricsValues)[]> = {
       0: ['monitoredBy'],
       1: ['kmInitial', 'kmFinal'],
-      2: ['ticketFolio', 'litersEngine', 'pricePerLiter'],
     }
     const ok = await trigger(fieldMap[activeStep] ?? [])
     if (ok) setActiveStep((p) => p + 1)
@@ -129,10 +144,28 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
   const goBack = () => setActiveStep((p) => p - 1)
 
   const handleFinish = handleSubmit(async (_data) => {
+    if (!tripRow) {
+      toast.error('Selecciona un viaje para registrar métricas')
+      return
+    }
     setIsSubmitting(true)
     try {
-      // TODO: conectar con saveFuelMetricsAction cuando esté listo
-      await new Promise((r) => setTimeout(r, 1200))
+      const result = await saveFuelMetrics.mutateAsync({
+        kmInitial: _data.kmInitial,
+        kmFinal: _data.kmFinal,
+        fuelLoadId: tripRow.fuelLoadId ?? null,
+        hoursR1: _data.hoursR1 ?? 0,
+        litersRealR1: _data.litersRealR1 ?? 0,
+        hoursR2: _data.hoursR2 ?? 0,
+        litersRealR2: _data.litersRealR2 ?? 0,
+        totalKmPreinvoice: _data.totalKmPreinvoice ?? null,
+      })
+
+      if (!result.ok) {
+        setSubmissionStatus('error')
+        return
+      }
+
       setSubmissionStatus('success')
     } catch {
       setSubmissionStatus('error')
@@ -151,14 +184,6 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
     'placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/20 transition-colors',
   ].join(' ')
   const err = (msg?: string) => msg ? <p className="text-xs text-red-500 mt-1">{msg}</p> : null
-
-  // ── Preview cards ─────────────────────────────────────────────────────────
-  const PreviewCard = ({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) => (
-    <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${accent ? 'bg-[#006d37]/5 border-[#006d37]/20' : 'bg-stone-50 dark:bg-zinc-800/50 border-stone-100 dark:border-zinc-700'}`}>
-      <span className="text-sm text-stone-600 dark:text-zinc-400">{label}</span>
-      <span className={`text-base font-bold ${accent ? 'text-[#006d37] dark:text-primary-container' : 'text-stone-900 dark:text-zinc-100'}`}>{value}</span>
-    </div>
-  )
 
   // ── Paso 1: Datos del viaje ───────────────────────────────────────────────
   const step1Content = (
@@ -222,30 +247,30 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
     </div>
   )
 
-  // ── Paso 3: Carga motor ───────────────────────────────────────────────────
+  // ── Paso 3: Carga motor (solo lectura) ────────────────────────────────────
   const step3Content = (
     <div className="flex flex-col gap-5 pt-2">
-      <div className="grid gap-2">
-        <Label htmlFor="ticketFolio">Folio del Ticket</Label>
-        <Input id="ticketFolio" placeholder="Ej. TK-00123456" {...register('ticketFolio')} />
-        {err(errors.ticketFolio?.message)}
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="litersEngine">Litros Motor</Label>
-          <input id="litersEngine" type="number" step="0.01" min="0" placeholder="0.00" className={inputClass}
-            {...register('litersEngine', { valueAsNumber: true })} />
-          {err(errors.litersEngine?.message)}
+      {!tripRow?.fuelLoadId ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 p-4">
+          <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Sin carga registrada</p>
+          <p className="text-xs text-amber-800/80 dark:text-amber-200/80 mt-1">
+            Registra primero la carga de diésel en el módulo de Guardia para asociarla a este viaje.
+          </p>
         </div>
-        <div className="grid gap-2">
-          <Label htmlFor="pricePerLiter">Precio / Litro (MXN)</Label>
-          <input id="pricePerLiter" type="number" step="0.01" min="0" placeholder="$0.00" className={inputClass}
-            {...register('pricePerLiter', { valueAsNumber: true })} />
-          {err(errors.pricePerLiter?.message)}
+      ) : (
+        <div className="flex flex-col gap-3">
+          <PreviewCard label="Folio de ticket" value={tripRow.ticketFolio ?? '—'} />
+          <PreviewCard label="Litros motor" value={tripRow.litersEngine !== null ? `${tripRow.litersEngine.toFixed(1)} L` : '—'} />
+          <PreviewCard label="Precio / L" value={tripRow.pricePerLiter !== null ? `$${tripRow.pricePerLiter.toFixed(2)} MXN` : '—'} />
+          <PreviewCard
+            label="Total motor"
+            value={tripRow.totalCostEngine !== null
+              ? `$${tripRow.totalCostEngine.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`
+              : '—'
+            }
+            accent
+          />
         </div>
-      </div>
-      {totalCost !== null && (
-        <PreviewCard label="Total calculado (motor)" value={`$${totalCost.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`} accent />
       )}
       <WizardFooter isFirstStep={false} isLastStep={false} onCancel={handleClose} onBack={goBack} onNext={goNext} />
     </div>

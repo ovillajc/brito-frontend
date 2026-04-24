@@ -15,6 +15,7 @@ const TRIPS_NAV = [
   { name: 'Dashboard', href: '/trips', icon: LayoutDashboard },
   { name: 'Viajes', href: '/trips/list', icon: Map },
   { name: 'Rendimientos', href: '/trips/fuel', icon: Fuel },
+  { name: 'Carga Diésel', href: '/trips/fuel/load', icon: Fuel },
 ]
 
 export default function TripsLayout({ children }: { children: React.ReactNode }) {

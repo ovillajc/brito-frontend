@@ -13,6 +13,9 @@ import { CrudDataTable, type CrudColumn } from '@/src/core/presentation/componen
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { TripWizard } from './TripWizard'
 import { TripDetailsDialog } from './TripDetailsDialog'
+import { ClientEntity, UnitAssemblyEntity } from '@/src/features/fleet/domain/entities'
+import type { TripWithRelations, TripStatus } from '@/src/features/trips/domain/entities/trip-entity'
+import { useTripsList } from '../../hooks/use-trips'
 
 // ── Entidades de vista ────────────────────────────────────────────────────────
 
@@ -24,7 +27,8 @@ export interface TripsTableRowEntity {
   origin: string
   destination: string
   departureDate: string | null
-  status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled'
+  status: TripStatus
+  unitAssemblyId: string | null
   unitEconomicNumber: string | null
   operatorName: string | null
   isFullAssembly: boolean
@@ -37,48 +41,6 @@ export interface TripsTableRowEntity {
     numStores: number | null
   }
 }
-
-// ── Mock data para desarrollo UI ──────────────────────────────────────────────
-
-const MOCK_CLIENTS = [
-  { id: 'client-walmart', tradeName: 'Walmart', companyName: 'Nueva Wal-Mart de México S.R.L. de C.V.' },
-  { id: 'client-gen', tradeName: 'Cliente Genérico', companyName: 'Logística SA de CV' },
-]
-
-const MOCK_TRIPS: TripsTableRowEntity[] = [
-  {
-    id: 'trip-001',
-    folio: 'VJE-0042',
-    clientId: 'client-walmart',
-    clientName: 'Walmart',
-    origin: 'Monterrey, NL',
-    destination: 'Walmart Apodaca #5',
-    departureDate: '2026-04-21T08:00:00Z',
-    status: 'completed',
-    unitEconomicNumber: 'ECO-105',
-    operatorName: 'Juan Pérez',
-    isFullAssembly: true,
-    walmartData: {
-      coordinatorName: 'Carlos Coord',
-      route: 'R-NTE-01',
-      cartaPorteWalmart: 'CPW-9912',
-      numStores: 3
-    }
-  },
-  {
-    id: 'trip-002',
-    folio: 'VJE-0043',
-    clientId: 'client-gen',
-    clientName: 'Cliente Genérico',
-    origin: 'Saltillo, COAH',
-    destination: 'Nuevo Laredo, TAMPS',
-    departureDate: '2026-04-22T09:30:00Z',
-    status: 'in-progress',
-    unitEconomicNumber: 'ECO-210',
-    operatorName: 'Luis García',
-    isFullAssembly: false,
-  }
-]
 
 // ── Definición de columnas ───────────────────────────────────────────────────
 
@@ -139,7 +101,7 @@ const TRIPS_COLUMNS: CrudColumn<TripsTableRowEntity>[] = [
     cell: (row) => {
       const map: Record<string, { label: string; className: string }> = {
         completed: { label: 'Completado', className: 'bg-[#1a5c3a] text-white font-bold' },
-        'in-progress': { label: 'En Ruta', className: 'bg-blue-500/10 text-blue-600 border-blue-300' },
+        in_progress: { label: 'En Ruta', className: 'bg-blue-500/10 text-blue-600 border-blue-300' },
         scheduled: { label: 'Programado', className: 'bg-amber-500/10 text-amber-600 border-amber-300' },
         cancelled: { label: 'Cancelado', className: 'bg-stone-200 text-stone-700' },
       }
@@ -152,11 +114,36 @@ const TRIPS_COLUMNS: CrudColumn<TripsTableRowEntity>[] = [
 // ── Props & Componente ────────────────────────────────────────────────────────
 
 interface TripsTableProps {
-  initialData?: TripsTableRowEntity[]
-  isLoading?: boolean
+  clients?: ClientEntity[]
+  units?: UnitAssemblyEntity[]
+  trips?: TripWithRelations[]
 }
 
-export function TripsTable({ initialData = MOCK_TRIPS, isLoading = false }: TripsTableProps) {
+function mapToRowEntity(item: TripWithRelations): TripsTableRowEntity {
+  const folio = item.trip.tripNumber !== null
+    ? `VJE-${String(item.trip.tripNumber).padStart(6, '0')}`
+    : (item.trip.folio ?? item.trip.id)
+  return {
+    id: item.trip.id,
+    folio,
+    clientId: item.trip.clientId ?? '',
+    clientName: item.clientName ?? '—',
+    origin: item.trip.origin ?? '',
+    destination: item.trip.destination ?? '',
+    departureDate: item.trip.departureDate ? item.trip.departureDate.toISOString() : null,
+    status: item.trip.status,
+    unitAssemblyId: item.trip.unitAssemblyId,
+    unitEconomicNumber: item.unitEconomicNumber,
+    operatorName: item.operatorName,
+    isFullAssembly: item.isFullAssembly,
+    walmartData: item.walmartData ?? undefined,
+  }
+}
+
+export function TripsTable({ clients = [], units = [], trips = [] }: TripsTableProps) {
+  const tripsQuery = useTripsList(undefined, trips)
+  const rows = (tripsQuery.data ?? []).map(mapToRowEntity)
+
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [selectedRow, setSelectedRow] = useState<TripsTableRowEntity | null>(null)
   
@@ -181,8 +168,8 @@ export function TripsTable({ initialData = MOCK_TRIPS, isLoading = false }: Trip
   return (
     <>
       <CrudDataTable<TripsTableRowEntity>
-        data={initialData}
-        isLoading={isLoading}
+        data={rows}
+        isLoading={tripsQuery.isLoading}
         columns={TRIPS_COLUMNS}
         searchPlaceholder="Buscar por folio, cliente u origen..."
         searchFilter={(row, term) =>
@@ -200,12 +187,13 @@ export function TripsTable({ initialData = MOCK_TRIPS, isLoading = false }: Trip
         }}
       />
 
-      {/* Pasa los clientes mock al wizard para que arme el dropdown */}
+      {/* Pasa los clientes y unidades al wizard para que arme el dropdown */}
       <TripWizard
         isOpen={isWizardOpen}
         onClose={handleCloseWizard}
         tripRow={selectedRow ?? undefined}
-        clients={MOCK_CLIENTS}
+        clients={clients}
+        units={units}
       />
 
       <TripDetailsDialog

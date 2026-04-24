@@ -52,21 +52,21 @@ const MOCK_TRUCKS: TruckEntity[] = [
 const MOCK_TRAILERS: TrailerEntity[] = [
   {
     id: 'tr1',
-    type: 'Dry Van',
-    brand: 'Utility',
-    model: '4000D',
-    plates: 'TRL-001',
     economicNumber: 'E-101',
-    status: 'active'
+    plates: 'TRL-001',
+    status: 'available',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    trailerModelName: 'Dry Van',
   },
   {
     id: 'tr2',
-    type: 'Reefer',
-    brand: 'Great Dane',
-    model: 'Everest',
-    plates: 'TRL-002',
     economicNumber: 'E-102',
-    status: 'available'
+    plates: 'TRL-002',
+    status: 'available',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    trailerModelName: 'Reefer',
   }
 ]
 
@@ -78,7 +78,7 @@ const MOCK_OPERATORS: OperatorEntity[] = [
     licenseNumber: 'LIC-111',
     licenseType: 'B',
     licenseExpiration: new Date('2026-05-15'),
-    status: 'active',
+    status: 'in_trip',
     phone: '555-0101'
   },
   {
@@ -94,10 +94,10 @@ const MOCK_OPERATORS: OperatorEntity[] = [
 ]
 
 const MOCK_CLIENTS: ClientEntity[] = [
-  { id: 'c1', name: 'Brito Transportes', type: 'internal' },
-  { id: 'c2', name: 'Brito Barita', type: 'internal' },
-  { id: 'c3', name: 'Cliente Externo A', type: 'external' },
-  { id: 'c4', name: 'Cliente Externo B', type: 'external' },
+  { id: 'c1', tradeName: 'Brito Transportes', companyName: null, taxRegime: null },
+  { id: 'c2', tradeName: 'Brito Barita', companyName: null, taxRegime: null },
+  { id: 'c3', tradeName: 'Cliente Externo A', companyName: null, taxRegime: null },
+  { id: 'c4', tradeName: 'Cliente Externo B', companyName: null, taxRegime: null },
 ]
 
 const ASSEMBLED_UNITS: UnitAssemblyEntity[] = []
@@ -154,12 +154,11 @@ export class MockFleetRepository implements IFleetRepository {
   async saveTrailer(trailer: Partial<TrailerEntity>): Promise<Either<Failure, TrailerEntity>> {
     const newTrailer = {
       id: Math.random().toString(36).substr(2, 9),
-      type: trailer.type || 'Caja Seca',
-      brand: trailer.brand || 'Desconocida',
-      model: trailer.model || 'Desconocido',
       plates: trailer.plates || '---',
       economicNumber: trailer.economicNumber || '---',
       status: 'available' as const,
+      createdAt: new Date(),
+      updatedAt: new Date(),
       ...trailer
     } as TrailerEntity
     MOCK_TRAILERS.push(newTrailer)
@@ -185,6 +184,7 @@ export class MockFleetRepository implements IFleetRepository {
       firstName: operator.firstName || 'Sin nombre',
       lastName: operator.lastName || 'Sin apellido',
       licenseNumber: operator.licenseNumber || '---',
+      licenseType: operator.licenseType || 'B',
       licenseExpiration: operator.licenseExpiration || new Date(),
       status: 'available' as const,
       ...operator
@@ -232,13 +232,19 @@ export class MockFleetRepository implements IFleetRepository {
 
     const assembly: UnitAssemblyEntity = {
       id: Math.random().toString(36).substr(2, 9),
-      truck,
-      trailer,
-      operator,
-      clientId: client?.id,
-      clientName: client?.name,
+      name: `Unidad ${truck.economicNumber}`,
+      economicNumber: truck.economicNumber,
+      employeeId: operator.id,
+      truckId: truck.id,
+      trailerId: trailer.id,
+      clientId: client?.id ?? null,
       isActive: true,
-      createdAt: new Date()
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      employeeName: `${operator.firstName} ${operator.lastName}`,
+      truckEconomicNumber: truck.economicNumber,
+      trailerEconomicNumber: trailer.economicNumber,
+      clientName: client?.tradeName ?? client?.companyName ?? undefined,
     }
 
     ASSEMBLED_UNITS.push(assembly)

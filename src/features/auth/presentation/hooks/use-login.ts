@@ -13,7 +13,7 @@ import { toast } from 'sonner'
  */
 
 export function useLogin(): {
-  form: UseFormReturn<LoginFormInput, any, LoginFormInput>
+  form: UseFormReturn<LoginFormInput>
   handleLogin: SubmitHandler<LoginFormInput>
   onProviderLogin: (provider: 'google' | 'apple') => Promise<void>
   isLoading: boolean
@@ -49,7 +49,7 @@ export function useLogin(): {
       } else {
         toast.error(result.error.message)
       }
-    } catch (err) {
+    } catch {
       toast.error('Ocurrió un error inesperado al intentar iniciar sesión')
     } finally {
       setLoading(false)

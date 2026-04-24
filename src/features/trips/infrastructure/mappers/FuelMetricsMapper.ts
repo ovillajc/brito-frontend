@@ -9,6 +9,8 @@
 import type {
   FuelMetricsInputEntity,
   FuelLoadEntity,
+  FuelLoadHistoryRowEntity,
+  TripFuelRowEntity,
   TruckYieldData,
   TrailerYieldData,
 } from '../../domain/entities/fuel-metrics-entity'
@@ -67,6 +69,64 @@ export interface TrailerRow {
   continuous_frozen_yield: number | null
   ss_refrigerated_yield: number | null
   ss_frozen_yield: number | null
+}
+
+export interface FuelMetricsListTripRow {
+  id: string
+  folio: string | null
+  trip_number: number | null
+  origin: string | null
+  destination: string | null
+  departure_date: string | null
+  status: string | null
+  monitored_by: string | null
+  observations: string | null
+  clients?: { trade_name: string | null; company_name: string | null } | null
+  unit_assemblies: null | {
+    economic_number: string | null
+    trailer2_id: string | null
+    trucks: null | { plates: string | null; theoretical_yield: number | null }
+    employees: null | { full_name: string | null }
+  }
+  trip_fuel_metrics: null | Array<{
+    km_initial: number | null
+    km_final: number | null
+    fuel_load_id: string | null
+    hours_r1: number | null
+    liters_real_r1: number | null
+    hours_r2: number | null
+    liters_real_r2: number | null
+    total_km_preinvoice: number | null
+  }>
+  fuel_loads: null | Array<{
+    id: string
+    ticket_folio: string | null
+    liters_loaded: number | null
+    price_per_liter: number | null
+    total_cost: number | null
+    created_at: string
+  }>
+}
+
+export interface FuelLoadHistoryRow {
+  id: string
+  trip_id: string | null
+  load_date: string | null
+  ticket_folio: string | null
+  liters_loaded: number
+  price_per_liter: number
+  total_cost: number
+  source_type: string
+  is_full_tank_fill: boolean
+  trips: null | {
+    trip_number: number | null
+    folio: string | null
+    clients: null | { trade_name: string | null; company_name: string | null }
+    unit_assemblies: null | {
+      economic_number: string | null
+      employees: null | { full_name: string | null }
+    }
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -168,6 +228,120 @@ export class FuelMetricsMapper {
       continuousFrozenYield: row.continuous_frozen_yield,
       ssRefrigeratedYield: row.ss_refrigerated_yield,
       ssFrozenYield: row.ss_frozen_yield,
+    }
+  }
+
+  static tripToTripFuelRowEntity(row: FuelMetricsListTripRow): TripFuelRowEntity {
+    const metrics = row.trip_fuel_metrics?.[0] ?? null
+    const fuelLoad = row.fuel_loads?.[0] ?? null
+
+    const kmInitial = metrics?.km_initial ?? null
+    const kmFinal = metrics?.km_final ?? null
+    const kmTraveled = kmInitial !== null && kmFinal !== null && kmFinal >= kmInitial ? kmFinal - kmInitial : null
+
+    const litersEngine = fuelLoad?.liters_loaded ?? null
+    const pricePerLiter = fuelLoad?.price_per_liter ?? null
+    const totalCostEngine = fuelLoad?.total_cost ?? null
+
+    const theoreticalYieldEngine = row.unit_assemblies?.trucks?.theoretical_yield ?? null
+    const litersTheoreticalEngine =
+      kmTraveled !== null && theoreticalYieldEngine !== null && theoreticalYieldEngine > 0
+        ? kmTraveled / theoreticalYieldEngine
+        : null
+    const realYieldEngine =
+      kmTraveled !== null && litersEngine !== null && litersEngine > 0
+        ? kmTraveled / litersEngine
+        : null
+    const savingsExcessEngine =
+      litersEngine !== null && litersTheoreticalEngine !== null
+        ? litersEngine - litersTheoreticalEngine
+        : null
+
+    const litersRealR1 = metrics?.liters_real_r1 ?? null
+    const litersRealR2 = metrics?.liters_real_r2 ?? null
+
+    const totalDieselCostTrip =
+      litersEngine !== null && pricePerLiter !== null
+        ? (litersEngine + (litersRealR1 ?? 0) + (litersRealR2 ?? 0)) * pricePerLiter
+        : null
+
+    const preinvoiceKm = metrics?.total_km_preinvoice ?? null
+    const preinvoiceVariance = preinvoiceKm !== null && kmTraveled !== null ? preinvoiceKm - kmTraveled : null
+
+    const tripNumber = row.trip_number ?? null
+    const clientName = row.clients?.trade_name ?? row.clients?.company_name ?? null
+    const folio = tripNumber !== null
+      ? `VJE-${String(tripNumber).padStart(6, '0')}`
+      : (row.folio ?? 'VJE-S/N')
+
+    return {
+      id: row.id,
+      folio,
+      tripNumber,
+      clientName,
+      origin: row.origin ?? '—',
+      destination: row.destination ?? '—',
+      departureDate: row.departure_date,
+
+      unitEconomicNumber: row.unit_assemblies?.economic_number ?? null,
+      truckPlates: row.unit_assemblies?.trucks?.plates ?? null,
+      operatorName: row.unit_assemblies?.employees?.full_name ?? null,
+      isFullAssembly: Boolean(row.unit_assemblies?.trailer2_id),
+
+      fuelLoadId: metrics?.fuel_load_id ?? fuelLoad?.id ?? null,
+
+      kmInitial,
+      kmFinal,
+      kmTraveled,
+
+      ticketFolio: fuelLoad?.ticket_folio ?? null,
+      litersEngine,
+      pricePerLiter,
+      totalCostEngine,
+
+      litersRealR1,
+      hoursR1: metrics?.hours_r1 ?? null,
+      litersRealR2,
+      hoursR2: metrics?.hours_r2 ?? null,
+
+      realYieldEngine,
+      litersTheoreticalEngine,
+      savingsExcessEngine,
+
+      totalDieselCostTrip,
+      totalSavingsExcess: savingsExcessEngine,
+
+      preinvoiceKm,
+      preinvoiceVariance,
+
+      status: row.status ?? 'scheduled',
+      observations: row.observations,
+      monitoredBy: row.monitored_by,
+    }
+  }
+
+  static fuelLoadHistoryToEntity(row: FuelLoadHistoryRow): FuelLoadHistoryRowEntity {
+    const tripNumber = row.trips?.trip_number ?? null
+    const clientName = row.trips?.clients?.trade_name ?? row.trips?.clients?.company_name ?? null
+    const folio = tripNumber !== null
+      ? `VJE-${String(tripNumber).padStart(6, '0')}`
+      : (row.trips?.folio ?? 'VJE-S/N')
+
+    return {
+      id: row.id,
+      tripId: row.trip_id,
+      folio,
+      tripNumber,
+      clientName,
+      unitEconomicNumber: row.trips?.unit_assemblies?.economic_number ?? null,
+      operatorName: row.trips?.unit_assemblies?.employees?.full_name ?? null,
+      loadDate: row.load_date,
+      ticketFolio: row.ticket_folio,
+      litersLoaded: row.liters_loaded,
+      pricePerLiter: row.price_per_liter,
+      totalCost: row.total_cost,
+      sourceType: row.source_type,
+      isFullTankFill: row.is_full_tank_fill,
     }
   }
 }
