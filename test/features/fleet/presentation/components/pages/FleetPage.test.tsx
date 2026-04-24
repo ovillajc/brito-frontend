@@ -15,7 +15,7 @@ describe('FleetPage', () => {
   })
 
   it('renders loading skeletons when isLoading is true', () => {
-    vi.mocked(useFleetSummary).mockReturnValue({ data: undefined, isLoading: true } as any)
+    vi.mocked(useFleetSummary).mockReturnValue({ data: undefined, isLoading: true } as unknown as ReturnType<typeof useFleetSummary>)
     
     const { container } = render(<FleetPage />)
     
@@ -32,7 +32,7 @@ describe('FleetPage', () => {
         activeAssembliesCount: 10
       },
       isLoading: false
-    } as any)
+    } as unknown as ReturnType<typeof useFleetSummary>)
 
     render(<FleetPage />)
 

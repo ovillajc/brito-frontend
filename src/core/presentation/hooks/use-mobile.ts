@@ -13,13 +13,15 @@ const MOBILE_BREAKPOINT = 768
  * Retorna true si el viewport es menor al breakpoint mobile.
  */
 export function useIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`).matches
+  })
 
   useEffect(() => {
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => setIsMobile(mql.matches)
+    const onChange = (event: MediaQueryListEvent) => setIsMobile(event.matches)
     mql.addEventListener('change', onChange)
-    setIsMobile(mql.matches)
     return () => mql.removeEventListener('change', onChange)
   }, [])
 

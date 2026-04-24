@@ -1,0 +1,4 @@
+- Wired real clients and unit assemblies to the TripWizard using clean architecture and server actions.
+- Created ClientUseCases using the existing SupabaseClientRepository in fleet.
+- Updated TripTablePage to fetch data directly via use cases.
+- TripWizard auto-populates operatorName when a unit is selected.

@@ -197,9 +197,9 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
             <Label htmlFor="clientId">Cliente Asignado</Label>
             <select id="clientId" className={SELECT_CLASS} disabled={isLoadingClients} {...register('clientId')}>
               <option value="">Selecciona un cliente (opcional)</option>
-              {clients?.map((cl: any) => (
+              {clients?.map((cl) => (
                 <option key={cl.id} value={cl.id}>
-                  {cl.tradeName || cl.companyName || cl.name}
+                  {cl.tradeName || cl.companyName || 'Sin nombre'}
                 </option>
               ))}
             </select>

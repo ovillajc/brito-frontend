@@ -8,16 +8,16 @@ export function useConnectionStatus() {
   const [status, setStatus] = useState<ConnectionStatus>('online')
 
   useEffect(() => {
-    // Initial check
-    if (typeof navigator !== 'undefined') {
-      setStatus(navigator.onLine ? 'online' : 'offline')
-    }
-
+    const updateFromNavigator = () => setStatus(navigator.onLine ? 'online' : 'offline')
     const handleOnline = () => setStatus('online')
     const handleOffline = () => setStatus('offline')
 
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
+
+    if (typeof navigator !== 'undefined') {
+      queueMicrotask(updateFromNavigator)
+    }
 
     // Optional: could add 'slow' detection logic here based on navigator.connection in the future
     

@@ -38,25 +38,18 @@ const STATUS_MAP: Record<vehicleStatus, { label: string; className: string }> = 
   out_service:  { label: 'Fuera de Servicio', className: 'bg-red-500/10 text-red-600 border-red-500/20' },
 }
 
-/**
- * Dialog de solo lectura con los detalles completos de un remolque.
- */
-export function TrailerDetailsDialog({ isOpen, onClose, trailer }: TrailerDetailsDialogProps) {
-  if (!trailer) return null
-
-  const statusConfig = STATUS_MAP[trailer.status]
-
-  const DetailItem = ({
-    icon: Icon,
-    label,
-    value,
-    className = '',
-  }: {
-    icon: React.ElementType
-    label: string
-    value: string | React.ReactNode
-    className?: string
-  }) => (
+function DetailItem({
+  icon: Icon,
+  label,
+  value,
+  className = '',
+}: {
+  icon: React.ElementType
+  label: string
+  value: string | React.ReactNode
+  className?: string
+}) {
+  return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
       <div className="flex items-center gap-1.5 text-stone-400 dark:text-zinc-500">
         <Icon className="size-3" />
@@ -67,8 +60,10 @@ export function TrailerDetailsDialog({ isOpen, onClose, trailer }: TrailerDetail
       </div>
     </div>
   )
+}
 
-  const SectionTitle = ({ title, icon: Icon }: { title: string; icon: React.ElementType }) => (
+function SectionTitle({ title, icon: Icon }: { title: string; icon: React.ElementType }) {
+  return (
     <div className="flex items-center gap-2.5 mb-5">
       <div className="size-8 rounded-lg bg-[#006d37]/8 dark:bg-[#1a5c3a]/20 flex items-center justify-center">
         <Icon className="size-4 text-[#006d37] dark:text-primary-container" />
@@ -76,6 +71,15 @@ export function TrailerDetailsDialog({ isOpen, onClose, trailer }: TrailerDetail
       <h3 className="text-xs font-bold text-stone-900 dark:text-zinc-100 uppercase tracking-widest">{title}</h3>
     </div>
   )
+}
+
+/**
+ * Dialog de solo lectura con los detalles completos de un remolque.
+ */
+export function TrailerDetailsDialog({ isOpen, onClose, trailer }: TrailerDetailsDialogProps) {
+  if (!trailer) return null
+
+  const statusConfig = STATUS_MAP[trailer.status]
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} size="lg" hideDefaultHeader>

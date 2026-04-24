@@ -11,6 +11,7 @@ import {
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
+import type { LoginFormInput } from '@/src/features/auth/domain/schemas/login.schema'
 
 /**
  * @fileoverview LoginForm.
@@ -33,11 +34,11 @@ export function LoginForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleLogin as any)} className="flex flex-col gap-6">
+      <form onSubmit={form.handleSubmit(handleLogin)} className="flex flex-col gap-6">
         
         {/* Email */}
-        <FormField
-          control={form.control as any}
+        <FormField<LoginFormInput, 'email'>
+          control={form.control}
           name="email"
           render={({ field }) => (
             <FormItem className="flex flex-col gap-2 space-y-0">
@@ -61,8 +62,8 @@ export function LoginForm() {
         />
 
         {/* Password */}
-        <FormField
-          control={form.control as any}
+        <FormField<LoginFormInput, 'password'>
+          control={form.control}
           name="password"
           render={({ field }) => (
             <FormItem className="flex flex-col gap-2 space-y-0">
