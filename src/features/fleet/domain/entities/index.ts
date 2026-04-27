@@ -6,23 +6,51 @@
 /**
  * Estado operativo de un vehículo o componente.
  */
-export type FleetStatus = 'available' | 'maintenance' | 'active' | 'inactive' | 'on_trip' | 'on_leave'
+export type vehicleStatus = 'available' | 'in_trip' | 'maintenance' | 'out_service'
 
 /**
- * Representa un Tractocamión.
+ * Estado operativo de un viaje.
  */
-export interface TractorEntity {
+export type TripStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+
+/**
+ * Representa un Tractocamión (Truck).
+ */
+export interface TruckEntity {
   id: string
+  economicNumber: string
   brand: string
   model: string
-  year?: number
+  year: number
   plates: string
-  vin: string // Número de serie
-  insurancePolicy?: string
-  insuranceExpiration?: Date
-  status: FleetStatus
-  lastMaintenance?: Date
-  odometer?: number
+  serialNumber: string
+  insurancePolicy: string
+  companyProfileId: string
+  status: vehicleStatus
+  createdAt: Date
+  updatedAt: Date
+  engine?: string
+  tireSize?: string
+  tankCapacity?: number
+  theoreticalYield?: number
+}
+
+/**
+ * Representa un Modelo de Remolque.
+ */
+export interface TrailerModelEntity {
+  id: string
+  name: string
+  brand?: string | null
+  provider?: string | null
+  capacityKg?: number | null
+  size?: string | null
+  cargoType?: string | null
+  acquisitionYear?: number | null
+  categoryId?: string | null
+  description?: string | null
+  createdAt: Date
+  updatedAt: Date
 }
 
 /**
@@ -30,13 +58,24 @@ export interface TractorEntity {
  */
 export interface TrailerEntity {
   id: string
-  type: string // e.g. 'Dry Van', 'Reefer'
-  brand: string
-  model: string
-  plates: string
   economicNumber: string
-  insurancePolicy?: string
-  status: FleetStatus
+  plates?: string | null
+  serialNumber?: string | null
+  insurancePolicy?: string | null
+  companyProfileId?: string | null
+  trailerModelId?: string | null
+  status: vehicleStatus
+  createdAt: Date
+  updatedAt: Date
+  sizeFt?: number | null
+  continuousRefrigeratedYield?: number | null
+  continuousFrozenYield?: number | null
+  ssRefrigeratedYield?: number | null
+  ssFrozenYield?: number | null
+
+  // Join properties (opcionales)
+  trailerModelName?: string
+  companyProfileLegalName?: string
 }
 
 /**
@@ -56,7 +95,7 @@ export interface OperatorEntity {
   phone?: string
   bloodType?: string
   fastrackId?: string
-  status: FleetStatus
+  status: vehicleStatus
 }
 
 /**
@@ -64,8 +103,9 @@ export interface OperatorEntity {
  */
 export interface ClientEntity {
   id: string
-  name: string
-  type: 'internal' | 'external'
+  tradeName?: string | null
+  companyName?: string | null
+  taxRegime?: string | null
 }
 
 /**
@@ -82,14 +122,70 @@ export interface FleetDocument {
 
 /**
  * Representa la combinación (armado) de una unidad operativa.
+ * Refleja la tabla `unit_assemblies` de la base de datos.
  */
 export interface UnitAssemblyEntity {
   id: string
-  tractor: TractorEntity
-  trailer: TrailerEntity
-  operator: OperatorEntity
-  clientId?: string
-  clientName?: string
+  name: string
+  economicNumber: string
+  description?: string | null
+
+  // Foreign keys
+  employeeId: string
+  truckId: string
+  trailerId?: string | null
+  trailer2Id?: string | null
+  clientId?: string | null
+  clientPoolId?: string | null
+  companyProfileId?: string | null
+
   isActive: boolean
   createdAt: Date
+  updatedAt: Date
+
+  // Join properties for display (optional)
+  employeeName?: string
+  truckEconomicNumber?: string
+  trailerEconomicNumber?: string
+  trailer2EconomicNumber?: string
+  clientName?: string
+  companyProfileLegalName?: string
+}
+
+export type UnitAssemblyLogAction = 'CREATED' | 'UPDATED' | 'TRAILER_DETACHED'
+
+export interface UnitAssemblyLogEntity {
+  id: string
+  unitAssemblyId: string
+  employeeId?: string | null
+  truckId?: string | null
+  trailerId?: string | null
+  trailer2Id?: string | null
+  profileId?: string | null
+  action: UnitAssemblyLogAction
+  createdAt: Date
+
+  // Display fields for UI
+  employeeName?: string
+  truckEconomicNumber?: string
+  trailerEconomicNumber?: string
+  trailer2EconomicNumber?: string
+  profileName?: string
+}
+
+/**
+ * Representa un Pool de Clientes para agrupar unidades armadas.
+ */
+export interface ClientPoolEntity {
+  id: string
+  name: string
+  clientId: string
+  description?: string | null
+  createdAt: Date
+  updatedAt: Date
+  
+  // Datos opcionales del join
+  clientTradeName?: string
+  clientCompanyName?: string
+  unitsCount?: number
 }

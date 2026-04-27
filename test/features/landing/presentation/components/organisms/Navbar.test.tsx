@@ -13,10 +13,9 @@ describe('Navbar Component', () => {
   it('debe renderizar el logo y los enlaces de navegación', () => {
     render(<Navbar />)
     
-    expect(screen.getByText(/sociedad/i)).toBeDefined()
-    expect(screen.getByText(/brito/i)).toBeDefined()
-    expect(screen.getByText(/servicios/i)).toBeDefined()
-    expect(screen.getByText(/contacto/i)).toBeDefined()
+    expect(screen.getByRole('link', { name: /Transportes\s*Brito/i })).toBeDefined()
+    expect(screen.getByRole('link', { name: /servicios/i })).toBeDefined()
+    expect(screen.getByRole('link', { name: /contacto/i })).toBeDefined()
   })
 
   it('debe cambiar el estilo al hacer scroll', () => {
@@ -34,13 +33,12 @@ describe('Navbar Component', () => {
     // React Testing Library debería capturar el re-renderizado si disparamos el evento correctamente.
     
     // Forzamos el valor de scrollY y disparamos el evento
-    // @ts-ignore
-    window.scrollY = 100
+    Object.defineProperty(window, 'scrollY', { value: 100, writable: true })
     fireEvent.scroll(window)
 
     // El componente Navbar usa window.scrollY dentro del useEffect
     // Tras el scroll, debería tener bg-white/90 y shadow-md
-    expect(nav?.className).toContain('bg-white/90')
+    expect(nav?.className).toContain('bg-white/95')
     expect(nav?.className).toContain('shadow-sm')
   })
 

@@ -5,61 +5,68 @@
 
 import type { Either, Failure } from '@/src/core/domain/either'
 import type { 
-  TractorEntity, 
+  TruckEntity, 
   TrailerEntity, 
   OperatorEntity, 
   UnitAssemblyEntity,
   ClientEntity,
-  FleetDocument 
+  FleetDocument,
+  vehicleStatus
 } from '../../domain/entities'
 import type { IFleetRepository } from '../../domain/repositories/fleet-repository'
 
 /**
  * Datos simulados persistentes en memoria durante la sesión.
  */
-const MOCK_TRACTORS: TractorEntity[] = [
+const MOCK_TRUCKS: TruckEntity[] = [
   {
     id: 't1',
+    economicNumber: 'ECO-001',
     brand: 'Kenworth',
     model: 'T680',
     year: 2023,
     plates: 'ABC-123',
-    vin: 'KW123456789',
-    status: 'active',
-    odometer: 150000,
+    serialNumber: 'KW123456789',
+    status: 'in_trip',
     insurancePolicy: 'POLICY-999',
-    insuranceExpiration: new Date('2025-12-31')
+    companyProfileId: 'cp1',
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
     id: 't2',
+    economicNumber: 'ECO-002',
     brand: 'Freightliner',
     model: 'Cascadia',
     year: 2022,
     plates: 'XYZ-789',
-    vin: 'FL987654321',
+    serialNumber: 'FL987654321',
     status: 'available',
-    odometer: 210000,
+    companyProfileId: 'cp1',
+    insurancePolicy: 'POLICY-888',
+    createdAt: new Date(),
+    updatedAt: new Date()
   }
 ]
 
 const MOCK_TRAILERS: TrailerEntity[] = [
   {
     id: 'tr1',
-    type: 'Dry Van',
-    brand: 'Utility',
-    model: '4000D',
-    plates: 'TRL-001',
     economicNumber: 'E-101',
-    status: 'active'
+    plates: 'TRL-001',
+    status: 'available',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    trailerModelName: 'Dry Van',
   },
   {
     id: 'tr2',
-    type: 'Reefer',
-    brand: 'Great Dane',
-    model: 'Everest',
-    plates: 'TRL-002',
     economicNumber: 'E-102',
-    status: 'available'
+    plates: 'TRL-002',
+    status: 'available',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    trailerModelName: 'Reefer',
   }
 ]
 
@@ -71,7 +78,7 @@ const MOCK_OPERATORS: OperatorEntity[] = [
     licenseNumber: 'LIC-111',
     licenseType: 'B',
     licenseExpiration: new Date('2026-05-15'),
-    status: 'active',
+    status: 'in_trip',
     phone: '555-0101'
   },
   {
@@ -87,10 +94,10 @@ const MOCK_OPERATORS: OperatorEntity[] = [
 ]
 
 const MOCK_CLIENTS: ClientEntity[] = [
-  { id: 'c1', name: 'Brito Transportes', type: 'internal' },
-  { id: 'c2', name: 'Brito Barita', type: 'internal' },
-  { id: 'c3', name: 'Cliente Externo A', type: 'external' },
-  { id: 'c4', name: 'Cliente Externo B', type: 'external' },
+  { id: 'c1', tradeName: 'Brito Transportes', companyName: null, taxRegime: null },
+  { id: 'c2', tradeName: 'Brito Barita', companyName: null, taxRegime: null },
+  { id: 'c3', tradeName: 'Cliente Externo A', companyName: null, taxRegime: null },
+  { id: 'c4', tradeName: 'Cliente Externo B', companyName: null, taxRegime: null },
 ]
 
 const ASSEMBLED_UNITS: UnitAssemblyEntity[] = []
@@ -100,31 +107,35 @@ export class MockFleetRepository implements IFleetRepository {
     return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
-  async getTractors(): Promise<Either<Failure, TractorEntity[]>> {
+  async getTractors(): Promise<Either<Failure, TruckEntity[]>> {
     await this.sleep()
-    return { ok: true, data: MOCK_TRACTORS }
+    return { ok: true, data: MOCK_TRUCKS }
   }
 
-  async getTractorById(id: string): Promise<Either<Failure, TractorEntity>> {
+  async getTractorById(id: string): Promise<Either<Failure, TruckEntity>> {
     await this.sleep()
-    const tractor = MOCK_TRACTORS.find(t => t.id === id)
-    return tractor 
-      ? { ok: true, data: tractor }
+    const truck = MOCK_TRUCKS.find(t => t.id === id)
+    return truck 
+      ? { ok: true, data: truck }
       : { ok: false, error: { code: 'NOT_FOUND', message: 'Tractor no encontrado' } }
   }
 
-  async saveTractor(tractor: Partial<TractorEntity>): Promise<Either<Failure, TractorEntity>> {
-    const newTractor = {
+  async saveTractor(truck: Partial<TruckEntity>): Promise<Either<Failure, TruckEntity>> {
+    const newTruck = {
       id: Math.random().toString(36).substr(2, 9),
-      brand: tractor.brand || 'Desconocida',
-      model: tractor.model || 'Desconocido',
-      plates: tractor.plates || '---',
-      vin: tractor.vin || '---',
-      status: 'available' as const,
-      ...tractor
-    } as TractorEntity
-    MOCK_TRACTORS.push(newTractor)
-    return { ok: true, data: newTractor }
+      economicNumber: truck.economicNumber || '---',
+      brand: truck.brand || 'Desconocida',
+      model: truck.model || 'Desconocido',
+      plates: truck.plates || '---',
+      serialNumber: truck.serialNumber || '---',
+      status: 'available' as vehicleStatus,
+      companyProfileId: 'cp1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...truck
+    } as TruckEntity
+    MOCK_TRUCKS.push(newTruck)
+    return { ok: true, data: newTruck }
   }
 
   async getTrailers(): Promise<Either<Failure, TrailerEntity[]>> {
@@ -143,12 +154,11 @@ export class MockFleetRepository implements IFleetRepository {
   async saveTrailer(trailer: Partial<TrailerEntity>): Promise<Either<Failure, TrailerEntity>> {
     const newTrailer = {
       id: Math.random().toString(36).substr(2, 9),
-      type: trailer.type || 'Caja Seca',
-      brand: trailer.brand || 'Desconocida',
-      model: trailer.model || 'Desconocido',
       plates: trailer.plates || '---',
       economicNumber: trailer.economicNumber || '---',
       status: 'available' as const,
+      createdAt: new Date(),
+      updatedAt: new Date(),
       ...trailer
     } as TrailerEntity
     MOCK_TRAILERS.push(newTrailer)
@@ -174,6 +184,7 @@ export class MockFleetRepository implements IFleetRepository {
       firstName: operator.firstName || 'Sin nombre',
       lastName: operator.lastName || 'Sin apellido',
       licenseNumber: operator.licenseNumber || '---',
+      licenseType: operator.licenseType || 'B',
       licenseExpiration: operator.licenseExpiration || new Date(),
       status: 'available' as const,
       ...operator
@@ -209,25 +220,31 @@ export class MockFleetRepository implements IFleetRepository {
     return { ok: true, data: ASSEMBLED_UNITS }
   }
 
-  async assembleUnit(tractorId: string, trailerId: string, operatorId: string, clientId?: string): Promise<Either<Failure, UnitAssemblyEntity>> {
-    const tractor = MOCK_TRACTORS.find(t => t.id === tractorId)
+  async assembleUnit(truckId: string, trailerId: string, operatorId: string, clientId?: string): Promise<Either<Failure, UnitAssemblyEntity>> {
+    const truck = MOCK_TRUCKS.find(t => t.id === truckId)
     const trailer = MOCK_TRAILERS.find(t => t.id === trailerId)
     const operator = MOCK_OPERATORS.find(o => o.id === operatorId)
     const client = MOCK_CLIENTS.find(c => c.id === clientId)
 
-    if (!tractor || !trailer || !operator) {
+    if (!truck || !trailer || !operator) {
       return { ok: false, error: { code: 'NOT_FOUND', message: 'Uno de los componentes no existe' } }
     }
 
     const assembly: UnitAssemblyEntity = {
       id: Math.random().toString(36).substr(2, 9),
-      tractor,
-      trailer,
-      operator,
-      clientId: client?.id,
-      clientName: client?.name,
+      name: `Unidad ${truck.economicNumber}`,
+      economicNumber: truck.economicNumber,
+      employeeId: operator.id,
+      truckId: truck.id,
+      trailerId: trailer.id,
+      clientId: client?.id ?? null,
       isActive: true,
-      createdAt: new Date()
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      employeeName: `${operator.firstName} ${operator.lastName}`,
+      truckEconomicNumber: truck.economicNumber,
+      trailerEconomicNumber: trailer.economicNumber,
+      clientName: client?.tradeName ?? client?.companyName ?? undefined,
     }
 
     ASSEMBLED_UNITS.push(assembly)

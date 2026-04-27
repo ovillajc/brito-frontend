@@ -15,29 +15,27 @@ interface EmployeeDetailsDialogProps {
   employee: EmployeeEntity | null
 }
 
-export function EmployeeDetailsDialog({ isOpen, onClose, employee }: EmployeeDetailsDialogProps) {
-  if (!employee) return null
+function formatDate(date: Date | null | undefined) {
+  if (!date) return 'N/A'
+  return new Intl.DateTimeFormat('es-MX', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(new Date(date))
+}
 
-  const formatDate = (date: Date | null | undefined) => {
-    if (!date) return 'N/A'
-    return new Intl.DateTimeFormat('es-MX', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    }).format(new Date(date))
-  }
-
-  const DetailItem = ({
-    icon: Icon,
-    label,
-    value,
-    className = '',
-  }: {
-    icon: React.ElementType
-    label: string
-    value: string | React.ReactNode
-    className?: string
-  }) => (
+function DetailItem({
+  icon: Icon,
+  label,
+  value,
+  className = '',
+}: {
+  icon: React.ElementType
+  label: string
+  value: string | React.ReactNode
+  className?: string
+}) {
+  return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
       <div className="flex items-center gap-1.5 text-stone-400 dark:text-zinc-500">
         <Icon className="size-3" />
@@ -48,8 +46,10 @@ export function EmployeeDetailsDialog({ isOpen, onClose, employee }: EmployeeDet
       </div>
     </div>
   )
+}
 
-  const SectionTitle = ({ title, icon: Icon }: { title: string; icon: React.ElementType }) => (
+function SectionTitle({ title, icon: Icon }: { title: string; icon: React.ElementType }) {
+  return (
     <div className="flex items-center gap-2.5 mb-5">
       <div className="size-8 rounded-lg bg-[#006d37]/8 dark:bg-[#1a5c3a]/20 flex items-center justify-center">
         <Icon className="size-4 text-[#006d37] dark:text-primary-container" />
@@ -57,27 +57,37 @@ export function EmployeeDetailsDialog({ isOpen, onClose, employee }: EmployeeDet
       <h3 className="text-xs font-bold text-stone-900 dark:text-zinc-100 uppercase tracking-widest">{title}</h3>
     </div>
   )
+}
 
-  const DocItem = ({ name, status }: { name: string, status: 'complete' | 'missing' | 'expired' }) => (
+function DocItem({ name, status }: { name: string; status: 'complete' | 'missing' | 'expired' }) {
+  return (
     <div className="flex items-center justify-between p-4 rounded-xl border border-stone-100 dark:border-zinc-800 hover:bg-stone-50 dark:hover:bg-zinc-800/50 transition-colors group">
       <div className="flex items-center gap-4">
-        <div className={cn(
-          "size-10 rounded-full flex items-center justify-center",
-          status === 'complete' ? "bg-green-50 dark:bg-green-950/20 text-green-600" : 
-          status === 'expired' ? "bg-orange-50 dark:bg-orange-950/20 text-orange-600" :
-          "bg-stone-50 dark:bg-zinc-900 text-stone-400"
-        )}>
+        <div
+          className={cn(
+            'size-10 rounded-full flex items-center justify-center',
+            status === 'complete'
+              ? 'bg-green-50 dark:bg-green-950/20 text-green-600'
+              : status === 'expired'
+                ? 'bg-orange-50 dark:bg-orange-950/20 text-orange-600'
+                : 'bg-stone-50 dark:bg-zinc-900 text-stone-400'
+          )}
+        >
           <FileText className="size-5" />
         </div>
         <div>
           <p className="text-sm font-bold text-stone-900 dark:text-zinc-100">{name}</p>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className={cn(
-              "text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded",
-              status === 'complete' ? "text-green-600 bg-green-50 dark:bg-green-950/20" : 
-              status === 'expired' ? "text-orange-600 bg-orange-50 dark:bg-orange-950/20" :
-              "text-stone-400 bg-stone-50 dark:bg-zinc-900"
-            )}>
+            <span
+              className={cn(
+                'text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded',
+                status === 'complete'
+                  ? 'text-green-600 bg-green-50 dark:bg-green-950/20'
+                  : status === 'expired'
+                    ? 'text-orange-600 bg-orange-50 dark:bg-orange-950/20'
+                    : 'text-stone-400 bg-stone-50 dark:bg-zinc-900'
+              )}
+            >
               {status === 'complete' ? 'Completo' : status === 'expired' ? 'Vencido' : 'Pendiente'}
             </span>
           </div>
@@ -93,6 +103,10 @@ export function EmployeeDetailsDialog({ isOpen, onClose, employee }: EmployeeDet
       </div>
     </div>
   )
+}
+
+export function EmployeeDetailsDialog({ isOpen, onClose, employee }: EmployeeDetailsDialogProps) {
+  if (!employee) return null
 
   return (
     <Dialog

@@ -14,7 +14,7 @@ describe('OperatorsPage', () => {
   })
 
   it('renders loading state correctly', () => {
-    vi.mocked(useOperators).mockReturnValue({ data: undefined, isLoading: true } as any)
+    vi.mocked(useOperators).mockReturnValue({ data: undefined, isLoading: true } as unknown as ReturnType<typeof useOperators>)
     
     const { container } = render(<OperatorsPage />)
     
@@ -36,7 +36,7 @@ describe('OperatorsPage', () => {
         }
       ],
       isLoading: false
-    } as any)
+    } as unknown as ReturnType<typeof useOperators>)
 
     render(<OperatorsPage />)
     

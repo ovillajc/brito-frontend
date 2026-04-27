@@ -1,11 +1,15 @@
 import React from 'react'
-import { Truck, Search, MoreVertical } from 'lucide-react'
+import { Truck } from 'lucide-react'
 
-export function UnitCard({ assembly }: { assembly: any }) {
+type UnitCardAssembly = {
+  tractor: { status: string; plates: string }
+  operator: { firstName: string }
+}
+
+export function UnitCard({ assembly }: { assembly: UnitCardAssembly }) {
   // Simulación de progreso basado en estado
   const progressValue = assembly.tractor.status === 'active' ? 75 : assembly.tractor.status === 'available' ? 100 : 0
   const colorClass = assembly.tractor.status === 'active' ? 'bg-[#e07020]' : assembly.tractor.status === 'available' ? 'bg-[#1a5c3a]' : 'bg-stone-300'
-  const textClass = assembly.tractor.status === 'active' ? 'text-[#e07020]' : assembly.tractor.status === 'available' ? 'text-[#1a5c3a]' : 'text-stone-500'
 
   return (
     <div className="bg-white border border-stone-200 p-5 rounded-[16px] shadow-sm hover:shadow-md hover:border-stone-300 transition-all flex flex-col group cursor-pointer">

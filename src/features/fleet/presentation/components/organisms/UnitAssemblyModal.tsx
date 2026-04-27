@@ -13,7 +13,7 @@ import {
   useClients 
 } from '@/src/features/fleet/presentation/hooks/use-fleet'
 import type { 
-  TractorEntity, 
+  TruckEntity, 
   TrailerEntity, 
   OperatorEntity, 
   ClientEntity 
@@ -52,13 +52,15 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
   const [currentStep, setCurrentStep] = useState(1)
   
   // Store
-  const { 
-    selectedTractor, setSelectedTractor,
-    selectedTrailer, setSelectedTrailer,
-    selectedOperator, setSelectedOperator,
-    selectedClient, setSelectedClient,
-    resetSelection
-  } = useFleetStore()
+  const selectedTruck = useFleetStore((state) => state.selectedTruck)
+  const setSelectedTruck = useFleetStore((state) => state.setSelectedTruck)
+  const selectedTrailer = useFleetStore((state) => state.selectedTrailer)
+  const setSelectedTrailer = useFleetStore((state) => state.setSelectedTrailer)
+  const selectedOperator = useFleetStore((state) => state.selectedOperator)
+  const setSelectedOperator = useFleetStore((state) => state.setSelectedOperator)
+  const selectedClient = useFleetStore((state) => state.selectedClient)
+  const setSelectedClient = useFleetStore((state) => state.setSelectedClient)
+  const resetSelection = useFleetStore((state) => state.resetSelection)
 
   // Queries
   const { data: tractors, isLoading: loadingTractors } = useTractors()
@@ -70,7 +72,7 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1))
 
   const isStepComplete = (step: number) => {
-    if (step === 1) return !!selectedTractor
+    if (step === 1) return !!selectedTruck
     if (step === 2) return !!selectedTrailer
     if (step === 3) return !!selectedOperator
     if (step === 4) return !!selectedClient
@@ -133,7 +135,7 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
           {currentStep === 1 && (
             <SelectionList 
               items={tractors?.filter(t => t.status === 'available') || []}
-              renderItem={(item: TractorEntity) => (
+              renderItem={(item: TruckEntity) => (
                 <div className="flex items-center justify-between w-full">
                   <div className="flex flex-col">
                     <span className="font-semibold text-sm">{item.brand} {item.model}</span>
@@ -142,8 +144,8 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
                   <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Disponible</Badge>
                 </div>
               )}
-              selectedId={selectedTractor?.id}
-              onSelect={setSelectedTractor}
+              selectedId={selectedTruck?.id ?? null}
+              onSelect={setSelectedTruck}
               isLoading={loadingTractors}
             />
           )}
@@ -154,13 +156,13 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
               renderItem={(item: TrailerEntity) => (
                 <div className="flex items-center justify-between w-full">
                   <div className="flex flex-col">
-                    <span className="font-semibold text-sm">{item.type} - {item.economicNumber}</span>
-                    <span className="text-[10px] text-on-surface-variant">{item.brand} {item.model}</span>
+                    <span className="font-semibold text-sm">{item.trailerModelName ?? 'Desconocido'} - {item.economicNumber}</span>
+                    <span className="text-[10px] text-on-surface-variant">{item.plates ?? '---'}</span>
                   </div>
                   <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Disponible</Badge>
                 </div>
               )}
-              selectedId={selectedTrailer?.id}
+              selectedId={selectedTrailer?.id ?? null}
               onSelect={setSelectedTrailer}
               isLoading={loadingTrailers}
             />
@@ -168,7 +170,7 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
 
           {currentStep === 3 && (
             <SelectionList 
-              items={operators?.filter(o => o.status === 'available') || []}
+              items={operators || []}
               renderItem={(item: OperatorEntity) => (
                 <div className="flex items-center justify-between w-full">
                   <div className="flex flex-col">
@@ -178,7 +180,7 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
                   <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Disponible</Badge>
                 </div>
               )}
-              selectedId={selectedOperator?.id}
+              selectedId={selectedOperator?.id ?? null}
               onSelect={setSelectedOperator}
               isLoading={loadingOperators}
             />
@@ -190,12 +192,11 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
               renderItem={(item: ClientEntity) => (
                 <div className="flex items-center justify-between w-full text-sm">
                   <div className="flex flex-col">
-                    <span className="font-semibold">{item.name}</span>
-                    <span className="text-[10px] text-on-surface-variant capitalize">{item.type === 'internal' ? 'Intercompañía' : 'Externo'}</span>
+                    <span className="font-semibold">{item.tradeName ?? item.companyName ?? 'Sin nombre'}</span>
                   </div>
                 </div>
               )}
-              selectedId={selectedClient?.id}
+              selectedId={selectedClient?.id ?? null}
               onSelect={setSelectedClient}
               isLoading={loadingClients}
             />
@@ -204,10 +205,30 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
           {currentStep === 5 && (
             <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2">
                <div className="grid grid-cols-2 gap-3">
-                  <SummaryItem label="Tracto" value={`${selectedTractor?.brand} ${selectedTractor?.model}`} sub={selectedTractor?.plates} icon={Truck} />
-                  <SummaryItem label="Remolque" value={`${selectedTrailer?.type}`} sub={`Eco: ${selectedTrailer?.economicNumber}`} icon={Package} />
-                  <SummaryItem label="Operador" value={`${selectedOperator?.firstName} ${selectedOperator?.lastName}`} sub={`Lic: ${selectedOperator?.licenseNumber}`} icon={Users} />
-                  <SummaryItem label="Cliente" value={selectedClient?.name || ''} sub={selectedClient?.type === 'internal' ? 'Interno' : 'Externo'} icon={Building2} />
+                  <SummaryItem
+                    label="Tracto"
+                    value={selectedTruck ? `${selectedTruck.brand} ${selectedTruck.model}` : '—'}
+                    sub={selectedTruck?.plates ?? '—'}
+                    icon={Truck}
+                  />
+                  <SummaryItem
+                    label="Remolque"
+                    value={selectedTrailer?.trailerModelName ?? '—'}
+                    sub={`Eco: ${selectedTrailer?.economicNumber ?? '—'}`}
+                    icon={Package}
+                  />
+                  <SummaryItem
+                    label="Operador"
+                    value={selectedOperator ? `${selectedOperator.firstName} ${selectedOperator.lastName}` : '—'}
+                    sub={`Lic: ${selectedOperator?.licenseNumber ?? '—'}`}
+                    icon={Users}
+                  />
+                  <SummaryItem
+                    label="Cliente"
+                    value={selectedClient?.tradeName ?? selectedClient?.companyName ?? '—'}
+                    sub=""
+                    icon={Building2}
+                  />
                </div>
                <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex items-start gap-3">
                   <AlertCircle className="size-4 text-primary shrink-0 mt-0.5" />
@@ -256,7 +277,21 @@ export function UnitAssemblyModal({ isOpen, onClose }: UnitAssemblyModalProps) {
   )
 }
 
-function SelectionList({ items, renderItem, selectedId, onSelect, isLoading }: any) {
+type SelectionListProps<T extends { id: string }> = {
+  items: T[]
+  renderItem: (item: T) => React.ReactNode
+  selectedId: string | null
+  onSelect: (item: T) => void
+  isLoading: boolean
+}
+
+function SelectionList<T extends { id: string }>({
+  items,
+  renderItem,
+  selectedId,
+  onSelect,
+  isLoading,
+}: SelectionListProps<T>) {
   return (
     <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2">
       <div className="relative">
@@ -273,7 +308,7 @@ function SelectionList({ items, renderItem, selectedId, onSelect, isLoading }: a
             <div key={i} className="h-14 rounded-xl bg-surface-container animate-pulse" />
           ))
         ) : (
-          items.map((item: any) => (
+          items.map((item) => (
             <button
               key={item.id}
               onClick={() => onSelect(item)}
@@ -293,7 +328,17 @@ function SelectionList({ items, renderItem, selectedId, onSelect, isLoading }: a
   )
 }
 
-function SummaryItem({ label, value, sub, icon: Icon }: any) {
+function SummaryItem({
+  label,
+  value,
+  sub,
+  icon: Icon,
+}: {
+  label: string
+  value: string
+  sub: string
+  icon: React.ElementType
+}) {
   return (
     <div className="flex items-start gap-3 p-3 rounded-xl bg-surface-container-low border border-outline-variant/10">
       <div className="size-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant/20">

@@ -8,6 +8,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState, useRef, useEffect } from 'react'
 import {
   LayoutDashboard,
   Truck,
@@ -15,15 +16,20 @@ import {
   Users,
   FileText,
   Package,
+  Fuel,
   Settings,
   HelpCircle,
   Building,
   Briefcase,
+  LogOut,
+  User as UserIcon,
+  ChevronUp,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 
 import { useSidebar } from '@/src/core/presentation/context/SidebarContext'
+import { useLogout } from '@/src/features/auth/presentation/hooks/use-logout'
 
 // ─── Navigation Items ────────────────────────────────────────────────────────
 
@@ -38,6 +44,7 @@ const MAIN_MODULES: NavItem[] = [
   { label: 'Recursos Humanos', icon: Briefcase, href: '/hr' },
   { label: 'Flotilla', icon: Truck, href: '/fleet' },
   { label: 'Viajes', icon: Navigation, href: '/trips' },
+  { label: 'Combustible', icon: Fuel, href: '/fuel' },
   { label: 'Inventario', icon: Package, href: '/inventory' },
   { label: 'Directorio', icon: Users, href: '/directory' },
   { label: 'Facturación', icon: FileText, href: '/billing' },
@@ -63,6 +70,19 @@ const SYSTEM_ITEMS: NavItem[] = [
 export function AppSidebar() {
   const pathname = usePathname()
   const { isCollapsed, toggleCollapsed } = useSidebar()
+  const { handleLogout } = useLogout()
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   return (
     <aside
@@ -112,7 +132,7 @@ export function AppSidebar() {
                   className={cn(
                     'flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-medium transition-all',
                     isActive
-                      ? 'bg-[#1a5c3a]/5 dark:bg-[#2ecc71]/10 text-[#1a5c3a] dark:text-[#2ecc71] font-bold'
+                      ? 'bg-[#1a5c3a]/5 dark:bg-primary-container/10 text-[#1a5c3a] dark:text-primary-container font-bold'
                       : 'text-stone-500 dark:text-zinc-400 hover:bg-stone-50 dark:hover:bg-zinc-800 hover:text-stone-900 dark:hover:text-zinc-100',
                     isCollapsed && 'justify-center px-2',
                   )}
@@ -194,22 +214,61 @@ export function AppSidebar() {
       </nav>
 
       {/* Footer / User */}
-      <div className="border-t border-stone-100 dark:border-zinc-800 p-3">
+      <div className="border-t border-stone-100 dark:border-zinc-800 p-3 relative" ref={menuRef}>
+        
+        {/* Profile Dropdown Menu */}
+        {isProfileMenuOpen && (
+          <div className={cn(
+            "absolute z-50 rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl overflow-hidden py-1 animate-in fade-in duration-200",
+            isCollapsed 
+              ? "left-full ml-4 bottom-0 w-48 slide-in-from-left-2" 
+              : "bottom-full left-3 right-3 mb-2 slide-in-from-bottom-2"
+          )}>
+            <Link 
+              href="/profile" 
+              className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-stone-700 dark:text-zinc-300 hover:bg-stone-50 dark:hover:bg-zinc-800 hover:text-stone-900 dark:hover:text-zinc-100 transition-colors"
+              onClick={() => setIsProfileMenuOpen(false)}
+            >
+              <UserIcon className="size-4" />
+              <span>Mi Perfil</span>
+            </Link>
+            <button 
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+              onClick={() => {
+                setIsProfileMenuOpen(false)
+                handleLogout()
+              }}
+            >
+              <LogOut className="size-4" />
+              <span>Cerrar Sesión</span>
+            </button>
+          </div>
+        )}
 
-        {/* User */}
-        <div className={cn('flex items-center gap-3 rounded-xl p-2 hover:bg-stone-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer border border-transparent hover:border-stone-100 dark:hover:border-zinc-700', isCollapsed && 'justify-center')}>
+        {/* User Trigger */}
+        <div 
+          onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+          className={cn(
+            'flex items-center gap-3 rounded-xl p-2 hover:bg-stone-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer border hover:border-stone-100 dark:hover:border-zinc-700 select-none', 
+            isCollapsed && 'justify-center',
+            isProfileMenuOpen ? 'bg-stone-50 dark:bg-zinc-800 border-stone-100 dark:border-zinc-700' : 'border-transparent'
+          )}
+        >
           <div className="flex items-center justify-center size-8 rounded-full bg-[#1a5c3a]/10 text-[#1a5c3a] text-xs font-bold shrink-0">
             TB
           </div>
           {!isCollapsed && (
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-[13px] font-bold text-stone-900 dark:text-zinc-100 truncate tracking-tight">
-                Transportes Brito
-              </span>
-              <span className="text-[11px] text-stone-500 dark:text-zinc-500 font-medium truncate">
-                Administrador
-              </span>
-            </div>
+            <>
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-[13px] font-bold text-stone-900 dark:text-zinc-100 truncate tracking-tight">
+                  Transportes Brito
+                </span>
+                <span className="text-[11px] text-stone-500 dark:text-zinc-500 font-medium truncate">
+                  Administrador
+                </span>
+              </div>
+              <ChevronUp className={cn("size-4 text-stone-400 dark:text-zinc-500 transition-transform duration-200", isProfileMenuOpen && "rotate-180")} />
+            </>
           )}
         </div>
       </div>
