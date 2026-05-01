@@ -156,15 +156,23 @@ export function FuelMetricsDetailsDialog({ isOpen, onClose, tripRow }: FuelMetri
               {/* Odómetro */}
               <section>
                 <SectionTitle title="Odómetro" icon={Gauge} />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <DetailItem icon={Gauge} label="KM Inicial" value={fmtInt(tripRow.kmInitial, 'km')} />
-                  <DetailItem icon={Gauge} label="KM Final" value={fmtInt(tripRow.kmFinal, 'km')} />
-                  <DetailItem icon={Gauge} label="KM Recorridos"
-                    value={tripRow.kmTraveled !== null
-                      ? <span className="text-base font-extrabold text-[#006d37] dark:text-primary-container">{fmtInt(tripRow.kmTraveled, 'km')}</span>
-                      : null
-                    }
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-4 bg-stone-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-stone-100 dark:border-zinc-700">
+                    <DetailItem icon={Gauge} label="KM Inicial" value={fmtInt(tripRow.kmInitial, 'km')} />
+                    <DetailItem icon={Calendar} label="Fecha y Hora (Inicial)" value={tripRow.kmInitialDate ? new Date(tripRow.kmInitialDate).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }) : null} />
+                  </div>
+                  <div className="flex flex-col gap-4 bg-stone-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-stone-100 dark:border-zinc-700">
+                    <DetailItem icon={Gauge} label="KM Final" value={fmtInt(tripRow.kmFinal, 'km')} />
+                    <DetailItem icon={Calendar} label="Fecha y Hora (Final)" value={tripRow.kmFinalDate ? new Date(tripRow.kmFinalDate).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }) : null} />
+                  </div>
+                  <div className="col-span-1 md:col-span-2 flex items-center justify-between p-4 bg-[#006d37]/10 border border-[#006d37]/20 rounded-xl">
+                    <DetailItem icon={Gauge} label="KM Recorridos Totales"
+                      value={tripRow.kmTraveled !== null
+                        ? <span className="text-xl font-extrabold text-[#006d37] dark:text-primary-container">{fmtInt(tripRow.kmTraveled, 'km')}</span>
+                        : null
+                      }
+                    />
+                  </div>
                 </div>
                 {tripRow.preinvoiceKm !== null && (
                   <div className="mt-4 flex items-center gap-3 p-3 rounded-xl bg-stone-50 dark:bg-zinc-800/50 border border-stone-100 dark:border-zinc-700">
@@ -216,24 +224,46 @@ export function FuelMetricsDetailsDialog({ isOpen, onClose, tripRow }: FuelMetri
               </section>
 
               {/* Remolques */}
-              {(tripRow.litersRealR1 !== null || tripRow.litersRealR2 !== null) && (
+              {(tripRow.litersRealR1 !== null || tripRow.r1StartDate || tripRow.hoursR1 !== null || tripRow.litersRealR2 !== null || tripRow.r2StartDate || tripRow.hoursR2 !== null) && (
                 <>
                   <Separator className="bg-stone-100 dark:bg-zinc-800" />
                   <section>
                     <SectionTitle title="Remolques" icon={Truck} />
                     <div className="grid grid-cols-2 gap-8">
-                      {tripRow.litersRealR1 !== null && (
-                        <div className="space-y-3">
-                          <p className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500">R1</p>
-                          <DetailItem icon={Fuel} label="Litros Reales R1" value={fmt(tripRow.litersRealR1, 'L')} />
-                          <DetailItem icon={BarChart2} label="Horas R1" value={tripRow.hoursR1 !== null ? `${tripRow.hoursR1} h` : null} />
+                      {(tripRow.litersRealR1 !== null || tripRow.r1StartDate || tripRow.hoursR1 !== null) && (
+                        <div className="space-y-4">
+                          <p className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 border-b border-stone-100 dark:border-zinc-800 pb-2">Remolque 1 (R1)</p>
+                          <div className="grid grid-cols-1 gap-4">
+                            <div className="grid grid-cols-2 gap-4 bg-stone-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-stone-100 dark:border-zinc-700">
+                              <DetailItem icon={Calendar} label="Encendido" value={tripRow.r1StartDate ? new Date(tripRow.r1StartDate).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : null} />
+                              <DetailItem icon={Calendar} label="Apagado" value={tripRow.r1EndDate ? new Date(tripRow.r1EndDate).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : null} />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <DetailItem icon={Fuel} label="Litros Reales R1" value={fmt(tripRow.litersRealR1, 'L')} />
+                              <div className="px-3 py-2 bg-[#006d37]/10 dark:bg-[#1a5c3a]/20 rounded-lg border border-[#006d37]/20 text-right">
+                                <span className="block text-[10px] font-bold uppercase tracking-widest text-[#006d37] dark:text-primary-container mb-1">Total Horas (Auto)</span>
+                                <span className="text-sm font-bold text-stone-900 dark:text-zinc-100">{tripRow.hoursR1 !== null ? `${tripRow.hoursR1} h` : '—'}</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )}
-                      {tripRow.litersRealR2 !== null && (
-                        <div className="space-y-3">
-                          <p className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500">R2</p>
-                          <DetailItem icon={Fuel} label="Litros Reales R2" value={fmt(tripRow.litersRealR2, 'L')} />
-                          <DetailItem icon={BarChart2} label="Horas R2" value={tripRow.hoursR2 !== null ? `${tripRow.hoursR2} h` : null} />
+                      {(tripRow.litersRealR2 !== null || tripRow.r2StartDate || tripRow.hoursR2 !== null) && (
+                        <div className="space-y-4">
+                          <p className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 border-b border-stone-100 dark:border-zinc-800 pb-2">Remolque 2 (R2)</p>
+                          <div className="grid grid-cols-1 gap-4">
+                            <div className="grid grid-cols-2 gap-4 bg-stone-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-stone-100 dark:border-zinc-700">
+                              <DetailItem icon={Calendar} label="Encendido" value={tripRow.r2StartDate ? new Date(tripRow.r2StartDate).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : null} />
+                              <DetailItem icon={Calendar} label="Apagado" value={tripRow.r2EndDate ? new Date(tripRow.r2EndDate).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : null} />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <DetailItem icon={Fuel} label="Litros Reales R2" value={fmt(tripRow.litersRealR2, 'L')} />
+                              <div className="px-3 py-2 bg-[#006d37]/10 dark:bg-[#1a5c3a]/20 rounded-lg border border-[#006d37]/20 text-right">
+                                <span className="block text-[10px] font-bold uppercase tracking-widest text-[#006d37] dark:text-primary-container mb-1">Total Horas (Auto)</span>
+                                <span className="text-sm font-bold text-stone-900 dark:text-zinc-100">{tripRow.hoursR2 !== null ? `${tripRow.hoursR2} h` : '—'}</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

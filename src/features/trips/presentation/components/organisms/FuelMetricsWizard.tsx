@@ -23,7 +23,6 @@ import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { ActionFeedback } from '@/src/core/presentation/components/molecules/ActionFeedback'
 import { Wizard, type WizardStep } from '@/src/core/presentation/components/organisms/wizard'
 import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
-import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import type { TripFuelRowEntity } from '@/src/features/trips/domain/entities/fuel-metrics-entity'
 import { useSaveFuelMetrics } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
@@ -32,16 +31,21 @@ import { toast } from 'sonner'
 // ── Schema Zod (Zod v4: usa `error` en lugar de `invalid_type_error`) ─────────
 
 const fuelMetricsSchema = z.object({
-  monitoredBy: z.string().min(1, 'El nombre del monitorista es obligatorio'),
   observations: z.string().optional(),
 
   kmInitial: z.number({ error: 'Ingresa el km inicial' }).min(0),
+  kmInitialDate: z.string().nullable().optional(),
   kmFinal: z.number({ error: 'Ingresa el km final' }).min(0),
+  kmFinalDate: z.string().nullable().optional(),
   totalKmPreinvoice: z.number().min(0).nullable().optional(),
 
   litersRealR1: z.number().min(0).optional(),
+  r1StartDate: z.string().nullable().optional(),
+  r1EndDate: z.string().nullable().optional(),
   hoursR1: z.number().min(0).optional(),
   litersRealR2: z.number().min(0).optional(),
+  r2StartDate: z.string().nullable().optional(),
+  r2EndDate: z.string().nullable().optional(),
   hoursR2: z.number().min(0).optional(),
 }).refine((d) => d.kmFinal >= d.kmInitial, {
   message: 'El km final no puede ser menor al km inicial',
@@ -103,25 +107,36 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
   } = useForm<FuelMetricsValues>({
     resolver: zodResolver(fuelMetricsSchema),
     defaultValues: {
-      monitoredBy: '', observations: '',
-      kmInitial: undefined, kmFinal: undefined, totalKmPreinvoice: null,
-      litersRealR1: 0, hoursR1: 0, litersRealR2: 0, hoursR2: 0,
+      observations: '',
+      kmInitial: undefined, kmInitialDate: undefined, kmFinal: undefined, kmFinalDate: undefined, totalKmPreinvoice: null,
+      litersRealR1: 0, hoursR1: 0, r1StartDate: undefined, r1EndDate: undefined,
+      litersRealR2: 0, hoursR2: 0, r2StartDate: undefined, r2EndDate: undefined,
     },
   })
+
+  const toLocalDatetime = (dateStr: string) => {
+    const d = new Date(dateStr)
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  }
 
   useEffect(() => {
     if (!isOpen) return
     if (tripRow) {
       reset({
-        monitoredBy: tripRow.monitoredBy ?? '',
         observations: tripRow.observations ?? '',
         kmInitial: tripRow.kmInitial ?? undefined,
+        kmInitialDate: tripRow.kmInitialDate ? toLocalDatetime(tripRow.kmInitialDate) : undefined,
         kmFinal: tripRow.kmFinal ?? undefined,
+        kmFinalDate: tripRow.kmFinalDate ? toLocalDatetime(tripRow.kmFinalDate) : undefined,
         totalKmPreinvoice: tripRow.preinvoiceKm ?? null,
         litersRealR1: tripRow.litersRealR1 ?? 0,
         hoursR1: tripRow.hoursR1 ?? 0,
+        r1StartDate: tripRow.r1StartDate ? toLocalDatetime(tripRow.r1StartDate) : undefined,
+        r1EndDate: tripRow.r1EndDate ? toLocalDatetime(tripRow.r1EndDate) : undefined,
         litersRealR2: tripRow.litersRealR2 ?? 0,
         hoursR2: tripRow.hoursR2 ?? 0,
+        r2StartDate: tripRow.r2StartDate ? toLocalDatetime(tripRow.r2StartDate) : undefined,
+        r2EndDate: tripRow.r2EndDate ? toLocalDatetime(tripRow.r2EndDate) : undefined,
       })
     } else {
       reset()
@@ -133,9 +148,25 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
   const kmF = watch('kmFinal')
   const kmTraveled = kmI != null && kmF != null && kmF >= kmI ? kmF - kmI : null
 
+  const r1Start = watch('r1StartDate')
+  const r1End = watch('r1EndDate')
+  let computedHoursR1 = 0
+  if (r1Start && r1End) {
+    const diff = new Date(r1End).getTime() - new Date(r1Start).getTime()
+    if (diff > 0) computedHoursR1 = Number((diff / (1000 * 60 * 60)).toFixed(2))
+  }
+
+  const r2Start = watch('r2StartDate')
+  const r2End = watch('r2EndDate')
+  let computedHoursR2 = 0
+  if (r2Start && r2End) {
+    const diff = new Date(r2End).getTime() - new Date(r2Start).getTime()
+    if (diff > 0) computedHoursR2 = Number((diff / (1000 * 60 * 60)).toFixed(2))
+  }
+
   const goNext = async () => {
     const fieldMap: Record<number, (keyof FuelMetricsValues)[]> = {
-      0: ['monitoredBy'],
+      0: [],
       1: ['kmInitial', 'kmFinal'],
     }
     const ok = await trigger(fieldMap[activeStep] ?? [])
@@ -152,13 +183,20 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
     try {
       const result = await saveFuelMetrics.mutateAsync({
         kmInitial: _data.kmInitial,
+        kmInitialDate: _data.kmInitialDate ? new Date(_data.kmInitialDate) : null,
         kmFinal: _data.kmFinal,
+        kmFinalDate: _data.kmFinalDate ? new Date(_data.kmFinalDate) : null,
         fuelLoadId: tripRow.fuelLoadId ?? null,
-        hoursR1: _data.hoursR1 ?? 0,
+        hoursR1: computedHoursR1,
+        r1StartDate: _data.r1StartDate ? new Date(_data.r1StartDate) : null,
+        r1EndDate: _data.r1EndDate ? new Date(_data.r1EndDate) : null,
         litersRealR1: _data.litersRealR1 ?? 0,
-        hoursR2: _data.hoursR2 ?? 0,
+        hoursR2: computedHoursR2,
+        r2StartDate: _data.r2StartDate ? new Date(_data.r2StartDate) : null,
+        r2EndDate: _data.r2EndDate ? new Date(_data.r2EndDate) : null,
         litersRealR2: _data.litersRealR2 ?? 0,
         totalKmPreinvoice: _data.totalKmPreinvoice ?? null,
+        observations: _data.observations?.trim() ? _data.observations.trim() : null,
       })
 
       if (!result.ok) {
@@ -200,11 +238,6 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
         </div>
       )}
       <div className="grid gap-2">
-        <Label htmlFor="monitoredBy">Monitorista en turno</Label>
-        <Input id="monitoredBy" placeholder="Nombre del monitorista" {...register('monitoredBy')} />
-        {err(errors.monitoredBy?.message)}
-      </div>
-      <div className="grid gap-2">
         <Label htmlFor="observations">Observaciones (opcional)</Label>
         <textarea
           id="observations" rows={3}
@@ -228,10 +261,22 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
           {err(errors.kmInitial?.message)}
         </div>
         <div className="grid gap-2">
+          <Label htmlFor="kmInitialDate">Fecha y Hora (Inicial)</Label>
+          <input id="kmInitialDate" type="datetime-local" className={inputClass}
+            {...register('kmInitialDate')} />
+          {err(errors.kmInitialDate?.message)}
+        </div>
+        <div className="grid gap-2">
           <Label htmlFor="kmFinal">KM Final</Label>
           <input id="kmFinal" type="number" step="1" min="0" placeholder="0" className={inputClass}
             {...register('kmFinal', { valueAsNumber: true })} />
           {err(errors.kmFinal?.message)}
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="kmFinalDate">Fecha y Hora (Final)</Label>
+          <input id="kmFinalDate" type="datetime-local" className={inputClass}
+            {...register('kmFinalDate')} />
+          {err(errors.kmFinalDate?.message)}
         </div>
       </div>
       {kmTraveled !== null && (
@@ -283,14 +328,26 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
         <p className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 mb-3">Remolque 1 (R1)</p>
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="hoursR1">Horas R1</Label>
-            <input id="hoursR1" type="number" step="0.5" min="0" placeholder="0" className={inputClass}
-              {...register('hoursR1', { valueAsNumber: true })} />
+            <Label htmlFor="r1StartDate">Encendido R1</Label>
+            <input id="r1StartDate" type="datetime-local" className={inputClass}
+              {...register('r1StartDate')} />
+            {err(errors.r1StartDate?.message)}
           </div>
           <div className="grid gap-2">
+            <Label htmlFor="r1EndDate">Apagado R1</Label>
+            <input id="r1EndDate" type="datetime-local" className={inputClass}
+              {...register('r1EndDate')} />
+            {err(errors.r1EndDate?.message)}
+          </div>
+           <div className="grid gap-2 col-span-2 md:col-span-1">
+            <Label>Total Horas R1 (Auto)</Label>
+            <input type="text" className={inputClass + ' bg-stone-100/50 dark:bg-zinc-800/50 cursor-not-allowed opacity-70'} value={computedHoursR1 > 0 ? `${computedHoursR1} h` : ''} disabled placeholder="0 h" />
+          </div>
+          <div className="grid gap-2 col-span-2 md:col-span-1">
             <Label htmlFor="litersRealR1">Litros Reales R1</Label>
             <input id="litersRealR1" type="number" step="0.01" min="0" placeholder="0.00" className={inputClass}
               {...register('litersRealR1', { valueAsNumber: true })} />
+            {err(errors.litersRealR1?.message)}
           </div>
         </div>
       </div>
@@ -299,14 +356,26 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
         <p className="text-[11px] text-stone-400 dark:text-zinc-500 mb-3">Solo aplica para unidades Full (2 remolques)</p>
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="hoursR2">Horas R2</Label>
-            <input id="hoursR2" type="number" step="0.5" min="0" placeholder="0" className={inputClass}
-              {...register('hoursR2', { valueAsNumber: true })} />
+            <Label htmlFor="r2StartDate">Encendido R2</Label>
+            <input id="r2StartDate" type="datetime-local" className={inputClass}
+              {...register('r2StartDate')} />
+            {err(errors.r2StartDate?.message)}
           </div>
           <div className="grid gap-2">
+            <Label htmlFor="r2EndDate">Apagado R2</Label>
+            <input id="r2EndDate" type="datetime-local" className={inputClass}
+              {...register('r2EndDate')} />
+            {err(errors.r2EndDate?.message)}
+          </div>
+          <div className="grid gap-2 col-span-2 md:col-span-1">
+            <Label>Total Horas R2 (Auto)</Label>
+            <input type="text" className={inputClass + ' bg-stone-100/50 dark:bg-zinc-800/50 cursor-not-allowed opacity-70'} value={computedHoursR2 > 0 ? `${computedHoursR2} h` : ''} disabled placeholder="0 h" />
+          </div>
+          <div className="grid gap-2 col-span-2 md:col-span-1">
             <Label htmlFor="litersRealR2">Litros Reales R2</Label>
             <input id="litersRealR2" type="number" step="0.01" min="0" placeholder="0.00" className={inputClass}
               {...register('litersRealR2', { valueAsNumber: true })} />
+            {err(errors.litersRealR2?.message)}
           </div>
         </div>
       </div>

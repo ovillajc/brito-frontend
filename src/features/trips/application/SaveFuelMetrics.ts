@@ -21,13 +21,20 @@ import type { FuelMetricsInputEntity } from '../domain/entities/fuel-metrics-ent
 
 export interface SaveFuelMetricsInput {
   kmInitial: number
+  kmInitialDate: Date | null
   kmFinal: number
+  kmFinalDate: Date | null
   fuelLoadId: string | null
   hoursR1: number
+  r1StartDate: Date | null
+  r1EndDate: Date | null
   litersRealR1: number
   hoursR2: number
+  r2StartDate: Date | null
+  r2EndDate: Date | null
   litersRealR2: number
   totalKmPreinvoice: number | null
+  observations?: string | null
 }
 
 export async function SaveFuelMetrics(
@@ -85,11 +92,17 @@ export async function SaveFuelMetrics(
     tripId,
     {
       kmInitial: data.kmInitial,
+      kmInitialDate: data.kmInitialDate,
       kmFinal: data.kmFinal,
+      kmFinalDate: data.kmFinalDate,
       fuelLoadId: data.fuelLoadId,
       hoursR1: data.hoursR1,
+      r1StartDate: data.r1StartDate,
+      r1EndDate: data.r1EndDate,
       litersRealR1: data.litersRealR1,
       hoursR2: data.hoursR2,
+      r2StartDate: data.r2StartDate,
+      r2EndDate: data.r2EndDate,
       litersRealR2: data.litersRealR2,
       totalKmPreinvoice: data.totalKmPreinvoice,
     },

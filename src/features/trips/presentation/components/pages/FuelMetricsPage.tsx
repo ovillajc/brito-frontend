@@ -76,7 +76,7 @@ export default function FuelMetricsPage() {
       {/* ── Header ────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-lg font-bold text-stone-900 dark:text-zinc-100">Base Combustible V3</h1>
+          <h1 className="text-lg font-bold text-stone-900 dark:text-zinc-100">Base Combustible</h1>
           <p className="text-sm text-stone-500 dark:text-zinc-500">Control de rendimientos y consumo por viaje</p>
         </div>
         <input

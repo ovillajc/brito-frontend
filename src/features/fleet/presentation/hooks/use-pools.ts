@@ -45,10 +45,12 @@ export function usePoolMutations() {
   const createPool = useMutation({
     mutationFn: (pool: Partial<ClientPoolEntity>) => createClientPoolAction(pool),
     onSuccess: (result) => {
-      if (result.ok) {
-        queryClient.invalidateQueries({ queryKey: ['fleet', 'pools'] })
-        toast.success('Pool creado correctamente')
+      if (!result.ok) {
+        toast.error(result.error.message)
+        return
       }
+      queryClient.invalidateQueries({ queryKey: ['fleet', 'pools'] })
+      toast.success('Pool creado correctamente')
     }
   })
 

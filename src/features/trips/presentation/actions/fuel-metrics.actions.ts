@@ -88,12 +88,15 @@ export async function getFuelMetricsRowsAction(): Promise<Either<Failure, TripFu
         'origin',
         'destination',
         'departure_date',
+        'initial_km',
+        'final_km',
+        'preinvoice_km',
         'status',
         'monitored_by',
         'observations',
         'clients(trade_name, company_name)',
         'unit_assemblies(economic_number, trailer2_id, trucks(plates, theoretical_yield), employees(full_name))',
-        'trip_fuel_metrics(km_initial, km_final, fuel_load_id, hours_r1, liters_real_r1, hours_r2, liters_real_r2, total_km_preinvoice)',
+        'trip_fuel_metrics(km_initial, km_initial_date, km_final, km_final_date, fuel_load_id, hours_r1, r1_start_date, r1_end_date, liters_real_r1, hours_r2, r2_start_date, r2_end_date, liters_real_r2, total_km_preinvoice)',
         'fuel_loads(id, ticket_folio, liters_loaded, price_per_liter, total_cost, created_at)',
       ].join(', '))
       .order('departure_date', { ascending: false })
@@ -162,6 +165,17 @@ export async function saveFuelMetricsAction(
   const result = await SaveFuelMetrics(repo, tripId, data, profileId)
 
   if (result.ok) {
+    const supabase = await createClient()
+    const observations =
+      data.observations === undefined
+        ? undefined
+        : (data.observations?.trim() ? data.observations.trim() : null)
+
+    const updatePayload: Record<string, unknown> = { monitored_by: profileId }
+    if (observations !== undefined) updatePayload.observations = observations
+
+    await supabase.from('trips').update(updatePayload).eq('id', tripId)
+
     revalidatePath(`/trips/fuel`)
     revalidatePath(`/trips/list`)
   }
