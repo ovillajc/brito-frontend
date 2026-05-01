@@ -70,10 +70,23 @@ const HISTORY_COLUMNS: CrudColumn<FuelLoadHistoryRowEntity>[] = [
     ),
   },
   {
-    header: 'Ticket',
+    header: 'Ticket / Tipo',
+    cell: (row) => (
+      <div className="flex flex-col gap-0.5">
+        <span className="text-sm font-semibold text-stone-800 dark:text-zinc-200">
+          {row.ticketFolio ?? '—'}
+        </span>
+        <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-600 dark:bg-zinc-800 dark:text-zinc-400 w-fit">
+          {row.vehicleType === 'TRUCK' ? 'Motor' : 'Termo'}
+        </span>
+      </div>
+    ),
+  },
+  {
+    header: 'Odómetro',
     cell: (row) => (
       <span className="text-sm text-stone-700 dark:text-zinc-200">
-        {row.ticketFolio ?? '—'}
+        {row.odometerAtLoad ? row.odometerAtLoad.toLocaleString('es-MX') : '—'}
       </span>
     ),
   },

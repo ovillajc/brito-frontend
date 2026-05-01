@@ -23,7 +23,7 @@ import {
 } from '../mappers/FuelMetricsMapper'
 
 export class SupabaseFuelMetricsRepository implements IFuelMetricsRepository {
-  // ── Métricas de combustible ──────────────────────────────────────────────
+  // ── Métricas de combustible (trip_fuel_metrics) ──────────────────────────
 
   async getByTripId(tripId: string): Promise<Either<Failure, FuelMetricsInputEntity | null>> {
     try {
@@ -60,15 +60,12 @@ export class SupabaseFuelMetricsRepository implements IFuelMetricsRepository {
         km_initial_date: data.kmInitialDate ? data.kmInitialDate.toISOString() : null,
         km_final: data.kmFinal ?? null,
         km_final_date: data.kmFinalDate ? data.kmFinalDate.toISOString() : null,
-        fuel_load_id: data.fuelLoadId ?? null,
         hours_r1: data.hoursR1 ?? 0,
         r1_start_date: data.r1StartDate ? data.r1StartDate.toISOString() : null,
         r1_end_date: data.r1EndDate ? data.r1EndDate.toISOString() : null,
-        liters_real_r1: data.litersRealR1 ?? 0,
         hours_r2: data.hoursR2 ?? 0,
         r2_start_date: data.r2StartDate ? data.r2StartDate.toISOString() : null,
         r2_end_date: data.r2EndDate ? data.r2EndDate.toISOString() : null,
-        liters_real_r2: data.litersRealR2 ?? 0,
         total_km_preinvoice: data.totalKmPreinvoice ?? null,
         created_by: createdBy,
         updated_at: new Date().toISOString(),
@@ -90,18 +87,20 @@ export class SupabaseFuelMetricsRepository implements IFuelMetricsRepository {
     }
   }
 
-  // ── Carga de diésel ──────────────────────────────────────────────────────
+  // ── Cargas de diésel (fuel_loads) ────────────────────────────────────────
 
-  async getFuelLoadByTripId(tripId: string): Promise<Either<Failure, FuelLoadEntity | null>> {
+  /**
+   * Obtiene TODAS las cargas de combustible de un viaje, ordenadas por fecha.
+   * Incluye cargas del motor (TRUCK) y de los termos (TRAILER).
+   */
+  async getFuelLoadsByTripId(tripId: string): Promise<Either<Failure, FuelLoadEntity[]>> {
     try {
       const supabase = await createClient()
       const { data, error } = await supabase
         .from('fuel_loads')
         .select('*')
         .eq('trip_id', tripId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+        .order('load_date', { ascending: true })
 
       if (error) {
         return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
@@ -109,10 +108,10 @@ export class SupabaseFuelMetricsRepository implements IFuelMetricsRepository {
 
       return {
         ok: true,
-        data: data ? FuelMetricsMapper.fuelLoadToDomain(data as FuelLoadRow) : null,
+        data: (data ?? []).map((row) => FuelMetricsMapper.fuelLoadToDomain(row as FuelLoadRow)),
       }
     } catch {
-      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al obtener carga de diésel' } }
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al obtener cargas de diésel' } }
     }
   }
 

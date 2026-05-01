@@ -18,7 +18,7 @@ import type {
  */
 export interface IFuelMetricsRepository {
   /**
-   * Obtiene los inputs de métricas de un viaje.
+   * Obtiene los inputs de métricas de un viaje (trip_fuel_metrics).
    * @param tripId - UUID del viaje
    */
   getByTripId(tripId: string): Promise<Either<Failure, FuelMetricsInputEntity | null>>
@@ -26,7 +26,7 @@ export interface IFuelMetricsRepository {
   /**
    * Crea o actualiza los inputs de métricas de un viaje.
    * @param tripId - UUID del viaje
-   * @param data - Inputs a guardar (km, litros, horas)
+   * @param data - Inputs a guardar (km, fechas, horas de termos)
    * @param createdBy - UUID del profile que realiza la operación
    */
   upsert(
@@ -36,16 +36,17 @@ export interface IFuelMetricsRepository {
   ): Promise<Either<Failure, FuelMetricsInputEntity>>
 
   /**
-   * Obtiene la carga de combustible principal de un viaje (tracto).
-   * Incluye los campos de remolques (liters_r1, hours_r1, etc.)
+   * Obtiene TODAS las cargas de combustible de un viaje (TRUCK + TRAILER).
+   * Las cargas se ordenan por load_date ASC.
    * @param tripId - UUID del viaje
    */
-  getFuelLoadByTripId(tripId: string): Promise<Either<Failure, FuelLoadEntity | null>>
+  getFuelLoadsByTripId(tripId: string): Promise<Either<Failure, FuelLoadEntity[]>>
 
   /**
-   * Registra una carga de diésel (acción del guardia/supervisor).
-   * @param data - Datos de la carga
-   * @param supervisedBy - UUID del profile del guardia
+   * Registra una nueva carga de diésel.
+   * Soporta cargas para el motor del tracto (TRUCK) y para el termo del remolque (TRAILER).
+   * @param data - Datos de la carga (vehicle_type, truckId o trailerId, litros, etc.)
+   * @param supervisedBy - UUID del profile del guardia/supervisor
    */
   registerFuelLoad(
     data: Omit<FuelLoadEntity, 'id' | 'createdAt'>,

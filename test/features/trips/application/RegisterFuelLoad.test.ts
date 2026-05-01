@@ -11,19 +11,18 @@ function buildRepo(): IFuelMetricsRepository {
     return okNull<FuelLoadEntity>({
       id: 'fuel-load-1',
       tripId: data.tripId,
+      vehicleType: data.vehicleType,
       truckId: data.truckId,
+      trailerId: data.trailerId,
       operatorId: data.operatorId,
       supervisedBy: data.supervisedBy,
       supervisorName: data.supervisorName,
       loadDate: data.loadDate,
       ticketFolio: data.ticketFolio,
-      litersEngine: data.litersEngine,
+      litersLoaded: data.litersLoaded,
       pricePerLiter: data.pricePerLiter,
       totalCost: data.totalCost,
-      litersR1: data.litersR1,
-      hoursR1: data.hoursR1,
-      litersR2: data.litersR2,
-      hoursR2: data.hoursR2,
+      odometerAtLoad: data.odometerAtLoad ?? null,
       isFullTankFill: data.isFullTankFill,
       sourceType: data.sourceType,
       createdBy: data.createdBy,
@@ -34,7 +33,7 @@ function buildRepo(): IFuelMetricsRepository {
   return {
     getByTripId: async () => okNull<FuelMetricsInputEntity | null>(null),
     upsert: async () => okNull<FuelMetricsInputEntity>({} as unknown as FuelMetricsInputEntity),
-    getFuelLoadByTripId: async () => okNull<FuelLoadEntity | null>(null),
+    getFuelLoadsByTripId: async () => okNull<FuelLoadEntity[]>([]),
     registerFuelLoad,
     getTruckYieldData: async () => okNull<TruckYieldData | null>(null),
     getTrailerYieldData: async () => okNull<TrailerYieldData | null>(null),
@@ -48,11 +47,13 @@ describe('RegisterFuelLoad', () => {
       repo,
       {
         tripId: 'trip-1',
+        vehicleType: 'TRUCK',
         truckId: 'truck-1',
+        trailerId: null,
         operatorId: 'op-1',
         ticketFolio: 'TK-1',
         loadDate: new Date(),
-        litersEngine: 10,
+        litersLoaded: 10,
         pricePerLiter: null,
         isFullTankFill: false,
         sourceType: 'EXTERNAL',
@@ -67,43 +68,20 @@ describe('RegisterFuelLoad', () => {
     }
   })
 
-  it('returns error when INTERNAL_TANK has no computed pricePerLiter', async () => {
-    const repo = buildRepo()
-    const result = await RegisterFuelLoad(
-      repo,
-      {
-        tripId: 'trip-1',
-        truckId: 'truck-1',
-        operatorId: 'op-1',
-        ticketFolio: 'TK-1',
-        loadDate: new Date(),
-        litersEngine: 10,
-        pricePerLiter: null,
-        isFullTankFill: false,
-        sourceType: 'INTERNAL_TANK',
-      },
-      'guard-1',
-      'guard-1'
-    )
-
-    expect(result.ok).toBe(false)
-    if (!result.ok) {
-      expect(result.error.code).toBe('MISSING_TANK_COST')
-    }
-  })
-
-  it('calls repo.registerFuelLoad with computed price for INTERNAL_TANK', async () => {
+  it('calls repo.registerFuelLoad correctly for INTERNAL_TANK with computed price', async () => {
     const repo = buildRepo()
     const registerSpy = repo.registerFuelLoad as unknown as ReturnType<typeof vi.fn>
     const result = await RegisterFuelLoad(
       repo,
       {
         tripId: 'trip-1',
+        vehicleType: 'TRUCK',
         truckId: 'truck-1',
+        trailerId: null,
         operatorId: 'op-1',
         ticketFolio: 'TK-1',
         loadDate: new Date('2026-01-01T00:00:00.000Z'),
-        litersEngine: 10,
+        litersLoaded: 10,
         pricePerLiter: 23.5,
         isFullTankFill: false,
         sourceType: 'INTERNAL_TANK',

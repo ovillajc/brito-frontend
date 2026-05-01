@@ -143,7 +143,7 @@ export function useRegisterFuelLoad() {
         toast.error(result.error.message)
         return
       }
-      toast.success(`Carga registrada: ${result.data.litersEngine} L — Folio: ${result.data.ticketFolio}`)
+      toast.success(`Carga registrada: ${result.data.litersLoaded} L — Folio: ${result.data.ticketFolio}`)
       // Invalidar métricas del viaje relacionado
       if (result.data.tripId) {
         queryClient.invalidateQueries({ queryKey: FUEL_METRICS_QUERY_KEYS.metrics(result.data.tripId) })

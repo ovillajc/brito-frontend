@@ -96,12 +96,10 @@ export async function getFuelMetricsRowsAction(): Promise<Either<Failure, TripFu
         'observations',
         'clients(trade_name, company_name)',
         'unit_assemblies(economic_number, trailer2_id, trucks(plates, theoretical_yield), employees(full_name))',
-        'trip_fuel_metrics(km_initial, km_initial_date, km_final, km_final_date, fuel_load_id, hours_r1, r1_start_date, r1_end_date, liters_real_r1, hours_r2, r2_start_date, r2_end_date, liters_real_r2, total_km_preinvoice)',
-        'fuel_loads(id, ticket_folio, liters_loaded, price_per_liter, total_cost, created_at)',
+        'trip_fuel_metrics(km_initial, km_initial_date, km_final, km_final_date, hours_r1, r1_start_date, r1_end_date, hours_r2, r2_start_date, r2_end_date, total_km_preinvoice)',
+        'fuel_loads(id, vehicle_type, trailer_id, ticket_folio, liters_loaded, price_per_liter, total_cost, odometer_at_load, created_at)',
       ].join(', '))
       .order('departure_date', { ascending: false })
-      .order('created_at', { foreignTable: 'fuel_loads', ascending: false })
-      .limit(1, { foreignTable: 'fuel_loads' })
       .limit(200)
 
     if (error) {
@@ -132,6 +130,8 @@ export async function getFuelLoadHistoryAction(
         'total_cost',
         'source_type',
         'is_full_tank_fill',
+        'vehicle_type',
+        'odometer_at_load',
         'trips(trip_number, folio, clients(trade_name, company_name), unit_assemblies(economic_number, employees(full_name)))',
       ].join(', '))
       .order('load_date', { ascending: false })
@@ -247,7 +247,7 @@ export async function registerFuelLoadAction(
       return { ok: false, error: { code: 'TANK_EMPTY', message: 'El tanque no tiene inventario suficiente para costear la carga' } }
     }
 
-    if (data.litersEngine > litersInTank) {
+    if (data.litersLoaded > litersInTank) {
       return { ok: false, error: { code: 'TANK_INSUFFICIENT', message: `Inventario insuficiente en tanque. Disponible: ${litersInTank.toFixed(2)} L` } }
     }
 
@@ -256,13 +256,13 @@ export async function registerFuelLoadAction(
       return { ok: false, error: { code: 'TANK_COST_INVALID', message: 'Costo promedio inválido para el tanque' } }
     }
 
-    const movementTotal = data.litersEngine * avgCostPerLiter
+    const movementTotal = data.litersLoaded * avgCostPerLiter
     const { data: movement, error: movementError } = await supabase
       .from('fuel_tank_movements')
       .insert({
         tank_id: activeTank,
         movement_type: 'OUT',
-        liters: data.litersEngine,
+        liters: data.litersLoaded,
         unit_cost: avgCostPerLiter,
         total_cost: movementTotal,
         movement_date: data.loadDate.toISOString(),
