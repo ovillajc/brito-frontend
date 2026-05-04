@@ -12,6 +12,10 @@ import { useFuelLoadHistory } from '@/src/features/trips/presentation/hooks/use-
 import type { FuelLoadHistoryRowEntity } from '@/src/features/trips/domain/entities/fuel-metrics-entity'
 
 import { FuelLoadWizard } from '@/src/features/trips/presentation/components/organisms/FuelLoadWizard'
+import { FuelLoadDetailsDialog } from '@/src/features/trips/presentation/components/organisms/FuelLoadDetailsDialog'
+import { useDeleteFuelLoad } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
+import { Fuel } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface FuelLoadPageProps {
   trips: TripWithRelations[]
@@ -31,121 +35,145 @@ function formatDateIso(value: string | null) {
   return value
 }
 
-const HISTORY_COLUMNS: CrudColumn<FuelLoadHistoryRowEntity>[] = [
-  {
-    header: 'Fecha',
-    cell: (row) => (
-      <span className="text-sm text-stone-700 dark:text-zinc-200">
-        {formatDateIso(row.loadDate)}
-      </span>
-    ),
-  },
-  {
-    header: 'Viaje',
-    cell: (row) => (
-      <span className="font-mono font-bold text-stone-900 dark:text-zinc-100">
-        {row.folio}
-      </span>
-    ),
-  },
-  {
-    header: 'Cliente',
-    cell: (row) => (
-      <span className="text-sm font-semibold text-stone-800 dark:text-zinc-200">
-        {row.clientName ?? '—'}
-      </span>
-    ),
-  },
-  {
-    header: 'Unidad / Operador',
-    cell: (row) => (
-      <div className="flex flex-col gap-0.5">
-        <span className="text-sm font-semibold text-stone-800 dark:text-zinc-200">
-          {row.unitEconomicNumber ?? '—'}
-        </span>
-        <span className="text-[11px] text-stone-400 dark:text-zinc-500">
-          {row.operatorName ?? '—'}
-        </span>
-      </div>
-    ),
-  },
-  {
-    header: 'Ticket / Tipo',
-    cell: (row) => (
-      <div className="flex flex-col gap-0.5">
-        <span className="text-sm font-semibold text-stone-800 dark:text-zinc-200">
-          {row.ticketFolio ?? '—'}
-        </span>
-        <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-600 dark:bg-zinc-800 dark:text-zinc-400 w-fit">
-          {row.vehicleType === 'TRUCK' ? 'Motor' : 'Termo'}
-        </span>
-      </div>
-    ),
-  },
-  {
-    header: 'Odómetro',
-    cell: (row) => (
-      <span className="text-sm text-stone-700 dark:text-zinc-200">
-        {row.odometerAtLoad ? row.odometerAtLoad.toLocaleString('es-MX') : '—'}
-      </span>
-    ),
-  },
-  {
-    header: 'Litros',
-    cell: (row) => (
-      <span className="text-sm font-semibold text-stone-800 dark:text-zinc-200">
-        {row.litersLoaded.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-      </span>
-    ),
-  },
-  {
-    header: '$/L',
-    cell: (row) => (
-      <span className="text-sm text-stone-700 dark:text-zinc-200">
-        {formatMoney(row.pricePerLiter)}
-      </span>
-    ),
-  },
-  {
-    header: 'Total',
-    cell: (row) => (
-      <span className="text-sm font-bold text-stone-900 dark:text-zinc-100">
-        {formatMoney(row.totalCost)}
-      </span>
-    ),
-  },
-  {
-    header: 'Origen',
-    cell: (row) => (
-      <span className="text-xs font-semibold text-stone-500 dark:text-zinc-400">
-        {row.sourceType === 'INTERNAL_TANK' ? 'Tanque Base' : 'Externo'}
-      </span>
-    ),
-  },
-]
-
 export default function FuelLoadPage({ trips, units, initialHistory = [] }: FuelLoadPageProps) {
   const historyQuery = useFuelLoadHistory(200, initialHistory)
+  const deleteFuelLoad = useDeleteFuelLoad()
+  
   const [isWizardOpen, setIsWizardOpen] = useState(false)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [selectedRow, setSelectedRow] = useState<FuelLoadHistoryRowEntity | null>(null)
+
+  const handleEdit = (row: FuelLoadHistoryRowEntity) => {
+    setSelectedRow(row)
+    setIsWizardOpen(true)
+  }
+
+  const handleDetails = (row: FuelLoadHistoryRowEntity) => {
+    setSelectedRow(row)
+    setIsDetailsOpen(true)
+  }
+
+  const handleDelete = async (row: FuelLoadHistoryRowEntity) => {
+    if (!confirm('¿Estás seguro de eliminar este registro de carga? Esta acción no se puede deshacer.')) return
+    
+    const result = await deleteFuelLoad.mutateAsync(row.id)
+    if (result.ok) {
+      historyQuery.refetch()
+    }
+  }
+
+  const columns: CrudColumn<FuelLoadHistoryRowEntity>[] = [
+    {
+      header: 'Fecha',
+      cell: (row) => (
+        <span className="text-sm text-stone-700 dark:text-zinc-200">
+          {formatDateIso(row.loadDate)}
+        </span>
+      ),
+    },
+    {
+      header: 'Viaje',
+      cell: (row) => (
+        <span className="font-mono font-bold text-stone-900 dark:text-zinc-100">
+          {row.folio}
+        </span>
+      ),
+    },
+    {
+      header: 'Cliente',
+      cell: (row) => (
+        <span className="text-sm font-semibold text-stone-800 dark:text-zinc-200">
+          {row.clientName ?? '—'}
+        </span>
+      ),
+    },
+    {
+      header: 'Unidad / Operador',
+      cell: (row) => (
+        <div className="flex flex-col gap-0.5">
+          <span className="text-sm font-semibold text-stone-800 dark:text-zinc-200">
+            {row.unitEconomicNumber ?? '—'}
+          </span>
+          <span className="text-[11px] text-stone-400 dark:text-zinc-500">
+            {row.operatorName ?? '—'}
+          </span>
+        </div>
+      ),
+    },
+    {
+      header: 'Ticket / Tipo',
+      cell: (row) => (
+        <div className="flex flex-col gap-0.5">
+          <span className="text-sm font-semibold text-stone-800 dark:text-zinc-200">
+            {row.ticketFolio ?? '—'}
+          </span>
+          <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-600 dark:bg-zinc-800 dark:text-zinc-400 w-fit">
+            {row.vehicleType === 'TRUCK' ? 'Motor' : 'Termo'}
+          </span>
+        </div>
+      ),
+    },
+    {
+      header: 'Odómetro',
+      cell: (row) => (
+        <span className="text-sm text-stone-700 dark:text-zinc-200 font-mono">
+          {row.odometerAtLoad ? row.odometerAtLoad.toLocaleString('es-MX') : '—'}
+        </span>
+      ),
+    },
+    {
+      header: 'Litros',
+      cell: (row) => (
+        <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
+          {row.litersLoaded.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L
+        </span>
+      ),
+    },
+    {
+      header: 'Total',
+      cell: (row) => (
+        <span className="text-sm font-bold text-stone-900 dark:text-zinc-100">
+          {formatMoney(row.totalCost)}
+        </span>
+      ),
+    },
+  ]
+
+  const handleCloseWizard = () => {
+    setIsWizardOpen(false)
+    setSelectedRow(null)
+  }
+
+  const handleCloseDetails = () => {
+    setIsDetailsOpen(false)
+    setSelectedRow(null)
+  }
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-lg font-bold text-stone-900 dark:text-zinc-100">Carga de Diésel</h1>
-        <p className="text-sm text-stone-500 dark:text-zinc-500">Módulo de guardias</p>
+        <p className="text-sm text-stone-500 dark:text-zinc-500">Historial y gestión de tickets</p>
       </div>
 
       <FuelLoadWizard
         isOpen={isWizardOpen}
-        onClose={() => setIsWizardOpen(false)}
+        onClose={handleCloseWizard}
         trips={trips}
         units={units}
+        editRow={selectedRow}
+      />
+
+      <FuelLoadDetailsDialog
+        isOpen={isDetailsOpen}
+        onClose={handleCloseDetails}
+        loadRow={selectedRow}
       />
 
       <CrudDataTable<FuelLoadHistoryRowEntity>
         data={historyQuery.data ?? []}
         isLoading={historyQuery.isLoading}
-        columns={HISTORY_COLUMNS}
+        columns={columns}
         searchPlaceholder="Buscar por viaje, cliente, unidad, operador o ticket..."
         searchFilter={(row, term) =>
           [row.folio, row.clientName, row.unitEconomicNumber, row.operatorName, row.ticketFolio]
@@ -153,8 +181,17 @@ export default function FuelLoadPage({ trips, units, initialHistory = [] }: Fuel
         }
         actionLabel="Registrar Carga"
         onAction={() => setIsWizardOpen(true)}
+        onView={handleDetails}
+        onEdit={handleEdit}
+        onDelete={async (id) => {
+          const result = await deleteFuelLoad.mutateAsync(id)
+          if (result.ok) {
+            historyQuery.refetch()
+          }
+          return result
+        }}
         emptyState={{
-          icon: () => null,
+          icon: Fuel,
           title: 'Sin cargas registradas',
           description: 'Aún no hay registros de carga de diésel.',
         }}

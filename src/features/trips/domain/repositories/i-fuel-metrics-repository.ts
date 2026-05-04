@@ -64,4 +64,20 @@ export interface IFuelMetricsRepository {
    * @param trailerId - UUID del remolque
    */
   getTrailerYieldData(trailerId: string): Promise<Either<Failure, TrailerYieldData | null>>
+
+  /**
+   * Actualiza una carga de combustible existente.
+   * @param id - UUID de la carga
+   * @param data - Datos a actualizar
+   */
+  updateFuelLoad(
+    id: string,
+    data: Partial<Omit<FuelLoadEntity, 'id' | 'createdAt'>>
+  ): Promise<Either<Failure, FuelLoadEntity>>
+
+  /**
+   * Elimina una carga de combustible.
+   * @param id - UUID de la carga
+   */
+  deleteFuelLoad(id: string): Promise<Either<Failure, void>>
 }

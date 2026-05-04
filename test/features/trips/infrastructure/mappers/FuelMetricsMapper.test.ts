@@ -108,6 +108,8 @@ describe('FuelMetricsMapper', () => {
       source_type: 'EXTERNAL',
       is_full_tank_fill: false,
       odometer_at_load: null,
+      truck_id: 'truck-1',
+      trailer_id: null,
       trips: {
         trip_number: 7,
         folio: null,

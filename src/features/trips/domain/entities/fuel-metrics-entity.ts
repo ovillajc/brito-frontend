@@ -302,6 +302,9 @@ export interface FuelLoadHistoryRowEntity {
   vehicleType: FuelLoadVehicleType
   /** Odómetro en el momento de la carga */
   odometerAtLoad: number | null
+  /** IDs de los vehículos para edición */
+  truckId?: string | null
+  trailerId?: string | null
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

@@ -20,18 +20,23 @@ import {
   registerFuelLoadAction,
   saveWalmartTripDataAction,
   getWalmartStoresCatalogAction,
+  getFuelLoadsForTripAction,
+  getFuelMetricsKpisAction,
+  updateFuelLoadAction,
+  deleteFuelLoadAction,
 } from '../actions/fuel-metrics.actions'
 import type { SaveFuelMetricsInput } from '../../application/SaveFuelMetrics'
 import type { RegisterFuelLoadInput } from '../../application/RegisterFuelLoad'
 import type { WalmartTripDataInput } from '../../domain/entities/walmart-trip-entity'
-import type { FuelLoadHistoryRowEntity, TripFuelRowEntity } from '../../domain/entities/fuel-metrics-entity'
+import type { FuelLoadHistoryRowEntity, TripFuelRowEntity, FuelLoadEntity } from '../../domain/entities/fuel-metrics-entity'
 
 // ── Keys de caché ─────────────────────────────────────────────────────────────
 
 export const FUEL_METRICS_QUERY_KEYS = {
-  metrics: (tripId: string) => ['fuel-metrics', tripId] as const,
-  rows: ['fuel-metrics-rows'] as const,
-  fuelLoads: ['fuel-load-history'] as const,
+  all: ['fuel-metrics'] as const,
+  metrics: (tripId: string) => ['fuel-metrics', 'detail', tripId] as const,
+  rows: ['fuel-metrics', 'rows'] as const,
+  fuelLoads: ['fuel-metrics', 'loads'] as const,
   stores: ['walmart-stores'] as const,
 } as const
 
@@ -87,6 +92,34 @@ export function useFuelLoadHistory(limit: number, initialData?: FuelLoadHistoryR
     },
     initialData,
     staleTime: 1000 * 15,
+  })
+}
+
+export function useFuelLoadsForTrip(tripId: string | null) {
+  return useQuery({
+    queryKey: [...FUEL_METRICS_QUERY_KEYS.fuelLoads, tripId] as const,
+    queryFn: async () => {
+      if (!tripId) return []
+      const result = await getFuelLoadsForTripAction(tripId)
+      if (!result.ok) throw new Error(result.error.message)
+      return result.data
+    },
+    enabled: !!tripId,
+  })
+}
+
+/**
+ * Obtiene los KPIs de combustible para un mes específico.
+ */
+export function useFuelMetricsKpis(month: string) {
+  return useQuery({
+    queryKey: [...FUEL_METRICS_QUERY_KEYS.all, 'kpis', month] as const,
+    queryFn: async () => {
+      const result = await getFuelMetricsKpisAction(month)
+      if (!result.ok) throw new Error(result.error.message)
+      return result.data
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutos
   })
 }
 
@@ -174,6 +207,53 @@ export function useSaveWalmartTripData(tripId: string) {
     },
     onError: () => {
       toast.error('Error inesperado al guardar datos Walmart')
+    },
+  })
+}
+/**
+ * Actualiza una carga de diésel existente.
+ */
+export function useUpdateFuelLoad() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Omit<FuelLoadEntity, 'id' | 'createdAt'>> }) =>
+      updateFuelLoadAction(id, data),
+    onSuccess: (result) => {
+      if (!result.ok) {
+        toast.error(result.error.message)
+        return
+      }
+      toast.success(`Carga actualizada correctamente`)
+      if (result.data.tripId) {
+        queryClient.invalidateQueries({ queryKey: FUEL_METRICS_QUERY_KEYS.metrics(result.data.tripId) })
+      }
+      queryClient.invalidateQueries({ queryKey: FUEL_METRICS_QUERY_KEYS.fuelLoads })
+    },
+    onError: () => {
+      toast.error('Error inesperado al actualizar la carga')
+    },
+  })
+}
+
+/**
+ * Elimina una carga de diésel.
+ */
+export function useDeleteFuelLoad() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => deleteFuelLoadAction(id),
+    onSuccess: (result) => {
+      if (!result.ok) {
+        toast.error(result.error.message)
+        return
+      }
+      toast.success('Carga eliminada correctamente')
+      queryClient.invalidateQueries({ queryKey: FUEL_METRICS_QUERY_KEYS.all })
+    },
+    onError: () => {
+      toast.error('Error inesperado al eliminar la carga')
     },
   })
 }

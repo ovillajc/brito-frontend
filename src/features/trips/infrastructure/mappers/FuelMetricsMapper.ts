@@ -133,6 +133,8 @@ export interface FuelLoadHistoryRow {
   source_type: string
   is_full_tank_fill: boolean
   odometer_at_load: number | null
+  truck_id: string | null
+  trailer_id: string | null
   trips: null | {
     trip_number: number | null
     folio: string | null
@@ -396,6 +398,8 @@ export class FuelMetricsMapper {
       isFullTankFill: row.is_full_tank_fill,
       vehicleType: (row.vehicle_type ?? 'TRUCK') as FuelLoadVehicleType,
       odometerAtLoad: row.odometer_at_load,
+      truckId: row.truck_id,
+      trailerId: row.trailer_id,
     }
   }
 }

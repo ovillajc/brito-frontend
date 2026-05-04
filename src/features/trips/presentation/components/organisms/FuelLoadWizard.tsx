@@ -15,7 +15,8 @@ import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { Checkbox } from '@/src/core/presentation/components/ui/checkbox'
 import { FUEL_LOAD_SOURCE_TYPE, fuelLoadSchema, type FuelLoadFormValues } from '@/src/features/trips/domain/schemas/fuel-load.schema'
-import { useRegisterFuelLoad } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
+import { useRegisterFuelLoad, useUpdateFuelLoad } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
+import type { FuelLoadHistoryRowEntity } from '@/src/features/trips/domain/entities/fuel-metrics-entity'
 
 type SubmissionStatus = 'idle' | 'success' | 'error'
 
@@ -24,6 +25,7 @@ interface FuelLoadWizardProps {
   onClose: () => void
   trips: TripWithRelations[]
   units: UnitAssemblyEntity[]
+  editRow?: FuelLoadHistoryRowEntity | null
 }
 
 function formatMoney(value: number | null) {
@@ -31,12 +33,13 @@ function formatMoney(value: number | null) {
   return value.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
 }
 
-export function FuelLoadWizard({ isOpen, onClose, trips, units }: FuelLoadWizardProps) {
+export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelLoadWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const registerFuelLoad = useRegisterFuelLoad()
+  const updateFuelLoad = useUpdateFuelLoad()
 
   const {
     register,
@@ -47,17 +50,33 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units }: FuelLoadWizard
     formState: { errors },
   } = useForm<FuelLoadFormValues>({
     resolver: zodResolver(fuelLoadSchema),
-    defaultValues: {
-      tripId: '',
-      vehicleType: 'TRUCK',
-      trailerId: '',
-      ticketFolio: '',
-      loadDate: new Date().toISOString().slice(0, 16),
-      litersLoaded: undefined,
-      pricePerLiter: undefined,
-      isFullTankFill: false,
-      sourceType: FUEL_LOAD_SOURCE_TYPE.External,
-    },
+    defaultValues: useMemo(() => {
+      if (editRow) {
+        return {
+          tripId: editRow.tripId ?? '',
+          vehicleType: editRow.vehicleType,
+          trailerId: editRow.trailerId ?? '',
+          ticketFolio: editRow.ticketFolio ?? '',
+          loadDate: editRow.loadDate ? new Date(editRow.loadDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
+          litersLoaded: editRow.litersLoaded,
+          pricePerLiter: editRow.pricePerLiter,
+          isFullTankFill: editRow.isFullTankFill,
+          sourceType: editRow.sourceType as any,
+          odometerAtLoad: editRow.odometerAtLoad,
+        }
+      }
+      return {
+        tripId: '',
+        vehicleType: 'TRUCK',
+        trailerId: '',
+        ticketFolio: '',
+        loadDate: new Date().toISOString().slice(0, 16),
+        litersLoaded: undefined,
+        pricePerLiter: undefined,
+        isFullTankFill: false,
+        sourceType: FUEL_LOAD_SOURCE_TYPE.External,
+      }
+    }, [editRow]),
   })
 
   const tripId = watch('tripId')
@@ -117,7 +136,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units }: FuelLoadWizard
       return
     }
 
-    const result = await registerFuelLoad.mutateAsync({
+    const payload = {
       tripId: values.tripId || null,
       truckId: selectedUnit.truckId,
       operatorId: selectedUnit.employeeId,
@@ -126,11 +145,16 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units }: FuelLoadWizard
       vehicleType: values.vehicleType ?? 'TRUCK',
       trailerId: values.trailerId || null,
       litersLoaded: values.litersLoaded,
-      pricePerLiter: values.pricePerLiter ?? null,
+      pricePerLiter: values.pricePerLiter ?? 0,
+      totalCost: (values.litersLoaded ?? 0) * (values.pricePerLiter ?? 0),
       isFullTankFill: values.isFullTankFill,
       sourceType: values.sourceType,
       odometerAtLoad: values.odometerAtLoad ?? null,
-    })
+    }
+
+    const result = editRow
+      ? await updateFuelLoad.mutateAsync({ id: editRow.id, data: payload })
+      : await registerFuelLoad.mutateAsync(payload)
 
     if (!result.ok) {
       setSubmissionStatus('error')
@@ -374,8 +398,8 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units }: FuelLoadWizard
           key="wizard"
           isOpen={isOpen}
           onClose={handleClose}
-          title="Registrar Carga de Diésel"
-          description="Captura simplificada (Guardia/Supervisor)"
+          title={editRow ? 'Editar Carga de Diésel' : 'Registrar Carga de Diésel'}
+          description={editRow ? 'Modifica los datos de la carga' : 'Captura simplificada (Guardia/Supervisor)'}
           icon={<Fuel className="size-5" />}
           steps={steps}
           activeStep={activeStep}

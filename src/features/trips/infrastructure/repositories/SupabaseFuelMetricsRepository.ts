@@ -184,4 +184,63 @@ export class SupabaseFuelMetricsRepository implements IFuelMetricsRepository {
       return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al obtener datos del remolque' } }
     }
   }
+
+  async updateFuelLoad(
+    id: string,
+    data: Partial<Omit<FuelLoadEntity, 'id' | 'createdAt'>>
+  ): Promise<Either<Failure, FuelLoadEntity>> {
+    try {
+      const supabase = await createClient()
+      
+      // Mapear solo los campos que vienen en data
+      const payload: Record<string, unknown> = {}
+      if (data.tripId !== undefined) payload.trip_id = data.tripId
+      if (data.vehicleType !== undefined) payload.vehicle_type = data.vehicleType
+      if (data.truckId !== undefined) payload.truck_id = data.truckId
+      if (data.trailerId !== undefined) payload.trailer_id = data.trailerId
+      if (data.operatorId !== undefined) payload.operator_id = data.operatorId
+      if (data.supervisedBy !== undefined) payload.supervised_by = data.supervisedBy
+      if (data.loadDate !== undefined) payload.load_date = data.loadDate?.toISOString() ?? null
+      if (data.ticketFolio !== undefined) payload.ticket_folio = data.ticketFolio
+      if (data.litersLoaded !== undefined) payload.liters_loaded = data.litersLoaded
+      if (data.pricePerLiter !== undefined) payload.price_per_liter = data.pricePerLiter
+      if (data.totalCost !== undefined) payload.total_cost = data.totalCost
+      if (data.odometerAtLoad !== undefined) payload.odometer_at_load = data.odometerAtLoad
+      if (data.isFullTankFill !== undefined) payload.is_full_tank_fill = data.isFullTankFill
+      if (data.sourceType !== undefined) payload.source_type = data.sourceType
+
+      const { data: result, error } = await supabase
+        .from('fuel_loads')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) {
+        return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      }
+
+      return { ok: true, data: FuelMetricsMapper.fuelLoadToDomain(result as FuelLoadRow) }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al actualizar carga de diésel' } }
+    }
+  }
+
+  async deleteFuelLoad(id: string): Promise<Either<Failure, void>> {
+    try {
+      const supabase = await createClient()
+      const { error } = await supabase
+        .from('fuel_loads')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      }
+
+      return { ok: true, data: undefined }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al eliminar carga de diésel' } }
+    }
+  }
 }

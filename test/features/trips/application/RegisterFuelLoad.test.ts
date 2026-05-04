@@ -37,6 +37,8 @@ function buildRepo(): IFuelMetricsRepository {
     registerFuelLoad,
     getTruckYieldData: async () => okNull<TruckYieldData | null>(null),
     getTrailerYieldData: async () => okNull<TrailerYieldData | null>(null),
+    updateFuelLoad: async () => okNull<FuelLoadEntity>({} as unknown as FuelLoadEntity),
+    deleteFuelLoad: async () => okNull<void>(undefined),
   }
 }
 
