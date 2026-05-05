@@ -25,6 +25,7 @@ import {
   LogOut,
   User as UserIcon,
   ChevronUp,
+  BarChart3,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/src/core/infrastructure/utils/cn'
@@ -54,6 +55,7 @@ const MAIN_MODULES: NavItem[] = [
 ]
 
 const ADMIN_MODULES: NavItem[] = [
+  { label: 'BI Gerencial', icon: BarChart3, href: '/bi' },
   { label: 'Usuarios', icon: Users, href: '/users' },
   { label: 'Compañías', icon: Building, href: '/companies' },
 ]
