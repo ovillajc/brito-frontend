@@ -7,8 +7,8 @@
  * @organism
  */
 
-import React, { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { AnimatePresence } from 'framer-motion'
 import { Receipt } from 'lucide-react'
@@ -22,7 +22,8 @@ import type { ExpenseEntity } from '../../../domain/entities/expense-entity'
 import { EXPENSE_FREQUENCY } from '../../../domain/entities/expense-entity'
 import { createExpenseSchema, type CreateExpenseInput } from '../../../domain/schemas/create-expense.schema'
 import { useExpenseCatalogs, useExpenseSubcategories } from '../../hooks/use-expense-catalogs'
-import { useCreateExpense } from '../../hooks/use-expenses'
+import { useCreateExpense, useUpdateExpense } from '../../hooks/use-expenses'
+import { useTripsList } from '@/src/features/trips/presentation/hooks/use-trips'
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -31,21 +32,26 @@ interface ExpenseWizardProps {
   onClose: () => void
   expenseRow?: ExpenseEntity
   defaultTripId?: string
+  mode?: 'create' | 'edit' | 'view'
 }
 
 type SubmissionStatus = 'idle' | 'success' | 'error'
 
 // ── Componente ────────────────────────────────────────────────────────────────
 
-export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: ExpenseWizardProps) {
+export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode }: ExpenseWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('idle')
   const [submissionError, setSubmissionError] = useState<string | null>(null)
 
-  const isEdit = !!expenseRow
+  const resolvedMode: NonNullable<ExpenseWizardProps['mode']> = mode ?? (expenseRow ? 'edit' : 'create')
+  const isEdit = resolvedMode === 'edit'
+  const isReadOnly = resolvedMode === 'view'
 
   const { data: catalogs, isLoading: loadingCatalogs } = useExpenseCatalogs()
   const createExpense = useCreateExpense()
+  const updateExpense = useUpdateExpense()
+  const tripsQuery = useTripsList({ limit: 50 })
 
   const {
     register,
@@ -56,7 +62,7 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: Ex
     setValue,
     formState: { errors },
   } = useForm<CreateExpenseInput>({
-    resolver: zodResolver(createExpenseSchema) as any,
+    resolver: zodResolver(createExpenseSchema) as unknown as Resolver<CreateExpenseInput>,
     defaultValues: {
       tripId: defaultTripId ?? null,
       truckId: null,
@@ -65,7 +71,7 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: Ex
       subcategoryId: '',
       description: '',
       unitPrice: null,
-      quantity: null,
+      quantity: 1,
       unitId: null,
       amount: 0,
       frequency: null,
@@ -78,12 +84,30 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: Ex
   })
 
   const selectedCategoryId = watch('categoryId')
+  const selectedSubcategoryId = watch('subcategoryId')
   const unitPrice = watch('unitPrice')
   const quantity = watch('quantity')
 
   const { data: subcategories = [], isLoading: loadingSubs } = useExpenseSubcategories(
     selectedCategoryId || null
   )
+
+  const selectedSubcategoryName = useMemo(() => {
+    if (!selectedSubcategoryId) return null
+    return subcategories.find((s) => s.id === selectedSubcategoryId)?.name ?? null
+  }, [selectedSubcategoryId, subcategories])
+
+  const isDiesel = useMemo(() => {
+    if (!selectedSubcategoryName) return false
+    const normalized = selectedSubcategoryName
+      .toLowerCase()
+      .replaceAll('é', 'e')
+      .replaceAll('í', 'i')
+      .replaceAll('á', 'a')
+      .replaceAll('ó', 'o')
+      .replaceAll('ú', 'u')
+    return normalized.includes('diesel')
+  }, [selectedSubcategoryName])
 
   // Auto-calcular monto
   useEffect(() => {
@@ -94,9 +118,26 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: Ex
     }
   }, [unitPrice, quantity, setValue])
 
+  // Validación Diesel -> Litros
+  useEffect(() => {
+    if (!isDiesel || isReadOnly) return
+    const liters = (catalogs?.measurementUnits ?? []).find((u) => {
+      const normalized = u.name
+        .toLowerCase()
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('á', 'a')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+      return normalized.startsWith('litro')
+    })
+    if (liters) setValue('unitId', liters.id)
+  }, [isDiesel, catalogs?.measurementUnits, setValue])
+
   // Reset sub-categoría cuando cambia la categoría
   useEffect(() => {
     setValue('subcategoryId', '')
+    setValue('unitId', null)
   }, [selectedCategoryId, setValue])
 
   // Pre-poblar al editar
@@ -127,6 +168,10 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: Ex
 
   // Handlers
   const goNext = async () => {
+    if (isReadOnly) {
+      setActiveStep((p) => p + 1)
+      return
+    }
     const ok = await trigger(['categoryId', 'subcategoryId', 'expenseDate', 'description'])
     if (ok) setActiveStep((p) => p + 1)
   }
@@ -135,12 +180,19 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: Ex
 
   const handleFinish = handleSubmit(async (data) => {
     try {
-      // Por ahora asume que es create, la mutación subyacente de Supabase Action lo insertará
-      await createExpense.mutateAsync(data)
+      if (isReadOnly) {
+        handleClose()
+        return
+      }
+      if (isEdit && expenseRow) {
+        await updateExpense.mutateAsync({ expenseId: expenseRow.id, input: data })
+      } else {
+        await createExpense.mutateAsync(data)
+      }
       setSubmissionError(null)
       setSubmissionStatus('success')
-    } catch (e: any) {
-      setSubmissionError(e.message || 'Error inesperado al guardar el gasto')
+    } catch (e: unknown) {
+      setSubmissionError(e instanceof Error ? e.message : 'Error inesperado al guardar el gasto')
       setSubmissionStatus('error')
     }
   })
@@ -168,10 +220,34 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: Ex
     <div className="flex flex-col gap-6 pt-2">
       <div className="space-y-4">
         
+        <div className="grid gap-2">
+          <Label htmlFor="tripId">Viaje (Opcional)</Label>
+          <select
+            id="tripId"
+            className={inputClass}
+            disabled={tripsQuery.isLoading || isReadOnly}
+            {...register('tripId', { setValueAs: (v) => v || null })}
+          >
+            <option value="">
+              {tripsQuery.isLoading ? 'Cargando viajes...' : 'Sin viaje (Gasto general)'}
+            </option>
+            {(tripsQuery.data ?? []).map((t) => {
+              const label = t.trip.tripNumber !== null
+                ? `VJE-${String(t.trip.tripNumber).padStart(6, '0')}`
+                : (t.trip.folio ?? t.trip.id)
+              return (
+                <option key={t.trip.id} value={t.trip.id}>
+                  {label} — {t.trip.origin ?? '—'} → {t.trip.destination ?? '—'}
+                </option>
+              )
+            })}
+          </select>
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
             <Label htmlFor="categoryId">Categoría</Label>
-            <select id="categoryId" className={inputClass} disabled={loadingCatalogs} {...register('categoryId')}>
+            <select id="categoryId" className={inputClass} disabled={loadingCatalogs || isReadOnly} {...register('categoryId')}>
               <option value="">{loadingCatalogs ? 'Cargando...' : 'Selecciona categoría'}</option>
               {(catalogs?.categories ?? []).map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
@@ -182,7 +258,7 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: Ex
 
           <div className="grid gap-2">
             <Label htmlFor="subcategoryId">Detalle</Label>
-            <select id="subcategoryId" className={inputClass} disabled={!selectedCategoryId || loadingSubs} {...register('subcategoryId')}>
+            <select id="subcategoryId" className={inputClass} disabled={!selectedCategoryId || loadingSubs || isReadOnly} {...register('subcategoryId')}>
               <option value="">{!selectedCategoryId ? 'Primero selecciona categoría' : loadingSubs ? 'Cargando...' : 'Selecciona detalle'}</option>
               {subcategories.map(s => (
                 <option key={s.id} value={s.id}>{s.name}</option>
@@ -195,13 +271,13 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: Ex
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
             <Label htmlFor="expenseDate">Fecha</Label>
-            <Input id="expenseDate" type="date" {...register('expenseDate')} />
+            <Input id="expenseDate" type="date" disabled={isReadOnly} {...register('expenseDate')} />
             {errors.expenseDate && <p className={errorClass}>{errors.expenseDate.message}</p>}
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="frequency">Frecuencia</Label>
-            <select id="frequency" className={inputClass} {...register('frequency', { setValueAs: v => v || null })}>
+            <select id="frequency" className={inputClass} disabled={isReadOnly} {...register('frequency', { setValueAs: v => v || null })}>
               <option value="">Selecciona...</option>
               <option value={EXPENSE_FREQUENCY.Recurrent}>Recurrente</option>
               <option value={EXPENSE_FREQUENCY.Extraordinary}>Extraordinario</option>
@@ -211,7 +287,7 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: Ex
 
         <div className="grid gap-2">
           <Label htmlFor="cargoTypeId">Tipo de carga (Opcional)</Label>
-          <select id="cargoTypeId" className={inputClass} disabled={loadingCatalogs} {...register('cargoTypeId', { setValueAs: v => v || null })}>
+          <select id="cargoTypeId" className={inputClass} disabled={loadingCatalogs || isReadOnly} {...register('cargoTypeId', { setValueAs: v => v || null })}>
             <option value="">Selecciona...</option>
             {(catalogs?.cargoTypes ?? []).map(ct => (
               <option key={ct.id} value={ct.id}>{ct.name}</option>
@@ -221,7 +297,7 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: Ex
 
         <div className="grid gap-2">
           <Label htmlFor="description">Descripción</Label>
-          <Input id="description" placeholder="Ej. Permiso Puerto" {...register('description')} />
+          <Input id="description" placeholder="Ej. Permiso Puerto" disabled={isReadOnly} {...register('description')} />
           {errors.description && <p className={errorClass}>{errors.description.message}</p>}
         </div>
 
@@ -237,28 +313,31 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: Ex
         <div className="grid grid-cols-3 gap-4">
           <div className="grid gap-2">
             <Label htmlFor="unitPrice">Precio Unitario</Label>
-            <Input id="unitPrice" type="number" step="0.01" placeholder="0.00" {...register('unitPrice', { setValueAs: v => v === '' ? null : Number(v) })} />
+            <Input id="unitPrice" type="number" step="0.01" placeholder="0.00" disabled={isReadOnly} {...register('unitPrice', { setValueAs: v => v === '' ? null : Number(v) })} />
+            {errors.unitPrice && <p className={errorClass}>{errors.unitPrice.message}</p>}
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="quantity">Cantidad</Label>
-            <Input id="quantity" type="number" step="0.01" placeholder="1" {...register('quantity', { setValueAs: v => v === '' ? null : Number(v) })} />
+            <Input id="quantity" type="number" step="0.01" placeholder="1" disabled={isReadOnly} {...register('quantity', { setValueAs: v => v === '' ? null : Number(v) })} />
+            {errors.quantity && <p className={errorClass}>{errors.quantity.message}</p>}
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="unitId">U. de Medida</Label>
-            <select id="unitId" className={inputClass} disabled={loadingCatalogs} {...register('unitId', { setValueAs: v => v || null })}>
+            <select id="unitId" className={inputClass} disabled={loadingCatalogs || isDiesel || isReadOnly} {...register('unitId', { setValueAs: v => v || null })}>
               <option value="">Selecciona...</option>
               {(catalogs?.measurementUnits ?? []).map(u => (
                 <option key={u.id} value={u.id}>{u.name} {u.abbreviation ? `(${u.abbreviation})` : ''}</option>
               ))}
             </select>
+            {errors.unitId && <p className={errorClass}>{errors.unitId.message}</p>}
           </div>
         </div>
 
         <div className="grid gap-2 relative">
           <Label htmlFor="amount">Monto total (MXN)</Label>
-          <Input id="amount" type="number" step="0.01" placeholder="0.00" {...register('amount', { valueAsNumber: true })} />
+          <Input id="amount" type="number" step="0.01" placeholder="0.00" readOnly tabIndex={-1} {...register('amount', { valueAsNumber: true })} />
           {errors.amount && <p className={errorClass}>{errors.amount.message}</p>}
         </div>
 
@@ -268,13 +347,27 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: Ex
             id="comments" 
             rows={3} 
             className={`${inputClass} h-auto py-3 resize-none`}
+            disabled={isReadOnly}
             placeholder="Observaciones adicionales..."
-            {...register('comments', { setValueAs: v => v.trim() === '' ? null : v.trim() })}
+            {...register('comments', {
+              setValueAs: (v) => {
+                if (typeof v !== 'string') return null
+                const trimmed = v.trim()
+                return trimmed === '' ? null : trimmed
+              },
+            })}
           />
         </div>
 
       </div>
-      <WizardFooter isFirstStep={false} isLastStep onCancel={handleClose} onBack={goBack} onNext={handleFinish} isSubmitting={createExpense.isPending} />
+      <WizardFooter
+        isFirstStep={false}
+        isLastStep
+        onCancel={handleClose}
+        onBack={goBack}
+        onNext={isReadOnly ? handleClose : handleFinish}
+        isSubmitting={createExpense.isPending || updateExpense.isPending}
+      />
     </div>
   )
 
@@ -306,8 +399,8 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId }: Ex
           key="wizard"
           isOpen={isOpen}
           onClose={handleClose}
-          title={isEdit ? 'Editar Gasto' : 'Registrar Nuevo Gasto'}
-          description={isEdit ? `Editando detalles económicos` : 'Ingresa la clasificación y el monto del gasto'}
+          title={isReadOnly ? 'Detalles de Gasto' : isEdit ? 'Editar Gasto' : 'Registrar Nuevo Gasto'}
+          description={isReadOnly ? 'Consulta la clasificación y los detalles económicos del gasto.' : isEdit ? `Editando detalles económicos` : 'Ingresa la clasificación y el monto del gasto'}
           icon={<Receipt className="size-5" />}
           steps={steps}
           activeStep={activeStep}

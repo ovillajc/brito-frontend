@@ -65,6 +65,26 @@ export class SupabaseExpensesRepository implements IExpensesRepository {
     }
   }
 
+  async update(expenseId: string, input: CreateExpenseInput): Promise<Either<Failure, ExpenseEntity>> {
+    try {
+      const supabase = createClient()
+      const payload = ExpenseMapper.toUpdatePayload(input)
+
+      const { data, error } = await supabase
+        .from('expenses')
+        .update(payload)
+        .eq('id', expenseId)
+        .select(SELECT_WITH_JOINS)
+        .single()
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+
+      return { ok: true, data: ExpenseMapper.toDomain(data as unknown as ExpenseRow) }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al actualizar gasto' } }
+    }
+  }
+
   async delete(expenseId: string): Promise<Either<Failure, void>> {
     try {
       const supabase = createClient()

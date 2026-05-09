@@ -30,6 +30,24 @@ export const createExpenseSchema = z.object({
   comments: z.string().trim().nullable().default(null),
   expenseDate: z.string().min(1, 'La fecha es requerida'),
   receiptUrl: z.string().url().nullable().default(null),
+}).superRefine((val, ctx) => {
+  if (val.unitPrice === null) {
+    ctx.addIssue({ code: 'custom', path: ['unitPrice'], message: 'El precio unitario es requerido' })
+  }
+  if (val.quantity === null) {
+    ctx.addIssue({ code: 'custom', path: ['quantity'], message: 'La cantidad es requerida' })
+  }
+  if (val.unitId === null) {
+    ctx.addIssue({ code: 'custom', path: ['unitId'], message: 'Selecciona una unidad de medida' })
+  }
+
+  if (val.unitPrice !== null && val.quantity !== null) {
+    const expected = Number((val.unitPrice * val.quantity).toFixed(2))
+    const received = Number(val.amount.toFixed(2))
+    if (expected !== received) {
+      ctx.addIssue({ code: 'custom', path: ['amount'], message: 'El monto total debe ser unitario × cantidad' })
+    }
+  }
 })
 
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>

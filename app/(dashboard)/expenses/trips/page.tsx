@@ -3,4 +3,3 @@ import TripExpensesPage from '@/src/features/expenses/presentation/components/pa
 export default function Page() {
   return <TripExpensesPage />
 }
-

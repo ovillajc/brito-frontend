@@ -16,6 +16,7 @@ import { Label } from '@/src/core/presentation/components/ui/label'
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 import type { YieldCalculatorResult } from '../../../domain/entities/bi-entity'
+import { YieldCalculatorService } from '../../../application/CalculateYield'
 
 const DIESEL_PRICE_MXN = 24.5 // Precio referencia diésel MXN/L
 
@@ -36,25 +37,18 @@ export function YieldCalculator() {
     const theoretical = Number(theoreticalYield)
     const price = Number(dieselPrice)
 
-    if (liters <= 0 || theoretical <= 0) return null
+    const service = new YieldCalculatorService()
+    const calc = service.calculate({
+      startDate,
+      endDate,
+      distanceKm: km && km > 0 ? km : null,
+      fuelLiters: liters,
+      dieselPriceMXN: price,
+      theoreticalYieldKmL: theoretical,
+    })
 
-    const realYieldKmL = km && km > 0 ? km / liters : null
-    const yieldDelta = realYieldKmL !== null ? realYieldKmL - theoretical : null
-
-    // Costo real del combustible
-    const fuelCostMXN = liters * price
-
-    // Si tenemos km: calcular cuánto se habría gastado con rendimiento teórico
-    let savingsOrExcessMXN: number | null = null
-    if (km && km > 0) {
-      const theoreticalLiters = km / theoretical
-      savingsOrExcessMXN = (theoreticalLiters - liters) * price // positivo = ahorro, negativo = exceso
-    }
-
-    const efficiencyPct = realYieldKmL !== null ? (realYieldKmL / theoretical) * 100 : null
-
-    return { realYieldKmL, yieldDelta, fuelCostMXN, savingsOrExcessMXN, efficiencyPct }
-  }, [calculated, fuelLiters, distanceKm, theoreticalYield, dieselPrice])
+    return calc.ok ? calc.data : null
+  }, [calculated, startDate, endDate, fuelLiters, distanceKm, theoreticalYield, dieselPrice])
 
   const handleCalculate = () => setCalculated(true)
   const handleReset = () => {

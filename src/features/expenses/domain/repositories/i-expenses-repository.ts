@@ -47,5 +47,6 @@ export interface ExpensesListFilters {
 export interface IExpensesRepository {
   list(filters?: ExpensesListFilters): Promise<Either<Failure, ExpenseEntity[]>>
   create(input: CreateExpenseInput, createdByProfileId: string | null): Promise<Either<Failure, ExpenseEntity>>
+  update(expenseId: string, input: CreateExpenseInput): Promise<Either<Failure, ExpenseEntity>>
   delete(expenseId: string): Promise<Either<Failure, void>>
 }

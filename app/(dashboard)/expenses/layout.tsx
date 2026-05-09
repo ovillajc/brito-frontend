@@ -14,7 +14,7 @@ import { LayoutDashboard, Receipt, Route } from 'lucide-react'
 const EXPENSES_NAV = [
   { name: 'Dashboard', href: '/expenses', icon: LayoutDashboard },
   { name: 'Todos los Gastos', href: '/expenses/list', icon: Receipt },
-  { name: 'Gastos por Viaje', href: '/expenses/trip', icon: Route },
+  { name: 'Gastos por Viaje', href: '/expenses/trips', icon: Route },
 ]
 
 export default function ExpensesLayout({ children }: { children: React.ReactNode }) {

@@ -8,7 +8,16 @@ import { fetchBiCatalogsAction } from '../../../presentation/actions/bi.actions'
 import { FleetHistoryExplorer } from '../organisms/FleetHistoryExplorer'
 
 export default async function BiFleetHistoryPage() {
-  const catalogs = await fetchBiCatalogsAction()
+  const result = await fetchBiCatalogsAction()
+  if (!result.ok) {
+    return (
+      <div className="flex flex-col gap-3 p-4 rounded-xl border border-red-200 bg-red-50/50 text-red-800">
+        <p className="font-semibold">No se pudieron cargar los catálogos</p>
+        <p className="text-sm">{result.error.message}</p>
+      </div>
+    )
+  }
+  const catalogs = result.data
 
   return (
     <div className="flex flex-col gap-6">

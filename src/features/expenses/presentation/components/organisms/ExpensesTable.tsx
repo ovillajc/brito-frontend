@@ -15,7 +15,7 @@ import { EXPENSE_FREQUENCY } from '../../../domain/entities/expense-entity'
 
 // ── Entidades de vista ────────────────────────────────────────────────────────
 
-export interface ExpensesTableRowEntity extends ExpenseEntity {}
+export type ExpensesTableRowEntity = ExpenseEntity
 
 const money = new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -120,8 +120,16 @@ export function ExpensesTable({ tripIdFilter }: ExpensesTableProps) {
 
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [selectedRow, setSelectedRow] = useState<ExpensesTableRowEntity | null>(null)
+  const [wizardMode, setWizardMode] = useState<'create' | 'edit' | 'view'>('create')
+
+  const handleView = (row: ExpensesTableRowEntity) => {
+    setWizardMode('view')
+    setSelectedRow(row)
+    setIsWizardOpen(true)
+  }
 
   const handleEdit = (row: ExpensesTableRowEntity) => {
+    setWizardMode('edit')
     setSelectedRow(row)
     setIsWizardOpen(true)
   }
@@ -129,6 +137,7 @@ export function ExpensesTable({ tripIdFilter }: ExpensesTableProps) {
   const handleCloseWizard = () => {
     setIsWizardOpen(false)
     setSelectedRow(null)
+    setWizardMode('create')
   }
 
   return (
@@ -143,7 +152,8 @@ export function ExpensesTable({ tripIdFilter }: ExpensesTableProps) {
             .some((val) => val?.toLowerCase().includes(term))
         }
         actionLabel="Nuevo Gasto"
-        onAction={() => { setSelectedRow(null); setIsWizardOpen(true) }}
+        onAction={() => { setWizardMode('create'); setSelectedRow(null); setIsWizardOpen(true) }}
+        onView={handleView}
         onEdit={handleEdit}
         emptyState={{
           icon: Receipt,
@@ -157,6 +167,7 @@ export function ExpensesTable({ tripIdFilter }: ExpensesTableProps) {
         onClose={handleCloseWizard}
         expenseRow={selectedRow ?? undefined}
         defaultTripId={tripIdFilter !== 'all' ? tripIdFilter : undefined}
+        mode={wizardMode}
       />
     </>
   )

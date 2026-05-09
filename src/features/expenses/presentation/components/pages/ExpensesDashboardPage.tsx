@@ -8,24 +8,16 @@
 import React, { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/core/presentation/components/ui/card'
 import { useExpenses } from '../../hooks/use-expenses'
+import { useExpenseCatalogs } from '../../hooks/use-expense-catalogs'
 import { TrendingDown, Receipt, AlertTriangle } from 'lucide-react'
 import type { ExpenseEntity } from '../../../domain/entities/expense-entity'
+import { ExpensesTable } from '../organisms/ExpensesTable'
 
 const money = new Intl.NumberFormat('es-MX', {
   style: 'currency',
   currency: 'MXN',
   maximumFractionDigits: 0,
 })
-
-// Categorías esperadas por el requerimiento (se extraen directamente para formar las columnas)
-const MAIN_CATEGORIES = [
-  'Combustible',
-  'Impuestos_permisos',
-  'Hospedaje_alimentacion',
-  'Imprevistos',
-  'Otros',
-  'Mantenimiento',
-]
 
 // ── Tipos para el Pivoteo ──────────────────────────────────────────
 
@@ -41,6 +33,12 @@ interface PivotRow {
 
 export default function ExpensesDashboardPage() {
   const { data: expenses = [], isLoading, isError, error } = useExpenses()
+  const catalogsQuery = useExpenseCatalogs()
+  const categories = useMemo(
+    () => (catalogsQuery.data?.categories ?? []).map((c) => c.name),
+    [catalogsQuery.data?.categories]
+  )
+  const columns = useMemo(() => [...categories, 'Sin Categoría'], [categories])
 
   // Calcular KPIs Generales
   const grandTotal = useMemo(() => expenses.reduce((acc, e) => acc + e.amount, 0), [expenses])
@@ -56,8 +54,7 @@ export default function ExpensesDashboardPage() {
       if (!tripMap.has(tId)) {
         // Inicializar fila
         const initialRow: PivotRow = { tripId: tId, total: 0 }
-        for (const cat of MAIN_CATEGORIES) initialRow[cat] = 0
-        // Categoría dinámica "Desconocida" si aparece algo nuevo
+        for (const cat of columns) initialRow[cat] = 0
         initialRow['Sin Categoría'] = 0
         tripMap.set(tId, initialRow)
       }
@@ -69,7 +66,6 @@ export default function ExpensesDashboardPage() {
       if (catName in row) {
         (row[catName] as number) += e.amount
       } else {
-        // Si no está en las Main Categories, la agregamos dinámicamente al mapa aunque no se muestre por defecto
         row[catName] = ((row[catName] as number) || 0) + e.amount
       }
       
@@ -78,7 +74,7 @@ export default function ExpensesDashboardPage() {
 
     // Convertir a array y ordenar (Gastos generales primero, luego alfabético o por total)
     return Array.from(tripMap.values()).sort((a, b) => b.total - a.total)
-  }, [expenses])
+  }, [expenses, columns])
 
   return (
     <div className="flex flex-col gap-6">
@@ -128,12 +124,17 @@ export default function ExpensesDashboardPage() {
         </CardHeader>
         
         <div className="overflow-x-auto">
-          {isLoading ? (
+          {isLoading || catalogsQuery.isLoading ? (
             <div className="p-8 text-center text-sm text-stone-500 animate-pulse">Cargando reporte...</div>
           ) : isError ? (
             <div className="p-8 flex items-center justify-center gap-2 text-sm text-red-500">
               <AlertTriangle className="h-4 w-4" />
               {(error as Error).message}
+            </div>
+          ) : catalogsQuery.isError ? (
+            <div className="p-8 flex items-center justify-center gap-2 text-sm text-red-500">
+              <AlertTriangle className="h-4 w-4" />
+              {(catalogsQuery.error as Error).message}
             </div>
           ) : pivotData.length === 0 ? (
             <div className="p-8 text-center text-sm text-stone-500">No hay datos suficientes para generar el reporte.</div>
@@ -142,7 +143,7 @@ export default function ExpensesDashboardPage() {
               <thead className="text-xs text-stone-500 uppercase bg-stone-50 dark:bg-zinc-900 border-b border-stone-200 dark:border-zinc-800">
                 <tr>
                   <th className="px-4 py-3 font-semibold w-48 truncate">Referencia / Viaje</th>
-                  {MAIN_CATEGORIES.map(cat => (
+                  {columns.map(cat => (
                     <th key={cat} className="px-4 py-3 font-semibold text-right min-w-[120px]">
                       {cat.replace('_', ' ')}
                     </th>
@@ -157,7 +158,7 @@ export default function ExpensesDashboardPage() {
                       {row.tripId.includes('Generales') ? row.tripId : `VJE-${row.tripId.split('-')[0]}`}
                     </td>
                     
-                    {MAIN_CATEGORIES.map(cat => (
+                    {columns.map(cat => (
                       <td key={cat} className="px-4 py-3 text-right tabular-nums text-stone-600 dark:text-zinc-400">
                         {row[cat] ? money.format(row[cat] as number) : '—'}
                       </td>
@@ -172,7 +173,7 @@ export default function ExpensesDashboardPage() {
               <tfoot className="bg-stone-100 dark:bg-zinc-900 border-t-2 border-stone-300 dark:border-zinc-700 font-bold">
                 <tr>
                   <td className="px-4 py-3">GRAND TOTAL</td>
-                  {MAIN_CATEGORIES.map(cat => {
+                  {columns.map(cat => {
                     const sum = pivotData.reduce((acc, row) => acc + ((row[cat] as number) || 0), 0)
                     return (
                       <td key={cat} className="px-4 py-3 text-right tabular-nums">
@@ -189,6 +190,14 @@ export default function ExpensesDashboardPage() {
           )}
         </div>
       </Card>
+
+      <div className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-lg font-bold text-stone-900 dark:text-zinc-100">Registro de Gastos</h2>
+          <p className="text-sm text-stone-500 dark:text-zinc-500">Alta y consulta de gastos generales y por viaje.</p>
+        </div>
+        <ExpensesTable />
+      </div>
 
     </div>
   )

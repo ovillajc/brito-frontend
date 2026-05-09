@@ -163,4 +163,35 @@ export class ExpenseMapper {
       created_by: createdByProfileId,
     }
   }
+
+  static toUpdatePayload(
+    input: CreateExpenseInput
+  ): Omit<
+    ExpenseRow,
+    | 'id'
+    | 'created_at'
+    | 'created_by'
+    | 'expense_categories'
+    | 'expense_subcategories'
+    | 'measurement_units'
+    | 'cargo_types'
+  > {
+    return {
+      trip_id: input.tripId,
+      truck_id: input.truckId,
+      trailer_id: input.trailerId,
+      category_id: input.categoryId,
+      subcategory_id: input.subcategoryId,
+      description: input.description,
+      unit_price: input.unitPrice,
+      quantity: input.quantity,
+      unit_id: input.unitId,
+      amount: input.amount,
+      frequency: input.frequency,
+      cargo_type_id: input.cargoTypeId,
+      comments: input.comments,
+      expense_date: input.expenseDate,
+      receipt_url: input.receiptUrl,
+    }
+  }
 }

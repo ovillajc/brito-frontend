@@ -8,32 +8,17 @@
  * @organism
  */
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Truck, Container, User, Settings, Search, X, MapPin, Calendar, DollarSign, AlertCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/core/presentation/components/ui/card'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { useFleetHistory } from '../../hooks/use-fleet-history'
-import type { FleetElementType } from '../../../domain/entities/bi-entity'
+import type { BiCatalogsEntity, BiCatalogItemEntity, FleetElementType } from '../../../domain/entities/bi-entity'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 
-// ── Tipos de catálogo recibidos desde el servidor ─────────────────────────────
-
-interface CatalogItem {
-  id: string
-  name?: string
-  economic_number?: string
-}
-
-interface BiCatalogs {
-  trucks: CatalogItem[]
-  trailers: CatalogItem[]
-  operators: { id: string; name: string }[]
-  assemblies: CatalogItem[]
-}
-
 interface FleetHistoryExplorerProps {
-  catalogs: BiCatalogs
+  catalogs: BiCatalogsEntity
 }
 
 // ── Config de pestaña ─────────────────────────────────────────────────────────
@@ -62,27 +47,21 @@ export function FleetHistoryExplorer({ catalogs }: FleetHistoryExplorerProps) {
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const { history, isLoading, fetch, clear } = useFleetHistory()
+  const { history, isLoading, error, fetch, clear } = useFleetHistory()
 
   // Obtener la lista de ítems según la pestaña activa
   const items = React.useMemo(() => {
-    const raw = activeTab === 'truck' ? catalogs.trucks
-      : activeTab === 'trailer' ? catalogs.trailers
-      : activeTab === 'operator' ? catalogs.operators.map(o => ({ id: o.id, name: o.name }))
-      : catalogs.assemblies
+    const raw: BiCatalogItemEntity[] = activeTab === 'truck'
+      ? catalogs.trucks
+      : activeTab === 'trailer'
+        ? catalogs.trailers
+        : activeTab === 'operator'
+          ? catalogs.operators
+          : catalogs.assemblies
 
     const term = search.toLowerCase()
-    return raw.filter(i =>
-      ((i as CatalogItem).name ?? (i as CatalogItem).economic_number ?? '').toLowerCase().includes(term)
-    )
+    return raw.filter((i) => i.label.toLowerCase().includes(term))
   }, [activeTab, catalogs, search])
-
-  // Limpiar selección al cambiar pestaña
-  useEffect(() => {
-    setSelectedId(null)
-    setSearch('')
-    clear()
-  }, [activeTab, clear])
 
   const handleSelect = (id: string) => {
     setSelectedId(id)
@@ -101,7 +80,12 @@ export function FleetHistoryExplorer({ catalogs }: FleetHistoryExplorerProps) {
           return (
             <button
               key={tab.type}
-              onClick={() => setActiveTab(tab.type)}
+              onClick={() => {
+                setActiveTab(tab.type)
+                setSelectedId(null)
+                setSearch('')
+                clear()
+              }}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all',
                 activeTab === tab.type
@@ -156,7 +140,7 @@ export function FleetHistoryExplorer({ catalogs }: FleetHistoryExplorerProps) {
                       : 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300'
                   )}
                 >
-                  {(item as CatalogItem).name ?? (item as CatalogItem).economic_number ?? item.id}
+                  {item.label}
                 </button>
               ))}
             </div>
@@ -169,6 +153,12 @@ export function FleetHistoryExplorer({ catalogs }: FleetHistoryExplorerProps) {
             <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-stone-200 dark:border-zinc-700 rounded-xl text-stone-400 gap-2">
               <Search className="size-8" />
               <p className="text-sm">Selecciona un elemento del panel izquierdo</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-64 border border-red-200 dark:border-red-900 rounded-xl text-red-600 gap-2 bg-red-50/50 dark:bg-red-950/10">
+              <AlertCircle className="size-8" />
+              <p className="text-sm font-semibold">No se pudo cargar el historial</p>
+              <p className="text-xs text-red-700 dark:text-red-300 px-4 text-center">{error.message}</p>
             </div>
           ) : isLoading ? (
             <div className="space-y-3">

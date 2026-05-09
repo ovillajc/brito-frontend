@@ -41,6 +41,7 @@ export interface YieldCalculatorInput {
   endDate: string
   distanceKm: number | null   // desde GPS, opcional
   fuelLiters: number
+  dieselPriceMXN: number
   theoreticalYieldKmL: number
 }
 
@@ -55,3 +56,15 @@ export interface YieldCalculatorResult {
 // ── Tipos de filtro por elemento de flota ────────────────────────────────────
 
 export type FleetElementType = 'truck' | 'trailer' | 'operator' | 'assembly'
+
+export interface BiCatalogItemEntity {
+  id: string
+  label: string
+}
+
+export interface BiCatalogsEntity {
+  trucks: BiCatalogItemEntity[]
+  trailers: BiCatalogItemEntity[]
+  operators: BiCatalogItemEntity[]
+  assemblies: BiCatalogItemEntity[]
+}

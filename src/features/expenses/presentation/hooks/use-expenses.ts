@@ -8,7 +8,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SupabaseExpensesRepository } from '../../infrastructure/repositories/SupabaseExpensesRepository'
 import { GetExpenses } from '../../application/GetExpenses'
-import { createExpenseAction, deleteExpenseAction } from '../actions/expenses.actions'
+import { createExpenseAction, deleteExpenseAction, updateExpenseAction } from '../actions/expenses.actions'
 import type { CreateExpenseInput } from '../../domain/schemas/create-expense.schema'
 import type { ExpensesListFilters } from '../../domain/repositories/i-expenses-repository'
 
@@ -37,6 +37,21 @@ export function useCreateExpense() {
   return useMutation({
     mutationFn: async (input: CreateExpenseInput) => {
       const result = await createExpenseAction(input)
+      if (!result.ok) throw new Error(result.error.message)
+      return result.data
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['expenses'] })
+    },
+  })
+}
+
+export function useUpdateExpense() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (params: { expenseId: string; input: CreateExpenseInput }) => {
+      const result = await updateExpenseAction(params.expenseId, params.input)
       if (!result.ok) throw new Error(result.error.message)
       return result.data
     },
