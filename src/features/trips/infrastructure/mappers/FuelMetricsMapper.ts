@@ -23,11 +23,17 @@ export interface TripFuelMetricsRow {
   id: string
   trip_id: string
   km_initial: number | null
+  km_initial_date: string | null
   km_final: number | null
+  km_final_date: string | null
   fuel_load_id: string | null
   hours_r1: number | null
+  r1_start_date: string | null
+  r1_end_date: string | null
   liters_real_r1: number | null
   hours_r2: number | null
+  r2_start_date: string | null
+  r2_end_date: string | null
   liters_real_r2: number | null
   total_km_preinvoice: number | null
   created_by: string | null
@@ -78,6 +84,9 @@ export interface FuelMetricsListTripRow {
   origin: string | null
   destination: string | null
   departure_date: string | null
+  initial_km: number | null
+  final_km: number | null
+  preinvoice_km: number | null
   status: string | null
   monitored_by: string | null
   observations: string | null
@@ -88,16 +97,22 @@ export interface FuelMetricsListTripRow {
     trucks: null | { plates: string | null; theoretical_yield: number | null }
     employees: null | { full_name: string | null }
   }
-  trip_fuel_metrics: null | Array<{
+  trip_fuel_metrics: null | {
     km_initial: number | null
+    km_initial_date: string | null
     km_final: number | null
+    km_final_date: string | null
     fuel_load_id: string | null
     hours_r1: number | null
+    r1_start_date: string | null
+    r1_end_date: string | null
     liters_real_r1: number | null
     hours_r2: number | null
+    r2_start_date: string | null
+    r2_end_date: string | null
     liters_real_r2: number | null
     total_km_preinvoice: number | null
-  }>
+  }
   fuel_loads: null | Array<{
     id: string
     ticket_folio: string | null
@@ -142,11 +157,17 @@ export class FuelMetricsMapper {
       id: row.id,
       tripId: row.trip_id,
       kmInitial: row.km_initial,
+      kmInitialDate: row.km_initial_date ? new Date(row.km_initial_date) : null,
       kmFinal: row.km_final,
+      kmFinalDate: row.km_final_date ? new Date(row.km_final_date) : null,
       fuelLoadId: row.fuel_load_id,
       hoursR1: row.hours_r1 ?? 0,
+      r1StartDate: row.r1_start_date ? new Date(row.r1_start_date) : null,
+      r1EndDate: row.r1_end_date ? new Date(row.r1_end_date) : null,
       litersRealR1: row.liters_real_r1 ?? 0,
       hoursR2: row.hours_r2 ?? 0,
+      r2StartDate: row.r2_start_date ? new Date(row.r2_start_date) : null,
+      r2EndDate: row.r2_end_date ? new Date(row.r2_end_date) : null,
       litersRealR2: row.liters_real_r2 ?? 0,
       totalKmPreinvoice: row.total_km_preinvoice,
       createdBy: row.created_by,
@@ -232,11 +253,13 @@ export class FuelMetricsMapper {
   }
 
   static tripToTripFuelRowEntity(row: FuelMetricsListTripRow): TripFuelRowEntity {
-    const metrics = row.trip_fuel_metrics?.[0] ?? null
+    const metrics = Array.isArray(row.trip_fuel_metrics)
+      ? (row.trip_fuel_metrics[0] ?? null)
+      : (row.trip_fuel_metrics ?? null)
     const fuelLoad = row.fuel_loads?.[0] ?? null
 
-    const kmInitial = metrics?.km_initial ?? null
-    const kmFinal = metrics?.km_final ?? null
+    const kmInitial = metrics?.km_initial ?? row.initial_km ?? null
+    const kmFinal = metrics?.km_final ?? row.final_km ?? null
     const kmTraveled = kmInitial !== null && kmFinal !== null && kmFinal >= kmInitial ? kmFinal - kmInitial : null
 
     const litersEngine = fuelLoad?.liters_loaded ?? null
@@ -265,7 +288,7 @@ export class FuelMetricsMapper {
         ? (litersEngine + (litersRealR1 ?? 0) + (litersRealR2 ?? 0)) * pricePerLiter
         : null
 
-    const preinvoiceKm = metrics?.total_km_preinvoice ?? null
+    const preinvoiceKm = metrics?.total_km_preinvoice ?? row.preinvoice_km ?? null
     const preinvoiceVariance = preinvoiceKm !== null && kmTraveled !== null ? preinvoiceKm - kmTraveled : null
 
     const tripNumber = row.trip_number ?? null
@@ -291,7 +314,9 @@ export class FuelMetricsMapper {
       fuelLoadId: metrics?.fuel_load_id ?? fuelLoad?.id ?? null,
 
       kmInitial,
+      kmInitialDate: metrics?.km_initial_date ?? null,
       kmFinal,
+      kmFinalDate: metrics?.km_final_date ?? null,
       kmTraveled,
 
       ticketFolio: fuelLoad?.ticket_folio ?? null,
@@ -301,8 +326,12 @@ export class FuelMetricsMapper {
 
       litersRealR1,
       hoursR1: metrics?.hours_r1 ?? null,
+      r1StartDate: metrics?.r1_start_date ?? null,
+      r1EndDate: metrics?.r1_end_date ?? null,
       litersRealR2,
       hoursR2: metrics?.hours_r2 ?? null,
+      r2StartDate: metrics?.r2_start_date ?? null,
+      r2EndDate: metrics?.r2_end_date ?? null,
 
       realYieldEngine,
       litersTheoreticalEngine,

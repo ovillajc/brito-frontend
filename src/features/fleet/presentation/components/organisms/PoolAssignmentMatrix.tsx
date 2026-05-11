@@ -7,6 +7,7 @@ import { useClientPools, useAvailableUnitsForClient, usePoolMutations } from '..
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { cn } from '@/src/core/infrastructure/utils/cn'
+import { ClientPoolWizard } from './ClientPoolWizard'
 
 /**
  * Interfaz de matriz para asignar unidades armadas a pools de clientes.
@@ -14,6 +15,7 @@ import { cn } from '@/src/core/infrastructure/utils/cn'
 export function PoolAssignmentMatrix() {
   const { data: clients } = useClients()
   const [selectedClientId, setSelectedClientId] = useState<string>('')
+  const [isPoolWizardOpen, setIsPoolWizardOpen] = useState(false)
   
   const { data: pools, isLoading: isLoadingPools } = useClientPools(selectedClientId)
   const { data: units, isLoading: isLoadingUnits } = useAvailableUnitsForClient(selectedClientId)
@@ -45,9 +47,18 @@ export function PoolAssignmentMatrix() {
   }
 
   const currentClient = clients?.find(c => c.id === selectedClientId)
+  const currentClientLabel = currentClient?.tradeName ?? currentClient?.companyName ?? 'Cliente'
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
+      {selectedClientId && (
+        <ClientPoolWizard
+          isOpen={isPoolWizardOpen}
+          onClose={() => setIsPoolWizardOpen(false)}
+          clientId={selectedClientId}
+          clientLabel={currentClientLabel}
+        />
+      )}
       {/* Client Selector */}
       <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-stone-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm">
         <label className="text-xs font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-widest mb-3 block">
@@ -85,7 +96,12 @@ export function PoolAssignmentMatrix() {
           <div className="xl:col-span-1 flex flex-col gap-4">
             <div className="flex items-center justify-between px-2">
                <h3 className="text-sm font-bold text-stone-900 dark:text-zinc-100">Pools de {currentClient?.tradeName}</h3>
-               <button className="p-1.5 rounded-lg bg-[#1a5c3a]/10 text-[#1a5c3a] hover:bg-[#1a5c3a]/20 transition-colors">
+               <button
+                 type="button"
+                 onClick={() => setIsPoolWizardOpen(true)}
+                 className="p-1.5 rounded-lg bg-[#1a5c3a]/10 text-[#1a5c3a] hover:bg-[#1a5c3a]/20 transition-colors"
+                 aria-label="Crear pool"
+               >
                  <Plus className="size-4" />
                </button>
             </div>

@@ -19,19 +19,31 @@ export interface FuelMetricsInputEntity {
 
   /** Kilómetro inicial del odómetro */
   kmInitial: number | null
+  /** Fecha y hora del kilómetro inicial */
+  kmInitialDate: Date | null
   /** Kilómetro final del odómetro */
   kmFinal: number | null
+  /** Fecha y hora del kilómetro final */
+  kmFinalDate: Date | null
 
   /** FK al registro de fuel_loads del motor (tracto) */
   fuelLoadId: string | null
 
   /** Horas de operación del Remolque 1 */
   hoursR1: number
+  /** Fecha/Hora de encendido del Remolque 1 */
+  r1StartDate: Date | null
+  /** Fecha/Hora de apagado del Remolque 1 */
+  r1EndDate: Date | null
   /** Litros reales de diesel del Remolque 1 */
   litersRealR1: number
 
   /** Horas de operación del Remolque 2 */
   hoursR2: number
+  /** Fecha/Hora de encendido del Remolque 2 */
+  r2StartDate: Date | null
+  /** Fecha/Hora de apagado del Remolque 2 */
+  r2EndDate: Date | null
   /** Litros reales de diesel del Remolque 2 */
   litersRealR2: number
 
@@ -181,7 +193,9 @@ export interface TripFuelRowEntity {
   fuelLoadId: string | null
 
   kmInitial: number | null
+  kmInitialDate: string | null
   kmFinal: number | null
+  kmFinalDate: string | null
   kmTraveled: number | null
 
   ticketFolio: string | null
@@ -191,8 +205,12 @@ export interface TripFuelRowEntity {
 
   litersRealR1: number | null
   hoursR1: number | null
+  r1StartDate: string | null
+  r1EndDate: string | null
   litersRealR2: number | null
   hoursR2: number | null
+  r2StartDate: string | null
+  r2EndDate: string | null
 
   realYieldEngine: number | null
   litersTheoreticalEngine: number | null

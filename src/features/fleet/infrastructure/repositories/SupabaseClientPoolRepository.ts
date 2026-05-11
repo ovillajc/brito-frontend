@@ -4,7 +4,7 @@ import { ClientPoolEntity } from '../../domain/entities'
 import { ClientPoolMapper } from '../mappers/ClientPoolMapper'
 
 export class SupabaseClientPoolRepository implements IClientPoolRepository {
-  private readonly SELECT_QUERY = '*, clients(trade_name, company_name)'
+  private readonly SELECT_QUERY = '*, clients(trade_name, company_name), unit_assemblies(count)'
 
   async findAll(): Promise<ClientPoolEntity[]> {
     const supabase = await createClient()
