@@ -13,6 +13,7 @@ import type {
   TripFuelRowEntity,
   TruckYieldData,
   TrailerYieldData,
+  FuelLoadVehicleType,
 } from '../../domain/entities/fuel-metrics-entity'
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -26,15 +27,12 @@ export interface TripFuelMetricsRow {
   km_initial_date: string | null
   km_final: number | null
   km_final_date: string | null
-  fuel_load_id: string | null
   hours_r1: number | null
   r1_start_date: string | null
   r1_end_date: string | null
-  liters_real_r1: number | null
   hours_r2: number | null
   r2_start_date: string | null
   r2_end_date: string | null
-  liters_real_r2: number | null
   total_km_preinvoice: number | null
   created_by: string | null
   created_at: string
@@ -44,7 +42,9 @@ export interface TripFuelMetricsRow {
 export interface FuelLoadRow {
   id: string
   trip_id: string | null
+  vehicle_type: string
   truck_id: string | null
+  trailer_id: string | null
   operator_id: string | null
   supervised_by: string | null
   supervisor_name: string | null
@@ -53,10 +53,7 @@ export interface FuelLoadRow {
   liters_loaded: number
   price_per_liter: number
   total_cost: number
-  liters_r1: number | null
-  hours_r1: number | null
-  liters_r2: number | null
-  hours_r2: number | null
+  odometer_at_load: number | null
   is_full_tank_fill: boolean
   source_type: string
   created_by: string | null
@@ -102,23 +99,24 @@ export interface FuelMetricsListTripRow {
     km_initial_date: string | null
     km_final: number | null
     km_final_date: string | null
-    fuel_load_id: string | null
     hours_r1: number | null
     r1_start_date: string | null
     r1_end_date: string | null
-    liters_real_r1: number | null
     hours_r2: number | null
     r2_start_date: string | null
     r2_end_date: string | null
-    liters_real_r2: number | null
     total_km_preinvoice: number | null
   }
+  /** Todas las cargas del viaje (TRUCK + TRAILER) */
   fuel_loads: null | Array<{
     id: string
+    vehicle_type: string
+    trailer_id: string | null
     ticket_folio: string | null
     liters_loaded: number | null
     price_per_liter: number | null
     total_cost: number | null
+    odometer_at_load: number | null
     created_at: string
   }>
 }
@@ -126,6 +124,7 @@ export interface FuelMetricsListTripRow {
 export interface FuelLoadHistoryRow {
   id: string
   trip_id: string | null
+  vehicle_type: string
   load_date: string | null
   ticket_folio: string | null
   liters_loaded: number
@@ -133,6 +132,9 @@ export interface FuelLoadHistoryRow {
   total_cost: number
   source_type: string
   is_full_tank_fill: boolean
+  odometer_at_load: number | null
+  truck_id: string | null
+  trailer_id: string | null
   trips: null | {
     trip_number: number | null
     folio: string | null
@@ -160,15 +162,12 @@ export class FuelMetricsMapper {
       kmInitialDate: row.km_initial_date ? new Date(row.km_initial_date) : null,
       kmFinal: row.km_final,
       kmFinalDate: row.km_final_date ? new Date(row.km_final_date) : null,
-      fuelLoadId: row.fuel_load_id,
       hoursR1: row.hours_r1 ?? 0,
       r1StartDate: row.r1_start_date ? new Date(row.r1_start_date) : null,
       r1EndDate: row.r1_end_date ? new Date(row.r1_end_date) : null,
-      litersRealR1: row.liters_real_r1 ?? 0,
       hoursR2: row.hours_r2 ?? 0,
       r2StartDate: row.r2_start_date ? new Date(row.r2_start_date) : null,
       r2EndDate: row.r2_end_date ? new Date(row.r2_end_date) : null,
-      litersRealR2: row.liters_real_r2 ?? 0,
       totalKmPreinvoice: row.total_km_preinvoice,
       createdBy: row.created_by,
       createdAt: new Date(row.created_at),
@@ -183,21 +182,20 @@ export class FuelMetricsMapper {
     return {
       id: row.id,
       tripId: row.trip_id,
+      vehicleType: (row.vehicle_type ?? 'TRUCK') as FuelLoadVehicleType,
       truckId: row.truck_id,
+      trailerId: row.trailer_id,
       operatorId: row.operator_id,
       supervisedBy: row.supervised_by,
       supervisorName: row.supervisor_name,
       loadDate: row.load_date ? new Date(row.load_date) : null,
       ticketFolio: row.ticket_folio,
-      litersEngine: row.liters_loaded,
+      litersLoaded: row.liters_loaded,
       pricePerLiter: row.price_per_liter,
       totalCost: row.total_cost,
-      litersR1: row.liters_r1 ?? 0,
-      hoursR1: row.hours_r1 ?? 0,
-      litersR2: row.liters_r2 ?? 0,
-      hoursR2: row.hours_r2 ?? 0,
+      odometerAtLoad: row.odometer_at_load,
       isFullTankFill: row.is_full_tank_fill,
-      sourceType: row.source_type,
+      sourceType: (row.source_type ?? 'EXTERNAL') as 'EXTERNAL' | 'INTERNAL_TANK',
       createdBy: row.created_by,
       createdAt: new Date(row.created_at),
     }
@@ -209,19 +207,18 @@ export class FuelMetricsMapper {
   static fuelLoadToInsert(entity: Omit<FuelLoadEntity, 'id' | 'createdAt'>): Record<string, unknown> {
     return {
       trip_id: entity.tripId,
-      truck_id: entity.truckId,
+      vehicle_type: entity.vehicleType,
+      truck_id: entity.vehicleType === 'TRUCK' ? entity.truckId : null,
+      trailer_id: entity.vehicleType === 'TRAILER' ? entity.trailerId : null,
       operator_id: entity.operatorId,
       supervised_by: entity.supervisedBy,
       supervisor_name: entity.supervisorName,
       load_date: entity.loadDate?.toISOString() ?? null,
       ticket_folio: entity.ticketFolio,
-      liters_loaded: entity.litersEngine,
+      liters_loaded: entity.litersLoaded,
       price_per_liter: entity.pricePerLiter,
       total_cost: entity.totalCost,
-      liters_r1: entity.litersR1,
-      hours_r1: entity.hoursR1,
-      liters_r2: entity.litersR2,
-      hours_r2: entity.hoursR2,
+      odometer_at_load: entity.odometerAtLoad ?? null,
       is_full_tank_fill: entity.isFullTankFill,
       source_type: entity.sourceType,
       created_by: entity.createdBy,
@@ -252,19 +249,42 @@ export class FuelMetricsMapper {
     }
   }
 
+  /**
+   * Transforma un row de la query de lista de viajes a TripFuelRowEntity.
+   * Agrega todas las cargas del viaje separadas por vehicle_type.
+   */
   static tripToTripFuelRowEntity(row: FuelMetricsListTripRow): TripFuelRowEntity {
     const metrics = Array.isArray(row.trip_fuel_metrics)
       ? (row.trip_fuel_metrics[0] ?? null)
       : (row.trip_fuel_metrics ?? null)
-    const fuelLoad = row.fuel_loads?.[0] ?? null
+
+    const fuelLoads = row.fuel_loads ?? []
+
+    // Separar cargas por tipo de vehículo
+    const truckLoads = fuelLoads.filter((fl) => (fl.vehicle_type ?? 'TRUCK') === 'TRUCK')
+    // Para remolques usamos trailer2_id como identificador del R2
+    const trailer2Id = row.unit_assemblies?.trailer2_id ?? null
+    const r1Loads = fuelLoads.filter(
+      (fl) => fl.vehicle_type === 'TRAILER' && fl.trailer_id !== trailer2Id
+    )
+    const r2Loads = fuelLoads.filter(
+      (fl) => fl.vehicle_type === 'TRAILER' && fl.trailer_id === trailer2Id && trailer2Id !== null
+    )
+
+    // Totales por tipo
+    const litersEngine = truckLoads.reduce((s, fl) => s + (fl.liters_loaded ?? 0), 0)
+    const litersRealR1 = r1Loads.reduce((s, fl) => s + (fl.liters_loaded ?? 0), 0)
+    const litersRealR2 = r2Loads.reduce((s, fl) => s + (fl.liters_loaded ?? 0), 0)
+    const totalCostEngine = truckLoads.reduce((s, fl) => s + (fl.total_cost ?? 0), 0)
+    const pricePerLiter = truckLoads[0]?.price_per_liter ?? null
+    const ticketFolio = truckLoads[0]?.ticket_folio ?? null
 
     const kmInitial = metrics?.km_initial ?? row.initial_km ?? null
     const kmFinal = metrics?.km_final ?? row.final_km ?? null
-    const kmTraveled = kmInitial !== null && kmFinal !== null && kmFinal >= kmInitial ? kmFinal - kmInitial : null
-
-    const litersEngine = fuelLoad?.liters_loaded ?? null
-    const pricePerLiter = fuelLoad?.price_per_liter ?? null
-    const totalCostEngine = fuelLoad?.total_cost ?? null
+    const kmTraveled =
+      kmInitial !== null && kmFinal !== null && kmFinal >= kmInitial
+        ? kmFinal - kmInitial
+        : null
 
     const theoreticalYieldEngine = row.unit_assemblies?.trucks?.theoretical_yield ?? null
     const litersTheoreticalEngine =
@@ -272,30 +292,31 @@ export class FuelMetricsMapper {
         ? kmTraveled / theoreticalYieldEngine
         : null
     const realYieldEngine =
-      kmTraveled !== null && litersEngine !== null && litersEngine > 0
+      kmTraveled !== null && litersEngine > 0
         ? kmTraveled / litersEngine
         : null
     const savingsExcessEngine =
-      litersEngine !== null && litersTheoreticalEngine !== null
+      litersEngine > 0 && litersTheoreticalEngine !== null
         ? litersEngine - litersTheoreticalEngine
         : null
 
-    const litersRealR1 = metrics?.liters_real_r1 ?? null
-    const litersRealR2 = metrics?.liters_real_r2 ?? null
-
     const totalDieselCostTrip =
-      litersEngine !== null && pricePerLiter !== null
-        ? (litersEngine + (litersRealR1 ?? 0) + (litersRealR2 ?? 0)) * pricePerLiter
-        : null
+      totalCostEngine > 0
+        ? totalCostEngine
+        : pricePerLiter !== null && pricePerLiter > 0
+          ? (litersEngine + litersRealR1 + litersRealR2) * pricePerLiter
+          : null
 
     const preinvoiceKm = metrics?.total_km_preinvoice ?? row.preinvoice_km ?? null
-    const preinvoiceVariance = preinvoiceKm !== null && kmTraveled !== null ? preinvoiceKm - kmTraveled : null
+    const preinvoiceVariance =
+      preinvoiceKm !== null && kmTraveled !== null ? preinvoiceKm - kmTraveled : null
 
     const tripNumber = row.trip_number ?? null
     const clientName = row.clients?.trade_name ?? row.clients?.company_name ?? null
-    const folio = tripNumber !== null
-      ? `VJE-${String(tripNumber).padStart(6, '0')}`
-      : (row.folio ?? 'VJE-S/N')
+    const folio =
+      tripNumber !== null
+        ? `VJE-${String(tripNumber).padStart(6, '0')}`
+        : (row.folio ?? 'VJE-S/N')
 
     return {
       id: row.id,
@@ -311,27 +332,27 @@ export class FuelMetricsMapper {
       operatorName: row.unit_assemblies?.employees?.full_name ?? null,
       isFullAssembly: Boolean(row.unit_assemblies?.trailer2_id),
 
-      fuelLoadId: metrics?.fuel_load_id ?? fuelLoad?.id ?? null,
-
       kmInitial,
       kmInitialDate: metrics?.km_initial_date ?? null,
       kmFinal,
       kmFinalDate: metrics?.km_final_date ?? null,
       kmTraveled,
 
-      ticketFolio: fuelLoad?.ticket_folio ?? null,
-      litersEngine,
+      ticketFolio,
+      litersEngine: litersEngine > 0 ? litersEngine : null,
       pricePerLiter,
-      totalCostEngine,
+      totalCostEngine: totalCostEngine > 0 ? totalCostEngine : null,
 
-      litersRealR1,
+      litersRealR1: litersRealR1 > 0 ? litersRealR1 : null,
       hoursR1: metrics?.hours_r1 ?? null,
       r1StartDate: metrics?.r1_start_date ?? null,
       r1EndDate: metrics?.r1_end_date ?? null,
-      litersRealR2,
+      litersRealR2: litersRealR2 > 0 ? litersRealR2 : null,
       hoursR2: metrics?.hours_r2 ?? null,
       r2StartDate: metrics?.r2_start_date ?? null,
       r2EndDate: metrics?.r2_end_date ?? null,
+
+      fuelLoadCount: fuelLoads.length,
 
       realYieldEngine,
       litersTheoreticalEngine,
@@ -349,12 +370,16 @@ export class FuelMetricsMapper {
     }
   }
 
+  /**
+   * Transforma un row del historial de cargas a FuelLoadHistoryRowEntity.
+   */
   static fuelLoadHistoryToEntity(row: FuelLoadHistoryRow): FuelLoadHistoryRowEntity {
     const tripNumber = row.trips?.trip_number ?? null
     const clientName = row.trips?.clients?.trade_name ?? row.trips?.clients?.company_name ?? null
-    const folio = tripNumber !== null
-      ? `VJE-${String(tripNumber).padStart(6, '0')}`
-      : (row.trips?.folio ?? 'VJE-S/N')
+    const folio =
+      tripNumber !== null
+        ? `VJE-${String(tripNumber).padStart(6, '0')}`
+        : (row.trips?.folio ?? 'VJE-S/N')
 
     return {
       id: row.id,
@@ -371,6 +396,10 @@ export class FuelMetricsMapper {
       totalCost: row.total_cost,
       sourceType: row.source_type,
       isFullTankFill: row.is_full_tank_fill,
+      vehicleType: (row.vehicle_type ?? 'TRUCK') as FuelLoadVehicleType,
+      odometerAtLoad: row.odometer_at_load,
+      truckId: row.truck_id,
+      trailerId: row.trailer_id,
     }
   }
 }

@@ -14,6 +14,8 @@ import { GetTripFuelMetrics } from '@/src/features/trips/application/GetTripFuel
 import { SaveFuelMetrics, type SaveFuelMetricsInput } from '@/src/features/trips/application/SaveFuelMetrics'
 import { RegisterFuelLoad, type RegisterFuelLoadInput } from '@/src/features/trips/application/RegisterFuelLoad'
 import { SaveWalmartTripData } from '@/src/features/trips/application/SaveWalmartTripData'
+import { UpdateFuelLoad } from '@/src/features/trips/application/UpdateFuelLoad'
+import { DeleteFuelLoad } from '@/src/features/trips/application/DeleteFuelLoad'
 import type { Either, Failure } from '@/src/core/domain/either'
 import type { FuelLoadHistoryRowEntity, FuelMetricsCalculated, FuelMetricsInputEntity, FuelLoadEntity, TripFuelRowEntity } from '@/src/features/trips/domain/entities/fuel-metrics-entity'
 import type { WalmartTripDataEntity, WalmartTripDataInput } from '@/src/features/trips/domain/entities/walmart-trip-entity'
@@ -96,12 +98,10 @@ export async function getFuelMetricsRowsAction(): Promise<Either<Failure, TripFu
         'observations',
         'clients(trade_name, company_name)',
         'unit_assemblies(economic_number, trailer2_id, trucks(plates, theoretical_yield), employees(full_name))',
-        'trip_fuel_metrics(km_initial, km_initial_date, km_final, km_final_date, fuel_load_id, hours_r1, r1_start_date, r1_end_date, liters_real_r1, hours_r2, r2_start_date, r2_end_date, liters_real_r2, total_km_preinvoice)',
-        'fuel_loads(id, ticket_folio, liters_loaded, price_per_liter, total_cost, created_at)',
+        'trip_fuel_metrics(km_initial, km_initial_date, km_final, km_final_date, hours_r1, r1_start_date, r1_end_date, hours_r2, r2_start_date, r2_end_date, total_km_preinvoice)',
+        'fuel_loads(id, vehicle_type, trailer_id, ticket_folio, liters_loaded, price_per_liter, total_cost, odometer_at_load, created_at)',
       ].join(', '))
       .order('departure_date', { ascending: false })
-      .order('created_at', { foreignTable: 'fuel_loads', ascending: false })
-      .limit(1, { foreignTable: 'fuel_loads' })
       .limit(200)
 
     if (error) {
@@ -132,6 +132,10 @@ export async function getFuelLoadHistoryAction(
         'total_cost',
         'source_type',
         'is_full_tank_fill',
+        'vehicle_type',
+        'odometer_at_load',
+        'truck_id',
+        'trailer_id',
         'trips(trip_number, folio, clients(trade_name, company_name), unit_assemblies(economic_number, employees(full_name)))',
       ].join(', '))
       .order('load_date', { ascending: false })
@@ -146,6 +150,13 @@ export async function getFuelLoadHistoryAction(
   } catch {
     return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al listar cargas de diésel' } }
   }
+}
+
+export async function getFuelLoadsForTripAction(
+  tripId: string
+): Promise<Either<Failure, FuelLoadEntity[]>> {
+  const repo = new SupabaseFuelMetricsRepository()
+  return repo.getFuelLoadsByTripId(tripId)
 }
 
 /**
@@ -247,7 +258,7 @@ export async function registerFuelLoadAction(
       return { ok: false, error: { code: 'TANK_EMPTY', message: 'El tanque no tiene inventario suficiente para costear la carga' } }
     }
 
-    if (data.litersEngine > litersInTank) {
+    if (data.litersLoaded > litersInTank) {
       return { ok: false, error: { code: 'TANK_INSUFFICIENT', message: `Inventario insuficiente en tanque. Disponible: ${litersInTank.toFixed(2)} L` } }
     }
 
@@ -256,13 +267,13 @@ export async function registerFuelLoadAction(
       return { ok: false, error: { code: 'TANK_COST_INVALID', message: 'Costo promedio inválido para el tanque' } }
     }
 
-    const movementTotal = data.litersEngine * avgCostPerLiter
+    const movementTotal = data.litersLoaded * avgCostPerLiter
     const { data: movement, error: movementError } = await supabase
       .from('fuel_tank_movements')
       .insert({
         tank_id: activeTank,
         movement_type: 'OUT',
-        liters: data.litersEngine,
+        liters: data.litersLoaded,
         unit_cost: avgCostPerLiter,
         total_cost: movementTotal,
         movement_date: data.loadDate.toISOString(),
@@ -370,4 +381,106 @@ export async function saveWalmartTripDataAction(
 export async function getWalmartStoresCatalogAction() {
   const repo = new SupabaseWalmartRepository()
   return repo.getStoresCatalog()
+}
+
+/**
+ * Actualiza una carga de combustible existente.
+ */
+export async function updateFuelLoadAction(
+  id: string,
+  data: Partial<Omit<FuelLoadEntity, 'id' | 'createdAt'>>
+): Promise<Either<Failure, FuelLoadEntity>> {
+  const repo = new SupabaseFuelMetricsRepository()
+  const result = await UpdateFuelLoad(repo, id, data)
+
+  if (result.ok) {
+    revalidatePath(`/trips/fuel`)
+    revalidatePath(`/trips/fuel/load`)
+  }
+
+  return result
+}
+
+/**
+ * Elimina una carga de combustible.
+ */
+export async function deleteFuelLoadAction(id: string): Promise<Either<Failure, void>> {
+  const repo = new SupabaseFuelMetricsRepository()
+  const result = await DeleteFuelLoad(repo, id)
+
+  if (result.ok) {
+    revalidatePath(`/trips/fuel`)
+    revalidatePath(`/trips/fuel/load`)
+  }
+
+  return result
+}
+
+/**
+ * Obtiene los KPIs consolidados de rendimiento de combustible para un mes específico.
+ */
+export async function getFuelMetricsKpisAction(
+  month: string // formato YYYY-MM
+): Promise<Either<Failure, {
+  kmTotal: number
+  litersTotal: number
+  averageYield: number
+  theoreticalYield: number
+  savingsExcess: number
+}>> {
+  try {
+    const supabase = await createClient()
+    const startDate = `${month}-01`
+    const endDate = new Date(new Date(startDate).setMonth(new Date(startDate).getMonth() + 1)).toISOString().split('T')[0]
+
+    // 1. KM Totales desde trip_fuel_metrics
+    const { data: metricsData, error: metricsError } = await supabase
+      .from('trip_fuel_metrics')
+      .select('km_initial, km_final')
+      .gte('km_initial_date', startDate)
+      .lt('km_initial_date', endDate)
+
+    if (metricsError) {
+      return { ok: false, error: { code: 'DB_ERROR', message: metricsError.message } }
+    }
+
+    const kmTotal = (metricsData ?? []).reduce((sum, row) => {
+      if (row.km_initial !== null && row.km_final !== null) {
+        return sum + (row.km_final - row.km_initial)
+      }
+      return sum
+    }, 0)
+
+    // 2. Litros Totales y Ahorro/Exceso desde fuel_loads (solo motor para el rendimiento prom.)
+    const { data: loadsData, error: loadsError } = await supabase
+      .from('fuel_loads')
+      .select('liters_loaded, vehicle_type')
+      .gte('load_date', startDate)
+      .lt('load_date', endDate)
+      .eq('vehicle_type', 'TRUCK')
+
+    if (loadsError) {
+      return { ok: false, error: { code: 'DB_ERROR', message: loadsError.message } }
+    }
+
+    const litersTotal = (loadsData ?? []).reduce((sum, row) => sum + (row.liters_loaded || 0), 0)
+
+    // 3. Rendimiento y Varianza
+    const averageYield = litersTotal > 0 ? kmTotal / litersTotal : 0
+    const theoreticalYield = 4.5 
+    const savingsExcess = litersTotal - (kmTotal / theoreticalYield)
+
+    return {
+      ok: true,
+      data: {
+        kmTotal,
+        litersTotal,
+        averageYield,
+        theoreticalYield,
+        savingsExcess
+      }
+    }
+  } catch {
+    return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al calcular KPIs de combustible' } }
+  }
 }

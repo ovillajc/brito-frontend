@@ -15,7 +15,8 @@ import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { Checkbox } from '@/src/core/presentation/components/ui/checkbox'
 import { FUEL_LOAD_SOURCE_TYPE, fuelLoadSchema, type FuelLoadFormValues } from '@/src/features/trips/domain/schemas/fuel-load.schema'
-import { useRegisterFuelLoad } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
+import { useRegisterFuelLoad, useUpdateFuelLoad } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
+import type { FuelLoadHistoryRowEntity } from '@/src/features/trips/domain/entities/fuel-metrics-entity'
 
 type SubmissionStatus = 'idle' | 'success' | 'error'
 
@@ -24,6 +25,7 @@ interface FuelLoadWizardProps {
   onClose: () => void
   trips: TripWithRelations[]
   units: UnitAssemblyEntity[]
+  editRow?: FuelLoadHistoryRowEntity | null
 }
 
 function formatMoney(value: number | null) {
@@ -31,12 +33,13 @@ function formatMoney(value: number | null) {
   return value.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
 }
 
-export function FuelLoadWizard({ isOpen, onClose, trips, units }: FuelLoadWizardProps) {
+export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelLoadWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const registerFuelLoad = useRegisterFuelLoad()
+  const updateFuelLoad = useUpdateFuelLoad()
 
   const {
     register,
@@ -47,19 +50,38 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units }: FuelLoadWizard
     formState: { errors },
   } = useForm<FuelLoadFormValues>({
     resolver: zodResolver(fuelLoadSchema),
-    defaultValues: {
-      tripId: '',
-      ticketFolio: '',
-      loadDate: new Date().toISOString().slice(0, 16),
-      litersEngine: undefined,
-      pricePerLiter: undefined,
-      isFullTankFill: false,
-      sourceType: FUEL_LOAD_SOURCE_TYPE.External,
-    },
+    defaultValues: useMemo(() => {
+      if (editRow) {
+        return {
+          tripId: editRow.tripId ?? '',
+          vehicleType: editRow.vehicleType,
+          trailerId: editRow.trailerId ?? '',
+          ticketFolio: editRow.ticketFolio ?? '',
+          loadDate: editRow.loadDate ? new Date(editRow.loadDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
+          litersLoaded: editRow.litersLoaded,
+          pricePerLiter: editRow.pricePerLiter,
+          isFullTankFill: editRow.isFullTankFill,
+          sourceType: editRow.sourceType as any,
+          odometerAtLoad: editRow.odometerAtLoad,
+        }
+      }
+      return {
+        tripId: '',
+        vehicleType: 'TRUCK',
+        trailerId: '',
+        ticketFolio: '',
+        loadDate: new Date().toISOString().slice(0, 16),
+        litersLoaded: undefined,
+        pricePerLiter: undefined,
+        isFullTankFill: false,
+        sourceType: FUEL_LOAD_SOURCE_TYPE.External,
+      }
+    }, [editRow]),
   })
 
   const tripId = watch('tripId')
-  const liters = watch('litersEngine')
+  const vehicleType = watch('vehicleType')
+  const liters = watch('litersLoaded')
   const price = watch('pricePerLiter')
   const sourceType = watch('sourceType')
 
@@ -82,9 +104,9 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units }: FuelLoadWizard
 
   const goNext = async () => {
     const map: Record<number, (keyof FuelLoadFormValues)[]> = {
-      0: ['tripId'],
-      1: ['ticketFolio', 'loadDate', 'sourceType'],
-      2: ['litersEngine', 'pricePerLiter', 'isFullTankFill'],
+      0: ['tripId', 'vehicleType', 'trailerId'],
+      1: ['ticketFolio', 'loadDate', 'sourceType', 'odometerAtLoad'],
+      2: ['litersLoaded', 'pricePerLiter', 'isFullTankFill'],
     }
 
     const fields = map[activeStep] ?? []
@@ -114,17 +136,25 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units }: FuelLoadWizard
       return
     }
 
-    const result = await registerFuelLoad.mutateAsync({
-      tripId: values.tripId,
+    const payload = {
+      tripId: values.tripId || null,
       truckId: selectedUnit.truckId,
       operatorId: selectedUnit.employeeId,
       ticketFolio: values.ticketFolio,
       loadDate,
-      litersEngine: values.litersEngine,
-      pricePerLiter: values.pricePerLiter ?? null,
+      vehicleType: values.vehicleType ?? 'TRUCK',
+      trailerId: values.trailerId || null,
+      litersLoaded: values.litersLoaded,
+      pricePerLiter: values.pricePerLiter ?? 0,
+      totalCost: (values.litersLoaded ?? 0) * (values.pricePerLiter ?? 0),
       isFullTankFill: values.isFullTankFill,
       sourceType: values.sourceType,
-    })
+      odometerAtLoad: values.odometerAtLoad ?? null,
+    }
+
+    const result = editRow
+      ? await updateFuelLoad.mutateAsync({ id: editRow.id, data: payload })
+      : await registerFuelLoad.mutateAsync(payload)
 
     if (!result.ok) {
       setSubmissionStatus('error')
@@ -148,9 +178,11 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units }: FuelLoadWizard
     setActiveStep(0)
     reset({
       tripId: '',
+      vehicleType: 'TRUCK',
+      trailerId: '',
       ticketFolio: '',
       loadDate: new Date().toISOString().slice(0, 16),
-      litersEngine: undefined,
+      litersLoaded: undefined,
       pricePerLiter: undefined,
       isFullTankFill: false,
       sourceType: FUEL_LOAD_SOURCE_TYPE.External,
@@ -159,21 +191,44 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units }: FuelLoadWizard
 
   const step1 = (
     <div className="flex flex-col gap-6 pt-2">
-      <div className="grid gap-2">
-        <Label htmlFor="tripId">Viaje</Label>
-        <select id="tripId" className={inputClass} {...register('tripId')}>
-          <option value="" disabled>Selecciona un viaje</option>
-          {trips.map((t) => (
-            <option key={t.trip.id} value={t.trip.id}>
-              {(t.trip.tripNumber !== null
-                ? `VJE-${String(t.trip.tripNumber).padStart(6, '0')}`
-                : (t.trip.folio ?? t.trip.id.slice(0, 8))
-              )} — {(t.unitEconomicNumber ?? 'Sin unidad')} — {(t.trip.origin ?? '—')} → {(t.trip.destination ?? '—')}
-            </option>
-          ))}
-        </select>
-        {err(errors.tripId?.message)}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="tripId">Viaje (opcional si es base)</Label>
+          <select id="tripId" className={inputClass} {...register('tripId')}>
+            <option value="">Sin viaje (Carga base)</option>
+            {trips.map((t) => (
+              <option key={t.trip.id} value={t.trip.id}>
+                {(t.trip.tripNumber !== null
+                  ? `VJE-${String(t.trip.tripNumber).padStart(6, '0')}`
+                  : (t.trip.folio ?? t.trip.id.slice(0, 8))
+                )} — {(t.unitEconomicNumber ?? 'Sin unidad')} — {(t.trip.origin ?? '—')} → {(t.trip.destination ?? '—')}
+              </option>
+            ))}
+          </select>
+          {err(errors.tripId?.message)}
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="vehicleType">Tipo de vehículo</Label>
+          <select id="vehicleType" className={inputClass} {...register('vehicleType')}>
+            <option value="TRUCK">Tractocamión (Motor)</option>
+            <option value="TRAILER">Remolque (Termo)</option>
+          </select>
+          {err(errors.vehicleType?.message)}
+        </div>
       </div>
+
+      {vehicleType === 'TRAILER' && selectedUnit && (
+        <div className="grid gap-2">
+          <Label htmlFor="trailerId">Seleccionar Remolque</Label>
+          <select id="trailerId" className={inputClass} {...register('trailerId')}>
+            <option value="" disabled>Selecciona el termo</option>
+            {selectedUnit.trailerId && <option value={selectedUnit.trailerId}>Termo 1 (Activo)</option>}
+            {selectedUnit.trailer2Id && <option value={selectedUnit.trailer2Id}>Termo 2 (Activo)</option>}
+          </select>
+          {err(errors.trailerId?.message)}
+        </div>
+      )}
 
       {selectedTrip && (
         <div className="rounded-2xl border border-stone-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
@@ -226,6 +281,14 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units }: FuelLoadWizard
             <option value={FUEL_LOAD_SOURCE_TYPE.InternalTank}>Tanque Base / Interno</option>
           </select>
         </div>
+
+        {vehicleType === 'TRUCK' && (
+          <div className="grid gap-2">
+            <Label htmlFor="odometerAtLoad">Odómetro al cargar (Opcional)</Label>
+            <Input id="odometerAtLoad" type="number" step="1" min="0" placeholder="Ej. 150500" {...register('odometerAtLoad', { valueAsNumber: true, setValueAs: (v) => v === '' ? null : Number(v) })} />
+            {err(errors.odometerAtLoad?.message)}
+          </div>
+        )}
       </div>
 
       <WizardFooter
@@ -243,17 +306,17 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units }: FuelLoadWizard
     <div className="flex flex-col gap-6 pt-2">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="litersEngine">Litros cargados (motor)</Label>
+          <Label htmlFor="litersLoaded">Litros cargados (motor)</Label>
           <input
-            id="litersEngine"
+            id="litersLoaded"
             type="number"
             step="0.01"
             min="0"
             placeholder="0.00"
             className={inputClass}
-            {...register('litersEngine', { valueAsNumber: true })}
+            {...register('litersLoaded', { valueAsNumber: true })}
           />
-          {err(errors.litersEngine?.message)}
+          {err(errors.litersLoaded?.message)}
         </div>
 
         {sourceType === FUEL_LOAD_SOURCE_TYPE.External ? (
@@ -335,8 +398,8 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units }: FuelLoadWizard
           key="wizard"
           isOpen={isOpen}
           onClose={handleClose}
-          title="Registrar Carga de Diésel"
-          description="Captura simplificada (Guardia/Supervisor)"
+          title={editRow ? 'Editar Carga de Diésel' : 'Registrar Carga de Diésel'}
+          description={editRow ? 'Modifica los datos de la carga' : 'Captura simplificada (Guardia/Supervisor)'}
           icon={<Fuel className="size-5" />}
           steps={steps}
           activeStep={activeStep}

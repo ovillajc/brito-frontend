@@ -1,6 +1,5 @@
-import ExpensesPage from '@/src/features/expenses/presentation/components/pages/ExpensesPage'
+import ExpensesDashboardPage from "@/src/features/expenses/presentation/components/pages/ExpensesDashboardPage";
 
 export default function Page() {
-  return <ExpensesPage />
+  return <ExpensesDashboardPage />
 }
-

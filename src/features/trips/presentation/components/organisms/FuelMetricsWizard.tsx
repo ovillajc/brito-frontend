@@ -39,11 +39,9 @@ const fuelMetricsSchema = z.object({
   kmFinalDate: z.string().nullable().optional(),
   totalKmPreinvoice: z.number().min(0).nullable().optional(),
 
-  litersRealR1: z.number().min(0).optional(),
   r1StartDate: z.string().nullable().optional(),
   r1EndDate: z.string().nullable().optional(),
   hoursR1: z.number().min(0).optional(),
-  litersRealR2: z.number().min(0).optional(),
   r2StartDate: z.string().nullable().optional(),
   r2EndDate: z.string().nullable().optional(),
   hoursR2: z.number().min(0).optional(),
@@ -109,8 +107,12 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
     defaultValues: {
       observations: '',
       kmInitial: undefined, kmInitialDate: undefined, kmFinal: undefined, kmFinalDate: undefined, totalKmPreinvoice: null,
-      litersRealR1: 0, hoursR1: 0, r1StartDate: undefined, r1EndDate: undefined,
-      litersRealR2: 0, hoursR2: 0, r2StartDate: undefined, r2EndDate: undefined,
+      hoursR1: 0,
+      r1StartDate: undefined,
+      r1EndDate: undefined,
+      hoursR2: 0,
+      r2StartDate: undefined,
+      r2EndDate: undefined,
     },
   })
 
@@ -129,11 +131,9 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
         kmFinal: tripRow.kmFinal ?? undefined,
         kmFinalDate: tripRow.kmFinalDate ? toLocalDatetime(tripRow.kmFinalDate) : undefined,
         totalKmPreinvoice: tripRow.preinvoiceKm ?? null,
-        litersRealR1: tripRow.litersRealR1 ?? 0,
         hoursR1: tripRow.hoursR1 ?? 0,
         r1StartDate: tripRow.r1StartDate ? toLocalDatetime(tripRow.r1StartDate) : undefined,
         r1EndDate: tripRow.r1EndDate ? toLocalDatetime(tripRow.r1EndDate) : undefined,
-        litersRealR2: tripRow.litersRealR2 ?? 0,
         hoursR2: tripRow.hoursR2 ?? 0,
         r2StartDate: tripRow.r2StartDate ? toLocalDatetime(tripRow.r2StartDate) : undefined,
         r2EndDate: tripRow.r2EndDate ? toLocalDatetime(tripRow.r2EndDate) : undefined,
@@ -186,15 +186,12 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
         kmInitialDate: _data.kmInitialDate ? new Date(_data.kmInitialDate) : null,
         kmFinal: _data.kmFinal,
         kmFinalDate: _data.kmFinalDate ? new Date(_data.kmFinalDate) : null,
-        fuelLoadId: tripRow.fuelLoadId ?? null,
         hoursR1: computedHoursR1,
         r1StartDate: _data.r1StartDate ? new Date(_data.r1StartDate) : null,
         r1EndDate: _data.r1EndDate ? new Date(_data.r1EndDate) : null,
-        litersRealR1: _data.litersRealR1 ?? 0,
         hoursR2: computedHoursR2,
         r2StartDate: _data.r2StartDate ? new Date(_data.r2StartDate) : null,
         r2EndDate: _data.r2EndDate ? new Date(_data.r2EndDate) : null,
-        litersRealR2: _data.litersRealR2 ?? 0,
         totalKmPreinvoice: _data.totalKmPreinvoice ?? null,
         observations: _data.observations?.trim() ? _data.observations.trim() : null,
       })
@@ -295,21 +292,21 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
   // ── Paso 3: Carga motor (solo lectura) ────────────────────────────────────
   const step3Content = (
     <div className="flex flex-col gap-5 pt-2">
-      {!tripRow?.fuelLoadId ? (
+      {tripRow?.fuelLoadCount === 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 p-4">
-          <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Sin carga registrada</p>
+          <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Sin cargas registradas</p>
           <p className="text-xs text-amber-800/80 dark:text-amber-200/80 mt-1">
-            Registra primero la carga de diésel en el módulo de Guardia para asociarla a este viaje.
+            No hay cargas de diésel asociadas a este viaje. Registra cargas en el módulo de Guardia.
           </p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          <PreviewCard label="Folio de ticket" value={tripRow.ticketFolio ?? '—'} />
-          <PreviewCard label="Litros motor" value={tripRow.litersEngine !== null ? `${tripRow.litersEngine.toFixed(1)} L` : '—'} />
-          <PreviewCard label="Precio / L" value={tripRow.pricePerLiter !== null ? `$${tripRow.pricePerLiter.toFixed(2)} MXN` : '—'} />
+          <PreviewCard label="Folio de ticket" value={tripRow?.ticketFolio ?? '—'} />
+          <PreviewCard label="Litros motor" value={tripRow?.litersEngine !== null && tripRow?.litersEngine !== undefined ? `${tripRow.litersEngine.toFixed(1)} L` : '—'} />
+          <PreviewCard label="Precio / L" value={tripRow?.pricePerLiter !== null && tripRow?.pricePerLiter !== undefined ? `$${tripRow.pricePerLiter.toFixed(2)} MXN` : '—'} />
           <PreviewCard
             label="Total motor"
-            value={tripRow.totalCostEngine !== null
+            value={tripRow?.totalCostEngine !== null && tripRow?.totalCostEngine !== undefined
               ? `$${tripRow.totalCostEngine.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`
               : '—'
             }
@@ -343,12 +340,6 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
             <Label>Total Horas R1 (Auto)</Label>
             <input type="text" className={inputClass + ' bg-stone-100/50 dark:bg-zinc-800/50 cursor-not-allowed opacity-70'} value={computedHoursR1 > 0 ? `${computedHoursR1} h` : ''} disabled placeholder="0 h" />
           </div>
-          <div className="grid gap-2 col-span-2 md:col-span-1">
-            <Label htmlFor="litersRealR1">Litros Reales R1</Label>
-            <input id="litersRealR1" type="number" step="0.01" min="0" placeholder="0.00" className={inputClass}
-              {...register('litersRealR1', { valueAsNumber: true })} />
-            {err(errors.litersRealR1?.message)}
-          </div>
         </div>
       </div>
       <div>
@@ -370,12 +361,6 @@ export function FuelMetricsWizard({ isOpen, onClose, tripRow }: FuelMetricsWizar
           <div className="grid gap-2 col-span-2 md:col-span-1">
             <Label>Total Horas R2 (Auto)</Label>
             <input type="text" className={inputClass + ' bg-stone-100/50 dark:bg-zinc-800/50 cursor-not-allowed opacity-70'} value={computedHoursR2 > 0 ? `${computedHoursR2} h` : ''} disabled placeholder="0 h" />
-          </div>
-          <div className="grid gap-2 col-span-2 md:col-span-1">
-            <Label htmlFor="litersRealR2">Litros Reales R2</Label>
-            <input id="litersRealR2" type="number" step="0.01" min="0" placeholder="0.00" className={inputClass}
-              {...register('litersRealR2', { valueAsNumber: true })} />
-            {err(errors.litersRealR2?.message)}
           </div>
         </div>
       </div>

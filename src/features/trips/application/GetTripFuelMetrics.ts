@@ -2,23 +2,26 @@
  * @fileoverview Use Case: Obtener y calcular métricas completas de combustible de un viaje.
  *
  * Este Use Case:
- * 1. Obtiene los inputs almacenados en trip_fuel_metrics y fuel_loads
- * 2. Obtiene los rendimientos teóricos del truck y trailers (via unit_assemblies)
- * 3. Calcula TODOS los campos derivados de la "Base Combustible V3"
- *    (rendimiento real, litros teóricos, ahorro/exceso, etc.)
+ * 1. Obtiene los inputs almacenados en trip_fuel_metrics
+ * 2. Obtiene TODAS las cargas de combustible del viaje (fuel_loads)
+ * 3. Separa las cargas por tipo: TRUCK (motor) y TRAILER (termos R1/R2)
+ * 4. Calcula los litros totales por tipo de vehículo
+ * 5. Calcula segmentos de rendimiento por tramo (cargas TRUCK con odómetro)
+ * 6. Calcula rendimiento global del viaje
  *
  * Nunca lanza excepciones — retorna Either<Failure, FuelMetricsCalculated>.
  *
  * @param repo - Implementación inyectada de IFuelMetricsRepository
  * @param tripId - UUID del viaje
  * @param truckId - UUID del tracto (de unit_assemblies)
- * @param trailerR1Id - UUID del remolque 1 (puede ser null si es sencillo)
- * @param trailerR2Id - UUID del remolque 2 (puede ser null si no es full)
+ * @param trailerR1Id - UUID del remolque 1 (null si es sencillo)
+ * @param trailerR2Id - UUID del remolque 2 (null si no es full)
  */
 
 import type { Either, Failure } from '@/src/core/domain/either'
 import type { IFuelMetricsRepository } from '../domain/repositories/i-fuel-metrics-repository'
 import type { FuelMetricsCalculated } from '../domain/entities/fuel-metrics-entity'
+import { GetFuelLoadSegments } from './GetFuelLoadSegments'
 
 export async function GetTripFuelMetrics(
   repo: IFuelMetricsRepository,
@@ -29,29 +32,25 @@ export async function GetTripFuelMetrics(
 ): Promise<Either<Failure, FuelMetricsCalculated>> {
   try {
     // ── 1. Obtener inputs almacenados ──────────────────────────────────────
-    const [metricsResult, fuelLoadResult, truckResult] = await Promise.all([
+    const [metricsResult, fuelLoadsResult, truckResult] = await Promise.all([
       repo.getByTripId(tripId),
-      repo.getFuelLoadByTripId(tripId),
+      repo.getFuelLoadsByTripId(tripId),
       repo.getTruckYieldData(truckId),
     ])
 
     if (!metricsResult.ok) return metricsResult
-    if (!fuelLoadResult.ok) return fuelLoadResult
+    if (!fuelLoadsResult.ok) return fuelLoadsResult
     if (!truckResult.ok) return truckResult
 
     const inputs = metricsResult.data
-    const fuelLoad = fuelLoadResult.data
+    const fuelLoads = fuelLoadsResult.data
     const truck = truckResult.data
 
-    // Si no hay métricas aún, retornar estructura vacía (viaje sin datos ingresados)
     if (!inputs) {
-      return {
-        ok: true,
-        data: buildEmptyMetrics(tripId),
-      }
+      return { ok: true, data: buildEmptyMetrics(tripId) }
     }
 
-    // ── 2. Obtener rendimientos de remolques (si existen) ─────────────────
+    // ── 2. Obtener rendimientos de remolques ───────────────────────────────
     const [trailerR1Result, trailerR2Result] = await Promise.all([
       trailerR1Id ? repo.getTrailerYieldData(trailerR1Id) : Promise.resolve({ ok: true as const, data: null }),
       trailerR2Id ? repo.getTrailerYieldData(trailerR2Id) : Promise.resolve({ ok: true as const, data: null }),
@@ -63,18 +62,35 @@ export async function GetTripFuelMetrics(
     const trailerR1 = trailerR1Result.data
     const trailerR2 = trailerR2Result.data
 
-    // ── 3. Calcular todos los campos derivados ─────────────────────────────
-    const litersEngine = fuelLoad?.litersEngine ?? 0
-    const pricePerLiter = fuelLoad?.pricePerLiter ?? 0
+    // ── 3. Separar cargas por tipo de vehículo ─────────────────────────────
+    const truckLoads = fuelLoads.filter((fl) => fl.vehicleType === 'TRUCK')
+    const r1Loads = fuelLoads.filter(
+      (fl) => fl.vehicleType === 'TRAILER' && fl.trailerId === trailerR1Id
+    )
+    const r2Loads = fuelLoads.filter(
+      (fl) => fl.vehicleType === 'TRAILER' && fl.trailerId === trailerR2Id
+    )
 
-    // Odómetro
+    // ── 4. Calcular totales de litros y costos ─────────────────────────────
+    const litersEngine = truckLoads.reduce((s, fl) => s + fl.litersLoaded, 0)
+    const litersRealR1 = r1Loads.reduce((s, fl) => s + fl.litersLoaded, 0)
+    const litersRealR2 = r2Loads.reduce((s, fl) => s + fl.litersLoaded, 0)
+    const totalCostTrucks = truckLoads.reduce((s, fl) => s + fl.totalCost, 0)
+    const totalCostR1 = r1Loads.reduce((s, fl) => s + fl.totalCost, 0)
+    const totalCostR2 = r2Loads.reduce((s, fl) => s + fl.totalCost, 0)
+    const pricePerLiterRef = truckLoads[0]?.pricePerLiter ?? 0
+
+    // ── 5. Calcular segmentos de rendimiento por tramo ─────────────────────
+    const truckSegments = GetFuelLoadSegments(truckLoads)
+
+    // ── 6. Calcular métricas del viaje ─────────────────────────────────────
     const kmTraveled =
       inputs.kmInitial !== null && inputs.kmFinal !== null
         ? inputs.kmFinal - inputs.kmInitial
         : null
 
     // Motor
-    const totalCostEngine = litersEngine > 0 ? litersEngine * pricePerLiter : null
+    const totalCostEngine = totalCostTrucks > 0 ? totalCostTrucks : null
     const litersTheoreticalEngine =
       kmTraveled !== null && truck?.theoreticalYield && truck.theoreticalYield > 0
         ? kmTraveled / truck.theoreticalYield
@@ -89,43 +105,42 @@ export async function GetTripFuelMetrics(
         : null
 
     // Remolque 1
-    // Usa ss_refrigerated_yield como default (el más común en operaciones)
-    const theoreticalYieldR1 =
-      trailerR1?.ssRefrigeratedYield ?? trailerR1?.continuousRefrigeratedYield ?? null
+    const theoreticalYieldR1 = trailerR1?.ssRefrigeratedYield ?? trailerR1?.continuousRefrigeratedYield ?? null
     const litersTheoreticalR1 =
       inputs.hoursR1 > 0 && theoreticalYieldR1 !== null
         ? inputs.hoursR1 * theoreticalYieldR1
         : null
     const realYieldR1 =
-      inputs.litersRealR1 > 0 && inputs.hoursR1 > 0
-        ? inputs.litersRealR1 / inputs.hoursR1
+      litersRealR1 > 0 && inputs.hoursR1 > 0
+        ? litersRealR1 / inputs.hoursR1
         : null
     const savingsExcessR1 =
-      inputs.litersRealR1 > 0 && litersTheoreticalR1 !== null
-        ? inputs.litersRealR1 - litersTheoreticalR1
+      litersRealR1 > 0 && litersTheoreticalR1 !== null
+        ? litersRealR1 - litersTheoreticalR1
         : null
 
     // Remolque 2
-    const theoreticalYieldR2 =
-      trailerR2?.ssRefrigeratedYield ?? trailerR2?.continuousRefrigeratedYield ?? null
+    const theoreticalYieldR2 = trailerR2?.ssRefrigeratedYield ?? trailerR2?.continuousRefrigeratedYield ?? null
     const litersTheoreticalR2 =
       inputs.hoursR2 > 0 && theoreticalYieldR2 !== null
         ? inputs.hoursR2 * theoreticalYieldR2
         : null
     const realYieldR2 =
-      inputs.litersRealR2 > 0 && inputs.hoursR2 > 0
-        ? inputs.litersRealR2 / inputs.hoursR2
+      litersRealR2 > 0 && inputs.hoursR2 > 0
+        ? litersRealR2 / inputs.hoursR2
         : null
     const savingsExcessR2 =
-      inputs.litersRealR2 > 0 && litersTheoreticalR2 !== null
-        ? inputs.litersRealR2 - litersTheoreticalR2
+      litersRealR2 > 0 && litersTheoreticalR2 !== null
+        ? litersRealR2 - litersTheoreticalR2
         : null
 
-    // Totales del viaje
+    // Totales
     const totalDieselCostTrip =
-      pricePerLiter > 0
-        ? (litersEngine + inputs.litersRealR1 + inputs.litersRealR2) * pricePerLiter
-        : null
+      totalCostTrucks + totalCostR1 + totalCostR2 > 0
+        ? totalCostTrucks + totalCostR1 + totalCostR2
+        : pricePerLiterRef > 0
+          ? (litersEngine + litersRealR1 + litersRealR2) * pricePerLiterRef
+          : null
 
     const totalSavingsExcess =
       savingsExcessEngine !== null || savingsExcessR1 !== null || savingsExcessR2 !== null
@@ -141,27 +156,27 @@ export async function GetTripFuelMetrics(
       ok: true,
       data: {
         inputs,
-        fuelLoad,
+        fuelLoads,
+        truckSegments,
         truck,
         trailerR1,
         trailerR2,
-        // Motor
         kmTraveled,
+        litersEngine,
         totalCostEngine,
         litersTheoreticalEngine,
         realYieldEngine,
         savingsExcessEngine,
-        // R1
+        litersRealR1,
         theoreticalYieldR1,
         litersTheoreticalR1,
         realYieldR1,
         savingsExcessR1,
-        // R2
+        litersRealR2,
         theoreticalYieldR2,
         litersTheoreticalR2,
         realYieldR2,
         savingsExcessR2,
-        // Totales
         totalDieselCostTrip,
         totalSavingsExcess,
         preinvoiceVariance,
@@ -170,54 +185,32 @@ export async function GetTripFuelMetrics(
   } catch {
     return {
       ok: false,
-      error: {
-        code: 'UNEXPECTED',
-        message: 'Error inesperado al calcular métricas de combustible',
-      },
+      error: { code: 'UNEXPECTED', message: 'Error inesperado al calcular métricas de combustible' },
     }
   }
 }
 
-/**
- * Retorna una estructura de métricas vacía para viajes sin datos ingresados aún.
- * @param tripId - UUID del viaje
- */
 function buildEmptyMetrics(tripId: string): FuelMetricsCalculated {
   return {
     inputs: {
-      id: '',
-      tripId,
-      kmInitial: null,
-      kmFinal: null,
-      fuelLoadId: null,
-      hoursR1: 0,
-      litersRealR1: 0,
-      hoursR2: 0,
-      litersRealR2: 0,
+      id: '', tripId,
+      kmInitial: null, kmInitialDate: null,
+      kmFinal: null, kmFinalDate: null,
+      hoursR1: 0, r1StartDate: null, r1EndDate: null,
+      hoursR2: 0, r2StartDate: null, r2EndDate: null,
       totalKmPreinvoice: null,
-      createdBy: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdBy: null, createdAt: new Date(), updatedAt: new Date(),
     },
-    fuelLoad: null,
-    truck: null,
-    trailerR1: null,
-    trailerR2: null,
+    fuelLoads: [],
+    truckSegments: [],
+    truck: null, trailerR1: null, trailerR2: null,
     kmTraveled: null,
-    totalCostEngine: null,
-    litersTheoreticalEngine: null,
-    realYieldEngine: null,
-    savingsExcessEngine: null,
-    theoreticalYieldR1: null,
-    litersTheoreticalR1: null,
-    realYieldR1: null,
-    savingsExcessR1: null,
-    theoreticalYieldR2: null,
-    litersTheoreticalR2: null,
-    realYieldR2: null,
-    savingsExcessR2: null,
-    totalDieselCostTrip: null,
-    totalSavingsExcess: null,
-    preinvoiceVariance: null,
+    litersEngine: 0, totalCostEngine: null, litersTheoreticalEngine: null,
+    realYieldEngine: null, savingsExcessEngine: null,
+    litersRealR1: 0, theoreticalYieldR1: null, litersTheoreticalR1: null,
+    realYieldR1: null, savingsExcessR1: null,
+    litersRealR2: 0, theoreticalYieldR2: null, litersTheoreticalR2: null,
+    realYieldR2: null, savingsExcessR2: null,
+    totalDieselCostTrip: null, totalSavingsExcess: null, preinvoiceVariance: null,
   }
 }

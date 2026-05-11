@@ -23,22 +23,28 @@ describe('FuelMetricsMapper', () => {
         trucks: { plates: 'MX-1234', theoretical_yield: 5 },
         employees: { full_name: 'Juan Pérez' },
       },
-      trip_fuel_metrics: [{
+      trip_fuel_metrics: {
         km_initial: 1000,
+        km_initial_date: '2026-04-20T08:00:00.000Z',
         km_final: 1500,
-        fuel_load_id: 'fuel-uuid',
+        km_final_date: '2026-04-20T16:00:00.000Z',
         hours_r1: 2,
-        liters_real_r1: 10,
+        r1_start_date: null,
+        r1_end_date: null,
         hours_r2: 0,
-        liters_real_r2: 0,
+        r2_start_date: null,
+        r2_end_date: null,
         total_km_preinvoice: 520,
-      }],
+      },
       fuel_loads: [{
         id: 'fuel-uuid',
+        vehicle_type: 'TRUCK',
+        trailer_id: null,
         ticket_folio: 'TK-01',
         liters_loaded: 100,
         price_per_liter: 20,
         total_cost: 2000,
+        odometer_at_load: null,
         created_at: '2026-04-20T10:00:00.000Z',
       }],
     }
@@ -57,7 +63,7 @@ describe('FuelMetricsMapper', () => {
     expect(mapped.litersTheoreticalEngine).toBe(100)
     expect(mapped.savingsExcessEngine).toBe(0)
 
-    expect(mapped.totalDieselCostTrip).toBe(2200)
+    expect(mapped.totalDieselCostTrip).toBe(2000)
     expect(mapped.preinvoiceVariance).toBe(20)
   })
 
@@ -93,6 +99,7 @@ describe('FuelMetricsMapper', () => {
     const row: FuelLoadHistoryRow = {
       id: 'fuel-1',
       trip_id: 'trip-1',
+      vehicle_type: 'TRUCK',
       load_date: '2026-04-23T10:00:00.000Z',
       ticket_folio: 'TK-9',
       liters_loaded: 120.5,
@@ -100,6 +107,9 @@ describe('FuelMetricsMapper', () => {
       total_cost: 2861.875,
       source_type: 'EXTERNAL',
       is_full_tank_fill: false,
+      odometer_at_load: null,
+      truck_id: 'truck-1',
+      trailer_id: null,
       trips: {
         trip_number: 7,
         folio: null,

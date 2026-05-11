@@ -11,10 +11,13 @@ export type FuelLoadSourceType = typeof FUEL_LOAD_SOURCE_TYPE[keyof typeof FUEL_
  * Esquema de validación para el registro de carga de combustible.
  */
 export const fuelLoadSchema = z.object({
-  tripId: z.string().min(1, 'Selecciona un viaje'),
+  tripId: z.string().optional().nullable(),
+  vehicleType: z.enum(['TRUCK', 'TRAILER']).default('TRUCK'),
+  trailerId: z.string().optional().nullable(),
+  odometerAtLoad: z.number().optional().nullable(),
   ticketFolio: z.string().min(1, 'El folio del ticket es obligatorio'),
   loadDate: z.string().min(1, 'La fecha de carga es obligatoria'),
-  litersEngine: z.number({ error: 'Ingresa los litros' }).min(0.01, 'Los litros deben ser > 0'),
+  litersLoaded: z.number({ error: 'Ingresa los litros' }).min(0.01, 'Los litros deben ser > 0'),
   pricePerLiter: z.number({ error: 'Ingresa el precio por litro' }).min(0.01, 'El precio debe ser > 0').optional(),
   isFullTankFill: z.boolean(),
   sourceType: z.enum([FUEL_LOAD_SOURCE_TYPE.External, FUEL_LOAD_SOURCE_TYPE.InternalTank]).default(FUEL_LOAD_SOURCE_TYPE.External),
