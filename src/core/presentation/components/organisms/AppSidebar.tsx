@@ -17,6 +17,8 @@ import {
   FileText,
   Package,
   Fuel,
+  Wallet,
+  Wrench,
   Settings,
   HelpCircle,
   Building,
@@ -24,6 +26,7 @@ import {
   LogOut,
   User as UserIcon,
   ChevronUp,
+  BarChart3,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/src/core/infrastructure/utils/cn'
@@ -45,6 +48,8 @@ const MAIN_MODULES: NavItem[] = [
   { label: 'Flotilla', icon: Truck, href: '/fleet' },
   { label: 'Viajes', icon: Navigation, href: '/trips' },
   { label: 'Combustible', icon: Fuel, href: '/fuel' },
+  { label: 'Mantenimiento', icon: Wrench, href: '/maintenance' },
+  { label: 'Gastos', icon: Wallet, href: '/expenses' },
   { label: 'Inventario', icon: Package, href: '/inventory' },
   { label: 'Directorio', icon: Users, href: '/directory' },
   { label: 'Facturación', icon: FileText, href: '/billing' },
@@ -52,6 +57,7 @@ const MAIN_MODULES: NavItem[] = [
 ]
 
 const ADMIN_MODULES: NavItem[] = [
+  { label: 'BI Gerencial', icon: BarChart3, href: '/bi' },
   { label: 'Usuarios', icon: Users, href: '/users' },
   { label: 'Compañías', icon: Building, href: '/companies' },
 ]

@@ -22,6 +22,8 @@ import {
   Hash, Calendar, User, MapPin, FileText, BarChart2,
 } from 'lucide-react'
 import type { TripFuelRowEntity } from '@/src/features/trips/domain/entities/fuel-metrics-entity'
+import { useFuelLoadsForTrip } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
+import { GetFuelLoadSegments } from '@/src/features/trips/application/GetFuelLoadSegments'
 
 interface FuelMetricsDetailsDialogProps {
   isOpen: boolean
@@ -93,6 +95,8 @@ const fmtInt = (n: number | null, unit = '') =>
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export function FuelMetricsDetailsDialog({ isOpen, onClose, tripRow }: FuelMetricsDetailsDialogProps) {
+  const { data: loads = [] } = useFuelLoadsForTrip(tripRow?.id ?? null)
+
   if (!tripRow) return null
 
   const STATUS_MAP: Record<string, { label: string; className: string }> = {
@@ -156,15 +160,23 @@ export function FuelMetricsDetailsDialog({ isOpen, onClose, tripRow }: FuelMetri
               {/* Odómetro */}
               <section>
                 <SectionTitle title="Odómetro" icon={Gauge} />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <DetailItem icon={Gauge} label="KM Inicial" value={fmtInt(tripRow.kmInitial, 'km')} />
-                  <DetailItem icon={Gauge} label="KM Final" value={fmtInt(tripRow.kmFinal, 'km')} />
-                  <DetailItem icon={Gauge} label="KM Recorridos"
-                    value={tripRow.kmTraveled !== null
-                      ? <span className="text-base font-extrabold text-[#006d37] dark:text-primary-container">{fmtInt(tripRow.kmTraveled, 'km')}</span>
-                      : null
-                    }
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-4 bg-stone-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-stone-100 dark:border-zinc-700">
+                    <DetailItem icon={Gauge} label="KM Inicial" value={fmtInt(tripRow.kmInitial, 'km')} />
+                    <DetailItem icon={Calendar} label="Fecha y Hora (Inicial)" value={tripRow.kmInitialDate ? new Date(tripRow.kmInitialDate).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }) : null} />
+                  </div>
+                  <div className="flex flex-col gap-4 bg-stone-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-stone-100 dark:border-zinc-700">
+                    <DetailItem icon={Gauge} label="KM Final" value={fmtInt(tripRow.kmFinal, 'km')} />
+                    <DetailItem icon={Calendar} label="Fecha y Hora (Final)" value={tripRow.kmFinalDate ? new Date(tripRow.kmFinalDate).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }) : null} />
+                  </div>
+                  <div className="col-span-1 md:col-span-2 flex items-center justify-between p-4 bg-[#006d37]/10 border border-[#006d37]/20 rounded-xl">
+                    <DetailItem icon={Gauge} label="KM Recorridos Totales"
+                      value={tripRow.kmTraveled !== null
+                        ? <span className="text-xl font-extrabold text-[#006d37] dark:text-primary-container">{fmtInt(tripRow.kmTraveled, 'km')}</span>
+                        : null
+                      }
+                    />
+                  </div>
                 </div>
                 {tripRow.preinvoiceKm !== null && (
                   <div className="mt-4 flex items-center gap-3 p-3 rounded-xl bg-stone-50 dark:bg-zinc-800/50 border border-stone-100 dark:border-zinc-700">
@@ -199,6 +211,44 @@ export function FuelMetricsDetailsDialog({ isOpen, onClose, tripRow }: FuelMetri
                 <div className="mt-4">
                   <MetricBar real={tripRow.litersEngine} theoretical={tripRow.litersTheoreticalEngine} label="Litros reales vs. teóricos (Motor)" />
                 </div>
+
+                {loads.filter((l) => l.vehicleType === 'TRUCK').length > 0 && (
+                  <div className="mt-6 border border-stone-200 dark:border-zinc-700 rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-stone-50 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400 border-b border-stone-200 dark:border-zinc-700">
+                        <tr>
+                          <th className="px-4 py-2 font-semibold">Fecha / Ticket</th>
+                          <th className="px-4 py-2 font-semibold text-right">Odómetro</th>
+                          <th className="px-4 py-2 font-semibold text-right">Km Tramo</th>
+                          <th className="px-4 py-2 font-semibold text-right">Litros</th>
+                          <th className="px-4 py-2 font-semibold text-right">Rend. Tramo</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100 dark:divide-zinc-800">
+                        {GetFuelLoadSegments(loads.filter(l => l.vehicleType === 'TRUCK')).map((seg, i) => (
+                          <tr key={seg.loadId} className="group hover:bg-stone-50/50 dark:hover:bg-zinc-800/50">
+                            <td className="px-4 py-2">
+                              <span className="block font-medium text-stone-900 dark:text-zinc-100">{seg.loadDate ? new Date(seg.loadDate).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : 'N/D'}</span>
+                              <span className="text-[10px] text-stone-400 font-mono">{loads.find(l => l.id === seg.loadId)?.ticketFolio}</span>
+                            </td>
+                            <td className="px-4 py-2 text-right font-mono text-stone-600 dark:text-zinc-400">{fmtInt(seg.odometerAtLoad)}</td>
+                            <td className="px-4 py-2 text-right text-stone-900 dark:text-zinc-100 font-medium">{seg.kmSegment ? `+${fmtInt(seg.kmSegment)} km` : <span className="text-stone-300 italic">—</span>}</td>
+                            <td className="px-4 py-2 text-right text-stone-900 dark:text-zinc-100 font-medium">
+                              {fmt(seg.litersLoaded, 'L')}
+                              {!seg.isFullTankFill && <span className="block text-[9px] text-amber-500 uppercase">Parcial</span>}
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              {seg.realYieldSegment !== null
+                                ? <span className="font-bold text-[#006d37] dark:text-primary-container">{seg.realYieldSegment.toFixed(2)} km/L</span>
+                                : <span className="text-stone-300 italic">—</span>
+                              }
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
                 {tripRow.savingsExcessEngine !== null && (
                   <div className={cn(
                     'mt-3 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold',
@@ -216,24 +266,96 @@ export function FuelMetricsDetailsDialog({ isOpen, onClose, tripRow }: FuelMetri
               </section>
 
               {/* Remolques */}
-              {(tripRow.litersRealR1 !== null || tripRow.litersRealR2 !== null) && (
+              {(tripRow.litersRealR1 !== null || tripRow.r1StartDate || tripRow.hoursR1 !== null || tripRow.litersRealR2 !== null || tripRow.r2StartDate || tripRow.hoursR2 !== null) && (
                 <>
                   <Separator className="bg-stone-100 dark:bg-zinc-800" />
                   <section>
                     <SectionTitle title="Remolques" icon={Truck} />
                     <div className="grid grid-cols-2 gap-8">
-                      {tripRow.litersRealR1 !== null && (
-                        <div className="space-y-3">
-                          <p className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500">R1</p>
-                          <DetailItem icon={Fuel} label="Litros Reales R1" value={fmt(tripRow.litersRealR1, 'L')} />
-                          <DetailItem icon={BarChart2} label="Horas R1" value={tripRow.hoursR1 !== null ? `${tripRow.hoursR1} h` : null} />
+                      {(tripRow.litersRealR1 !== null || tripRow.r1StartDate || tripRow.hoursR1 !== null) && (
+                        <div className="space-y-4">
+                          <p className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 border-b border-stone-100 dark:border-zinc-800 pb-2">Remolque 1 (R1)</p>
+                          <div className="grid grid-cols-1 gap-4">
+                            <div className="grid grid-cols-2 gap-4 bg-stone-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-stone-100 dark:border-zinc-700">
+                              <DetailItem icon={Calendar} label="Encendido" value={tripRow.r1StartDate ? new Date(tripRow.r1StartDate).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : null} />
+                              <DetailItem icon={Calendar} label="Apagado" value={tripRow.r1EndDate ? new Date(tripRow.r1EndDate).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : null} />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <DetailItem icon={Fuel} label="Litros Totales R1" value={fmt(tripRow.litersRealR1, 'L')} />
+                              <div className="px-3 py-2 bg-[#006d37]/10 dark:bg-[#1a5c3a]/20 rounded-lg border border-[#006d37]/20 text-right">
+                                <span className="block text-[10px] font-bold uppercase tracking-widest text-[#006d37] dark:text-primary-container mb-1">Total Horas (Auto)</span>
+                                <span className="text-sm font-bold text-stone-900 dark:text-zinc-100">{tripRow.hoursR1 !== null ? `${tripRow.hoursR1} h` : '—'}</span>
+                              </div>
+                            </div>
+                            {loads.filter(l => l.vehicleType === 'TRAILER' && (tripRow as any).trailer1Id === l.trailerId || true).filter(l => l.vehicleType === 'TRAILER').length > 0 && (
+                              <div className="mt-2 border border-stone-200 dark:border-zinc-700 rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
+                                <table className="w-full text-xs text-left">
+                                  <thead className="bg-stone-50 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400 border-b border-stone-200 dark:border-zinc-700">
+                                    <tr>
+                                      <th className="px-3 py-2 font-semibold">Fecha / Ticket</th>
+                                      <th className="px-3 py-2 font-semibold text-right">Litros</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-stone-100 dark:divide-zinc-800">
+                                    {loads.filter(l => l.vehicleType === 'TRAILER' && (!l.trailerId || l.trailerId === (tripRow as any).r1_id || l.litersLoaded > 0)).map((seg) => (
+                                      <tr key={seg.id} className="group hover:bg-stone-50/50 dark:hover:bg-zinc-800/50">
+                                        <td className="px-3 py-2">
+                                          <span className="block font-medium text-stone-900 dark:text-zinc-100">{seg.loadDate ? new Date(seg.loadDate).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : 'N/D'}</span>
+                                          <span className="text-[10px] text-stone-400 font-mono">{seg.ticketFolio}</span>
+                                        </td>
+                                        <td className="px-3 py-2 text-right text-stone-900 dark:text-zinc-100 font-medium">
+                                          {fmt(seg.litersLoaded, 'L')}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
-                      {tripRow.litersRealR2 !== null && (
-                        <div className="space-y-3">
-                          <p className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500">R2</p>
-                          <DetailItem icon={Fuel} label="Litros Reales R2" value={fmt(tripRow.litersRealR2, 'L')} />
-                          <DetailItem icon={BarChart2} label="Horas R2" value={tripRow.hoursR2 !== null ? `${tripRow.hoursR2} h` : null} />
+                      {(tripRow.litersRealR2 !== null || tripRow.r2StartDate || tripRow.hoursR2 !== null) && (
+                        <div className="space-y-4">
+                          <p className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 border-b border-stone-100 dark:border-zinc-800 pb-2">Remolque 2 (R2)</p>
+                          <div className="grid grid-cols-1 gap-4">
+                            <div className="grid grid-cols-2 gap-4 bg-stone-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-stone-100 dark:border-zinc-700">
+                              <DetailItem icon={Calendar} label="Encendido" value={tripRow.r2StartDate ? new Date(tripRow.r2StartDate).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : null} />
+                              <DetailItem icon={Calendar} label="Apagado" value={tripRow.r2EndDate ? new Date(tripRow.r2EndDate).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : null} />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <DetailItem icon={Fuel} label="Litros Totales R2" value={fmt(tripRow.litersRealR2, 'L')} />
+                              <div className="px-3 py-2 bg-[#006d37]/10 dark:bg-[#1a5c3a]/20 rounded-lg border border-[#006d37]/20 text-right">
+                                <span className="block text-[10px] font-bold uppercase tracking-widest text-[#006d37] dark:text-primary-container mb-1">Total Horas (Auto)</span>
+                                <span className="text-sm font-bold text-stone-900 dark:text-zinc-100">{tripRow.hoursR2 !== null ? `${tripRow.hoursR2} h` : '—'}</span>
+                              </div>
+                            </div>
+                            {loads.filter(l => l.vehicleType === 'TRAILER').length > 0 && (
+                              <div className="mt-2 border border-stone-200 dark:border-zinc-700 rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
+                                <table className="w-full text-xs text-left">
+                                  <thead className="bg-stone-50 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400 border-b border-stone-200 dark:border-zinc-700">
+                                    <tr>
+                                      <th className="px-3 py-2 font-semibold">Fecha / Ticket</th>
+                                      <th className="px-3 py-2 font-semibold text-right">Litros</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-stone-100 dark:divide-zinc-800">
+                                    {loads.filter(l => l.vehicleType === 'TRAILER' && (!l.trailerId || l.trailerId === (tripRow as any).r2_id)).map((seg) => (
+                                      <tr key={seg.id} className="group hover:bg-stone-50/50 dark:hover:bg-zinc-800/50">
+                                        <td className="px-3 py-2">
+                                          <span className="block font-medium text-stone-900 dark:text-zinc-100">{seg.loadDate ? new Date(seg.loadDate).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : 'N/D'}</span>
+                                          <span className="text-[10px] text-stone-400 font-mono">{seg.ticketFolio}</span>
+                                        </td>
+                                        <td className="px-3 py-2 text-right text-stone-900 dark:text-zinc-100 font-medium">
+                                          {fmt(seg.litersLoaded, 'L')}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

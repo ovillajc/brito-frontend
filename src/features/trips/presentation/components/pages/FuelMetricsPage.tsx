@@ -10,10 +10,11 @@
  * @page
  */
 
-import React, { useState } from 'react'
-import { Fuel, Gauge, TrendingDown, TrendingUp, AlertCircle } from 'lucide-react'
+import React, { useState, useMemo } from 'react'
+import { Fuel, Gauge, TrendingDown, TrendingUp, AlertCircle, Loader2 } from 'lucide-react'
 import { FuelMetricsTable } from '../organisms/FuelMetricsTable'
 import { cn } from '@/src/core/infrastructure/utils/cn'
+import { useFuelMetricsKpis } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 
@@ -70,37 +71,73 @@ export default function FuelMetricsPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   })
 
+  const { data: kpis, isLoading: isLoadingKpis } = useFuelMetricsKpis(selectedMonth)
+
+  const formattedKpis = useMemo(() => {
+    if (!kpis) return null
+    return {
+      kmTotal: kpis.kmTotal.toLocaleString('es-MX'),
+      litersTotal: kpis.litersTotal.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+      averageYield: kpis.averageYield.toFixed(2),
+      savingsExcess: Math.abs(kpis.savingsExcess).toFixed(1),
+      isExcess: kpis.savingsExcess > 0,
+      trend: kpis.averageYield >= kpis.theoreticalYield ? 'down' : 'up' as 'up' | 'down'
+    }
+  }, [kpis])
+
   return (
     <div className="flex flex-col gap-6">
 
       {/* ── Header ────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-lg font-bold text-stone-900 dark:text-zinc-100">Base Combustible V3</h1>
+          <h1 className="text-lg font-bold text-stone-900 dark:text-zinc-100">Base Combustible</h1>
           <p className="text-sm text-stone-500 dark:text-zinc-500">Control de rendimientos y consumo por viaje</p>
         </div>
-        <input
-          type="month"
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          className="pl-3 pr-4 py-2 text-sm rounded-xl bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#006d37]/20 focus:border-[#006d37] transition-all"
-        />
+        <div className="flex items-center gap-3">
+          {isLoadingKpis && <Loader2 className="size-4 animate-spin text-stone-400" />}
+          <input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="pl-3 pr-4 py-2 text-sm rounded-xl bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#006d37]/20 focus:border-[#006d37] transition-all"
+          />
+        </div>
       </div>
 
       {/* ── KPIs del mes ──────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <FuelKpiCard label="KM Recorridos (mes)" value="4,602" unit="km" icon={Gauge} color="primary" />
-        <FuelKpiCard label="Litros Totales Motor" value="993.7" unit="L" icon={Fuel} color="secondary" />
+        <FuelKpiCard 
+          label="KM Recorridos (mes)" 
+          value={formattedKpis?.kmTotal ?? null} 
+          unit="km" 
+          icon={Gauge} 
+          color="primary" 
+        />
+        <FuelKpiCard 
+          label="Litros Totales Motor" 
+          value={formattedKpis?.litersTotal ?? null} 
+          unit="L" 
+          icon={Fuel} 
+          color="secondary" 
+        />
         <FuelKpiCard
           label="Rendimiento Prom."
-          value="4.63"
+          value={formattedKpis?.averageYield ?? null}
           unit="km/L"
-          sub="Teórico: 4.50 km/L"
-          trend="down"
-          icon={TrendingDown}
-          color="tertiary"
+          sub={`Teórico: ${kpis?.theoreticalYield?.toFixed(2) ?? '4.50'} km/L`}
+          trend={formattedKpis?.trend}
+          icon={formattedKpis?.trend === 'up' ? TrendingUp : TrendingDown}
+          color={formattedKpis?.trend === 'up' ? 'primary' : 'error'}
         />
-        <FuelKpiCard label="Exceso Neto del Mes" value="+29.8" unit="L" trend="up" icon={AlertCircle} color="error" />
+        <FuelKpiCard
+          label={formattedKpis?.isExcess ? 'Exceso de Diésel' : 'Ahorro de Diésel'}
+          value={formattedKpis?.savingsExcess ?? null}
+          unit="L"
+          sub="Basado en rendimiento teórico"
+          icon={formattedKpis?.isExcess ? AlertCircle : Fuel}
+          color={formattedKpis?.isExcess ? 'error' : 'primary'}
+        />
       </div>
 
       {/* ── Tabla principal ───────────────────────────────────────── */}
