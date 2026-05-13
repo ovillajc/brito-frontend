@@ -146,8 +146,11 @@ export interface UnitAssemblyEntity {
   // Join properties for display (optional)
   employeeName?: string
   truckEconomicNumber?: string
+  truckPlates?: string
   trailerEconomicNumber?: string
+  trailerPlates?: string
   trailer2EconomicNumber?: string
+  trailer2Plates?: string
   clientName?: string
   companyProfileLegalName?: string
 }

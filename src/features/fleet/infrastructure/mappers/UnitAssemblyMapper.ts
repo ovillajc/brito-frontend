@@ -24,11 +24,20 @@ export class UnitAssemblyMapper {
       truckEconomicNumber: raw.trucks
         ? (raw.trucks as Record<string, unknown>).economic_number as string
         : undefined,
+      truckPlates: raw.trucks
+        ? ((raw.trucks as Record<string, unknown>).plates as string | null) ?? undefined
+        : undefined,
       trailerEconomicNumber: raw.trailers
         ? (raw.trailers as Record<string, unknown>).economic_number as string
         : undefined,
+      trailerPlates: raw.trailers
+        ? ((raw.trailers as Record<string, unknown>).plates as string | null) ?? undefined
+        : undefined,
       trailer2EconomicNumber: raw.trailer2
         ? (raw.trailer2 as Record<string, unknown>).economic_number as string
+        : undefined,
+      trailer2Plates: raw.trailer2
+        ? ((raw.trailer2 as Record<string, unknown>).plates as string | null) ?? undefined
         : undefined,
       clientName: raw.clients
         ? ((raw.clients as Record<string, unknown>).trade_name as string) ||

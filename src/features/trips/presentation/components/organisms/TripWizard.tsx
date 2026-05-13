@@ -7,12 +7,12 @@
  * @organism
  */
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { AnimatePresence } from 'framer-motion'
-import { MapPin, Briefcase, Plus, Trash2 } from 'lucide-react'
+import { MapPin, Briefcase, Plus, Trash2, Factory } from 'lucide-react'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { ActionFeedback } from '@/src/core/presentation/components/molecules/ActionFeedback'
 import { Wizard, type WizardStep } from '@/src/core/presentation/components/organisms/wizard'
@@ -23,7 +23,7 @@ import { Button } from '@/src/core/presentation/components/ui/button'
 import type { TripsTableRowEntity } from './TripsTable'
 import { ClientEntity, UnitAssemblyEntity } from '@/src/features/fleet/domain/entities'
 import { toast } from 'sonner'
-import { upsertTripWithClientDataAction } from '../../actions/trips.actions'
+import { getNextTripNumberClientForMonthAction, upsertTripWithClientDataAction } from '../../actions/trips.actions'
 
 // ── Schema Zod ────────────────────────────────────────────────────────────────
 
@@ -41,6 +41,12 @@ const tripWizardSchema = z.object({
   unitEconomicNumber: z.string().min(1, 'La unidad es obligatoria'),
   operatorName: z.string().min(1, 'El operador es obligatorio'),
   departureDate: z.string().optional(),
+
+  // Holcim fields
+  tripNumberClient: z.number({ error: 'Ingresa un número' }).optional().or(z.literal('')),
+  holcimExpensesReviewed: z.string().optional(),
+  holcimRemision: z.string().optional(),
+  holcimFactura: z.string().optional(),
 
   // Step 2 — Datos Walmart (Opcionales, validados condicionalmente si es Walmart)
   coordinatorName: z.string().optional(),
@@ -73,6 +79,8 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('idle')
   const [submissionError, setSubmissionError] = useState<string | null>(null)
+  const [holcimTripLabel, setHolcimTripLabel] = useState<string>('')
+  const holcimAutoNumberKeyRef = useRef<string>('')
 
   const isEdit = !!tripRow
 
@@ -84,6 +92,7 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
     watch,
     control,
     setValue,
+    setError,
     formState: { errors },
   } = useForm<TripWizardValues>({
     resolver: zodResolver(tripWizardSchema),
@@ -94,6 +103,10 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
       unitEconomicNumber: '',
       operatorName: '',
       departureDate: '',
+      tripNumberClient: '',
+      holcimExpensesReviewed: '',
+      holcimRemision: '',
+      holcimFactura: '',
       coordinatorName: '',
       route: '',
       cartaPorteWalmart: '',
@@ -110,9 +123,16 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
   // Watchers para lógica condicional
   const selectedClientId = watch('clientId')
   const selectedClient = clients.find(c => c.id === selectedClientId)
-  const isWalmart = selectedClient?.tradeName?.toLowerCase().includes('walmart')
+  const clientLabel = (selectedClient?.tradeName ?? selectedClient?.companyName ?? '').toLowerCase()
+  const isWalmart = clientLabel.includes('walmart')
+  const isHolcim = clientLabel.includes('holcim')
 
   const selectedUnitNumber = watch('unitEconomicNumber')
+  const departureDateValue = watch('departureDate')
+  const selectedUnit = useMemo(
+    () => units.find(u => u.economicNumber === selectedUnitNumber) ?? null,
+    [units, selectedUnitNumber]
+  )
 
   useEffect(() => {
     if (selectedUnitNumber && !isEdit) {
@@ -122,6 +142,25 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
       }
     }
   }, [selectedUnitNumber, units, setValue, isEdit])
+
+  const holcimDefaults = useMemo(() => {
+    const raw = tripRow?.clientSpecificData
+    if (!raw || typeof raw !== 'object') {
+      return { expensesReviewed: '', remision: '', factura: '' }
+    }
+    const holcim = (raw as Record<string, unknown>).holcim
+    if (!holcim || typeof holcim !== 'object') {
+      return { expensesReviewed: '', remision: '', factura: '' }
+    }
+    const h = holcim as Record<string, unknown>
+    return {
+      expensesReviewed: typeof h.expensesReviewed === 'string'
+        ? h.expensesReviewed
+        : (h.expensesReviewed === true ? 'Sí' : ''),
+      remision: typeof h.remision === 'string' ? h.remision : '',
+      factura: typeof h.factura === 'string' ? h.factura : '',
+    }
+  }, [tripRow?.clientSpecificData])
 
   // Pre-poblar al editar
   useEffect(() => {
@@ -133,6 +172,11 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
         unitEconomicNumber: tripRow.unitEconomicNumber ?? '',
         operatorName: tripRow.operatorName ?? '',
         departureDate: tripRow.departureDate ? tripRow.departureDate.substring(0, 16) : '', // yyyy-MM-ddThh:mm
+
+        tripNumberClient: tripRow.tripNumberClient ?? '',
+        holcimExpensesReviewed: holcimDefaults.expensesReviewed,
+        holcimRemision: holcimDefaults.remision,
+        holcimFactura: holcimDefaults.factura,
         
         // Walmart data si existe
         coordinatorName: tripRow.walmartData?.coordinatorName ?? '',
@@ -144,7 +188,42 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
     } else if (isOpen && !tripRow) {
       reset()
     }
-  }, [isOpen, tripRow, reset])
+  }, [isOpen, tripRow, reset, holcimDefaults])
+
+  useEffect(() => {
+    if (!isOpen) return
+    if (!isHolcim) return
+    if (isEdit) {
+      if (typeof tripRow?.tripNumberClient === 'number' && tripRow.tripNumberClient > 0) {
+        const dt = tripRow.departureDate ? new Date(tripRow.departureDate) : null
+        if (dt) {
+          setHolcimTripLabel(formatHolcimTripLabel(dt, tripRow.tripNumberClient))
+        }
+      }
+      return
+    }
+
+    const dt = departureDateValue ? new Date(departureDateValue) : new Date()
+    if (Number.isNaN(dt.getTime())) return
+
+    const key = `${selectedClientId}:${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
+    if (holcimAutoNumberKeyRef.current === key) return
+    holcimAutoNumberKeyRef.current = key
+
+    ;(async () => {
+      const month = dt.getUTCMonth() + 1
+      const year = dt.getUTCFullYear()
+      const result = await getNextTripNumberClientForMonthAction(selectedClientId, month, year)
+      if (!result.ok) {
+        toast.error(result.error.message)
+        return
+      }
+
+      const next = result.data
+      setValue('tripNumberClient', next, { shouldValidate: false })
+      setHolcimTripLabel(formatHolcimTripLabel(dt, next))
+    })()
+  }, [departureDateValue, isEdit, isHolcim, isOpen, selectedClientId, setValue, tripRow?.departureDate, tripRow?.tripNumberClient])
 
   // Handlers
   const goNext = async () => {
@@ -154,6 +233,8 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
       fieldsToValidate = ['clientId', 'origin', 'destination', 'unitEconomicNumber', 'operatorName']
     } else if (activeStep === 1 && isWalmart) {
       fieldsToValidate = ['coordinatorName', 'route', 'cartaPorteWalmart', 'numStores']
+    } else if (activeStep === 1 && isHolcim) {
+      fieldsToValidate = ['holcimRemision', 'holcimFactura']
     }
 
     const ok = await trigger(fieldsToValidate)
@@ -165,6 +246,33 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
   const handleFinish = handleSubmit(async (data) => {
     setIsSubmitting(true)
     try {
+      if (isHolcim) {
+        const tripNum = typeof data.tripNumberClient === 'number' ? data.tripNumberClient : Number(data.tripNumberClient)
+
+        const rem = data.holcimRemision?.trim() ?? ''
+        const fac = data.holcimFactura?.trim() ?? ''
+
+        let hasHolcimErrors = false
+
+        if (!Number.isFinite(tripNum) || tripNum <= 0) {
+          toast.error('No se pudo generar el número de viaje. Intenta cambiar la fecha o reabrir el formulario.')
+          hasHolcimErrors = true
+        }
+        if (rem.length === 0) {
+          setError('holcimRemision', { type: 'validate', message: 'La remisión es obligatoria' })
+          hasHolcimErrors = true
+        }
+        if (fac.length === 0) {
+          setError('holcimFactura', { type: 'validate', message: 'La factura es obligatoria' })
+          hasHolcimErrors = true
+        }
+
+        if (hasHolcimErrors) {
+          toast.error('Faltan campos obligatorios para Holcim')
+          return
+        }
+      }
+
       const selectedUnit = units.find(u => u.economicNumber === data.unitEconomicNumber)
       const unitAssemblyId = selectedUnit?.id ?? null
       if (!unitAssemblyId) {
@@ -176,6 +284,27 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
 
       const departureDate = data.departureDate ? new Date(data.departureDate) : null
 
+      const clientSpecificDataBase = isEdit ? (tripRow?.clientSpecificData ?? null) : null
+      const clientSpecificData =
+        isHolcim
+          ? {
+              ...(clientSpecificDataBase && typeof clientSpecificDataBase === 'object' ? clientSpecificDataBase : {}),
+              holcim: {
+                expensesReviewed: data.holcimExpensesReviewed?.trim() ? data.holcimExpensesReviewed.trim() : null,
+                remision: data.holcimRemision?.trim() ? data.holcimRemision.trim() : null,
+                factura: data.holcimFactura?.trim() ? data.holcimFactura.trim() : null,
+              },
+            }
+          : (
+              clientSpecificDataBase &&
+              typeof clientSpecificDataBase === 'object' &&
+              'holcim' in (clientSpecificDataBase as Record<string, unknown>)
+                ? Object.fromEntries(
+                    Object.entries(clientSpecificDataBase as Record<string, unknown>).filter(([k]) => k !== 'holcim')
+                  )
+                : clientSpecificDataBase
+            )
+
       const result = await upsertTripWithClientDataAction({
         trip: {
           id: isEdit ? tripRow?.id : undefined,
@@ -185,6 +314,8 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
           departureDate,
           unitAssemblyId,
           status: isEdit ? tripRow?.status : 'scheduled',
+          tripNumberClient: isHolcim && typeof data.tripNumberClient === 'number' ? data.tripNumberClient : null,
+          clientSpecificData: clientSpecificData && Object.keys(clientSpecificData).length > 0 ? clientSpecificData : null,
         },
         walmart: isWalmart
           ? {
@@ -192,7 +323,7 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
               route: data.route?.trim() || null,
               cartaPorteWalmart: data.cartaPorteWalmart?.trim() || null,
               numStores: typeof data.numStores === 'number' ? data.numStores : null,
-              dettesLog: (data.dettesLog ?? []).map((d) => ({
+              dettesLog: (data.dettesLog ?? []).map((d: { storeName: string; appointmentAt?: string }) => ({
                 storeId: d.storeName,
                 storeName: d.storeName,
                 appointmentAt: d.appointmentAt ? new Date(d.appointmentAt).toISOString() : null,
@@ -224,6 +355,8 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
     setActiveStep(0)
     setSubmissionStatus('idle')
     setSubmissionError(null)
+    setHolcimTripLabel('')
+    holcimAutoNumberKeyRef.current = ''
     onClose()
   }
 
@@ -231,6 +364,8 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
     setSubmissionStatus('idle')
     setActiveStep(0)
     setSubmissionError(null)
+    setHolcimTripLabel('')
+    holcimAutoNumberKeyRef.current = ''
     if (!isEdit) reset()
   }
 
@@ -292,7 +427,65 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
         </div>
 
       </div>
-      <WizardFooter isFirstStep isLastStep={!isWalmart} onCancel={handleClose} onNext={isWalmart ? goNext : handleFinish} isSubmitting={isSubmitting} />
+      <WizardFooter
+        isFirstStep
+        isLastStep={!isWalmart && !isHolcim}
+        onCancel={handleClose}
+        onNext={(isWalmart || isHolcim) ? goNext : handleFinish}
+        isSubmitting={isSubmitting}
+      />
+    </div>
+  )
+  const step2Holcim = (
+    <div className="flex flex-col gap-6 pt-2">
+      <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/15 border border-emerald-100 dark:border-emerald-900/30">
+        <div className="flex items-center gap-2 mb-1">
+          <Factory className="size-4 text-emerald-700 dark:text-emerald-300" />
+          <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-100">Campos Específicos: Holcim</h3>
+        </div>
+        <p className="text-xs text-emerald-700 dark:text-emerald-300">
+          Captura la información de remisión/factura para el control del cliente.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <Label>Número de viaje</Label>
+          <div className={`${inputClass} flex items-center`}>
+            <span className="text-sm font-mono font-bold text-stone-900 dark:text-zinc-100">
+              {holcimTripLabel || '—'}
+            </span>
+          </div>
+          <input type="hidden" {...register('tripNumberClient', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })} />
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="holcimExpensesReviewed">Gastos revisados</Label>
+          <Input id="holcimExpensesReviewed" placeholder="Ej. Casetas, Urea, Talachas..." {...register('holcimExpensesReviewed')} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="holcimRemision">Remisión</Label>
+          <Input id="holcimRemision" placeholder="Ej. REM-12345" {...register('holcimRemision')} />
+          {errors.holcimRemision && <p className={errorClass}>{errors.holcimRemision.message as string}</p>}
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="holcimFactura">Factura</Label>
+          <Input id="holcimFactura" placeholder="Ej. FAC-12345" {...register('holcimFactura')} />
+          {errors.holcimFactura && <p className={errorClass}>{errors.holcimFactura.message as string}</p>}
+        </div>
+      </div>
+
+      <WizardFooter
+        isFirstStep={false}
+        isLastStep
+        onCancel={handleClose}
+        onBack={goBack}
+        onNext={handleFinish}
+        isSubmitting={isSubmitting}
+      />
     </div>
   )
 
@@ -408,7 +601,13 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
     { id: '3', title: 'Log DETTES', content: step3Dettes },
   ]
 
-  const steps = isWalmart ? [...baseSteps, ...walmartSteps] : baseSteps
+  const holcimSteps: WizardStep[] = [
+    { id: '2', title: 'Operativa Holcim', content: step2Holcim },
+  ]
+
+  const steps = isWalmart
+    ? [...baseSteps, ...walmartSteps]
+    : (isHolcim ? [...baseSteps, ...holcimSteps] : baseSteps)
 
   return (
     <AnimatePresence mode="wait">
@@ -443,4 +642,11 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
       )}
     </AnimatePresence>
   )
+}
+
+function formatHolcimTripLabel(date: Date, tripNumberClient: number) {
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const counter = String(tripNumberClient).padStart(3, '0')
+  return `${year}-${month}-${counter}`
 }

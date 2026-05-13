@@ -9,12 +9,13 @@ import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/src/core/infrastructure/utils/cn'
-import { LayoutDashboard, Receipt, Route } from 'lucide-react'
+import { HandCoins, LayoutDashboard, Receipt, Route } from 'lucide-react'
 
 const EXPENSES_NAV = [
   { name: 'Dashboard', href: '/expenses', icon: LayoutDashboard },
   { name: 'Todos los Gastos', href: '/expenses/list', icon: Receipt },
   { name: 'Gastos por Viaje', href: '/expenses/trips', icon: Route },
+  { name: 'Asignaciones', href: '/expenses/assignments', icon: HandCoins },
 ]
 
 export default function ExpensesLayout({ children }: { children: React.ReactNode }) {

@@ -12,7 +12,7 @@ import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/src/core/presentation/components/ui/tabs'
 import { Separator } from '@/src/core/presentation/components/ui/separator'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
-import { X, MapPin, Truck, Calendar, User, FileText, ShoppingCart, Briefcase, Hash } from 'lucide-react'
+import { X, MapPin, Truck, Calendar, User, FileText, ShoppingCart, Briefcase, Hash, Factory, CheckCircle2 } from 'lucide-react'
 import type { TripsTableRowEntity } from './TripsTable'
 
 interface TripDetailsDialogProps {
@@ -50,6 +50,33 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
   if (!tripRow) return null
 
   const isWalmart = tripRow.clientName?.toLowerCase().includes('walmart')
+  const isHolcim = tripRow.clientName?.toLowerCase().includes('holcim')
+
+  const holcim = (() => {
+    const raw = tripRow.clientSpecificData
+    if (!raw || typeof raw !== 'object') return null
+    const h = (raw as Record<string, unknown>).holcim
+    if (!h || typeof h !== 'object') return null
+    const obj = h as Record<string, unknown>
+    return {
+      expensesReviewed: typeof obj.expensesReviewed === 'string'
+        ? obj.expensesReviewed
+        : (obj.expensesReviewed === true ? 'Sí' : ''),
+      remision: typeof obj.remision === 'string' ? obj.remision : null,
+      factura: typeof obj.factura === 'string' ? obj.factura : null,
+    }
+  })()
+
+  const holcimTripLabel = (() => {
+    if (!isHolcim) return null
+    if (tripRow.tripNumberClient == null) return null
+    const dt = tripRow.departureDate ? new Date(tripRow.departureDate) : null
+    if (!dt || Number.isNaN(dt.getTime())) return String(tripRow.tripNumberClient)
+    const year = dt.getUTCFullYear()
+    const month = String(dt.getUTCMonth() + 1).padStart(2, '0')
+    const counter = String(tripRow.tripNumberClient).padStart(3, '0')
+    return `${year}-${month}-${counter}`
+  })()
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} size="lg" hideDefaultHeader>
@@ -102,6 +129,14 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
                   Datos Walmart
                 </TabsTrigger>
               )}
+              {isHolcim && (
+                <TabsTrigger
+                  value="holcim"
+                  className="px-5 py-2.5 rounded-t-lg rounded-b-none text-white/60 font-semibold text-sm border-b-2 border-transparent data-[state=active]:text-white data-[state=active]:border-white data-[state=active]:bg-white/5 transition-all"
+                >
+                  Datos Holcim
+                </TabsTrigger>
+              )}
             </TabsList>
           </div>
 
@@ -127,6 +162,16 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
                   <DetailItem icon={Calendar} label="Fecha de Salida" value={tripRow.departureDate ? new Date(tripRow.departureDate).toLocaleString('es-MX') : null} />
                 </div>
               </section>
+
+              <Separator className="bg-stone-100 dark:bg-zinc-800" />
+
+              <section>
+                <SectionTitle title="Control" icon={Hash} />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <DetailItem icon={Hash} label="Núm. Viaje Cliente" value={tripRow.tripNumberClient} />
+                  <DetailItem icon={FileText} label="Observaciones" value={tripRow.observations} className="md:col-span-2" />
+                </div>
+              </section>
             </TabsContent>
 
             {/* ── Tab: Walmart ── */}
@@ -150,6 +195,22 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
                     <ShoppingCart className="size-8 text-stone-300 dark:text-zinc-600 mb-3" />
                     <p className="text-sm font-semibold text-stone-700 dark:text-zinc-300">Log de tiendas visitadas</p>
                     <p className="text-xs text-stone-500 mt-1">Esta tabla mostrará las citas y llegadas a cada tienda del recorrido.</p>
+                  </div>
+                </section>
+              </TabsContent>
+            )}
+
+            {isHolcim && (
+              <TabsContent value="holcim" className="p-8 space-y-8">
+                <section>
+                  <SectionTitle title="Detalles Operativos Holcim" icon={Factory} />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <DetailItem icon={Hash} label="Número de viaje" value={holcimTripLabel} />
+                    <DetailItem icon={FileText} label="Remisión" value={holcim?.remision} />
+                    <DetailItem icon={FileText} label="Factura" value={holcim?.factura} />
+                  </div>
+                  <div className="mt-6">
+                    <DetailItem icon={CheckCircle2} label="Gastos revisados" value={holcim?.expensesReviewed} />
                   </div>
                 </section>
               </TabsContent>

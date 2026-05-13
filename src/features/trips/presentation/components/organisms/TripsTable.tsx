@@ -32,6 +32,10 @@ export interface TripsTableRowEntity {
   unitEconomicNumber: string | null
   operatorName: string | null
   isFullAssembly: boolean
+
+  tripNumberClient: number | null
+  observations: string | null
+  clientSpecificData: Record<string, unknown> | null
   
   // Datos específicos Walmart (si aplica)
   walmartData?: {
@@ -136,6 +140,9 @@ function mapToRowEntity(item: TripWithRelations): TripsTableRowEntity {
     unitEconomicNumber: item.unitEconomicNumber,
     operatorName: item.operatorName,
     isFullAssembly: item.isFullAssembly,
+    tripNumberClient: item.trip.tripNumberClient ?? null,
+    observations: item.trip.observations ?? null,
+    clientSpecificData: item.trip.clientSpecificData ?? null,
     walmartData: item.walmartData ?? undefined,
   }
 }
