@@ -32,6 +32,10 @@ export interface TripsTableRowEntity {
   unitEconomicNumber: string | null
   operatorName: string | null
   isFullAssembly: boolean
+
+  tripNumberClient: number | null
+  observations: string | null
+  clientSpecificData: Record<string, unknown> | null
   
   // Datos específicos Walmart (si aplica)
   walmartData?: {
@@ -99,10 +103,11 @@ const TRIPS_COLUMNS: CrudColumn<TripsTableRowEntity>[] = [
   {
     header: 'Estado',
     cell: (row) => {
-      const map: Record<string, { label: string; className: string }> = {
-        completed: { label: 'Completado', className: 'bg-[#1a5c3a] text-white font-bold' },
-        in_progress: { label: 'En Ruta', className: 'bg-blue-500/10 text-blue-600 border-blue-300' },
+      const map: Record<TripStatus, { label: string; className: string }> = {
         scheduled: { label: 'Programado', className: 'bg-amber-500/10 text-amber-600 border-amber-300' },
+        in_progress: { label: 'En Ruta', className: 'bg-blue-500/10 text-blue-600 border-blue-300' },
+        in_delivery: { label: 'En Reparto', className: 'bg-cyan-500/10 text-cyan-600 border-cyan-300' },
+        completed: { label: 'Completado', className: 'bg-emerald-600 text-white font-bold' },
         cancelled: { label: 'Cancelado', className: 'bg-stone-200 text-stone-700' },
       }
       const cfg = map[row.status] ?? { label: row.status, className: 'bg-stone-100 text-stone-600' }
@@ -136,9 +141,14 @@ function mapToRowEntity(item: TripWithRelations): TripsTableRowEntity {
     unitEconomicNumber: item.unitEconomicNumber,
     operatorName: item.operatorName,
     isFullAssembly: item.isFullAssembly,
+    tripNumberClient: item.trip.tripNumberClient ?? null,
+    observations: item.trip.observations ?? null,
+    clientSpecificData: item.trip.clientSpecificData ?? null,
     walmartData: item.walmartData ?? undefined,
   }
 }
+
+import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
 
 export function TripsTable({ clients = [], units = [], trips = [] }: TripsTableProps) {
   const tripsQuery = useTripsList(undefined, trips)
@@ -149,6 +159,20 @@ export function TripsTable({ clients = [], units = [], trips = [] }: TripsTableP
   
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [detailRow, setDetailRow] = useState<TripsTableRowEntity | null>(null)
+
+  const canManageAll = useAuthStore((state) => state.hasPermission('trips:manage_all'))
+  const canManageWalmart = useAuthStore((state) => state.hasPermission('trips:manage_walmart'))
+  const canManageLogistics = useAuthStore((state) => state.hasPermission('trips:manage_holcim_barita'))
+
+  // Determinar si puede editar una fila específica
+  const canEditRow = (row: TripsTableRowEntity) => {
+    if (canManageAll) return true
+    if (canManageWalmart && row.clientName.toLowerCase().includes('walmart')) return true
+    if (canManageLogistics && (row.clientName.toLowerCase().includes('holcim') || row.clientName.toLowerCase().includes('barita'))) return true
+    return false
+  }
+
+  const canCreate = canManageAll || canManageWalmart || canManageLogistics
 
   const handleView = (row: TripsTableRowEntity) => {
     setDetailRow(row)
@@ -176,10 +200,11 @@ export function TripsTable({ clients = [], units = [], trips = [] }: TripsTableP
           [row.folio, row.clientName, row.origin, row.destination, row.unitEconomicNumber]
             .some((val) => val?.toLowerCase().includes(term))
         }
-        actionLabel="Nuevo Viaje"
-        onAction={() => { setSelectedRow(null); setIsWizardOpen(true) }}
+        actionLabel={canCreate ? "Nuevo Viaje" : undefined}
+        onAction={canCreate ? () => { setSelectedRow(null); setIsWizardOpen(true) } : undefined}
         onView={handleView}
         onEdit={handleEdit}
+        canEdit={canEditRow}
         emptyState={{
           icon: MapPin,
           title: 'Sin viajes registrados',

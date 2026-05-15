@@ -27,10 +27,10 @@ interface DialogProps {
 }
 
 const SIZE_CLASSES = {
-  sm: 'max-w-md',
-  md: 'max-w-lg',
-  lg: 'max-w-2xl',
-  xl: 'max-w-4xl',
+  sm: 'max-w-md max-h-[90vh]',
+  md: 'max-w-lg max-h-[90vh]',
+  lg: 'max-w-2xl max-h-[90vh]',
+  xl: 'max-w-4xl max-h-[90vh]',
   full: 'max-w-[95vw] h-[95vh]',
 }
 

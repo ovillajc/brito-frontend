@@ -100,7 +100,13 @@ interface CrudDataTableProps<T extends { id: string }> {
   /** Callback al hacer click en el icono "Editar" de una fila. */
   onEdit?: (item: T) => void
   /**
+   * Función opcional para validar si una fila específica puede ser editada.
+   * Si devuelve false, el botón de editar se ocultará para esa fila.
+   */
+  canEdit?: (item: T) => boolean
+  /**
    * Callback de eliminación. Recibe el `id` del item a eliminar.
+
    * Debe devolver una promesa con `{ ok: boolean, error?: { message: string } }`.
    */
   onDelete?: (id: string) => Promise<{ ok: boolean; error?: { message: string } }>
@@ -109,6 +115,12 @@ interface CrudDataTableProps<T extends { id: string }> {
   emptyState: EmptyStateConfig
   /** Número de filas skeleton a mostrar durante la carga. Por defecto: 3. */
   skeletonRows?: number
+
+  /**
+   * Si es false, deshabilita las acciones de crear, editar y eliminar.
+   * Por defecto es true.
+   */
+  canManage?: boolean
 
   /** Clase CSS opcional para el contenedor raíz. */
   className?: string
@@ -131,17 +143,23 @@ export function CrudDataTable<T extends { id: string }>({
   onAction,
   onView,
   onEdit,
+  canEdit,
   onDelete,
   emptyState,
   skeletonRows = 3,
   className,
+  canManage = true,
 }: CrudDataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('')
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  const _onAction = canManage ? onAction : undefined
+  const _onEdit = canManage ? onEdit : undefined
+  const _onDelete = canManage ? onDelete : undefined
+
   // Total de columnas + columna de acciones si aplica
-  const hasRowActions = !!(onView || onEdit || onDelete)
+  const hasRowActions = !!(onView || _onEdit || _onDelete)
   const totalCols = columns.length + (hasRowActions ? 1 : 0)
 
   // Filtrado client-side
@@ -156,10 +174,10 @@ export function CrudDataTable<T extends { id: string }>({
   const handleDeleteRequest = (id: string) => setPendingDeleteId(id)
   const handleCancelDelete = () => setPendingDeleteId(null)
   const handleConfirmDelete = async () => {
-    if (!pendingDeleteId || !onDelete) return
+    if (!pendingDeleteId || !_onDelete) return
     setIsDeleting(true)
     try {
-      const result = await onDelete(pendingDeleteId)
+      const result = await _onDelete(pendingDeleteId)
       if (result.ok) {
         toast.success('Registro eliminado correctamente')
       } else {
@@ -182,8 +200,8 @@ export function CrudDataTable<T extends { id: string }>({
         searchPlaceholder={searchPlaceholder}
         searchValue={searchFilter ? searchTerm : undefined}
         onSearchChange={searchFilter ? setSearchTerm : undefined}
-        actionLabel={actionLabel}
-        onAction={onAction}
+        actionLabel={canManage ? actionLabel : undefined}
+        onAction={_onAction}
       />
 
       {/* Empty state (when not loading and no data) */}
@@ -265,20 +283,20 @@ export function CrudDataTable<T extends { id: string }>({
                               <Eye className="size-3.5" />
                             </Button>
                           )}
-                          {onEdit && (
+                          {_onEdit && (!canEdit || canEdit(item)) && (
                             <Button
                               variant="ghost"
                               size="icon"
                               className="size-8 text-stone-400 hover:text-stone-900 dark:hover:text-zinc-100"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                onEdit(item)
+                                _onEdit(item)
                               }}
                             >
                               <Edit2 className="size-3.5" />
                             </Button>
                           )}
-                          {onDelete && (
+                          {_onDelete && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -310,7 +328,7 @@ export function CrudDataTable<T extends { id: string }>({
       )}
 
       {/* Confirm Delete Dialog */}
-      {onDelete && (
+      {_onDelete && (
         <ConfirmDialog
           isOpen={!!pendingDeleteId}
           onClose={handleCancelDelete}

@@ -98,11 +98,15 @@ export class TripsMapper {
       id: input.id,
       folio: input.folio ?? null,
       client_id: input.clientId,
+      company_profile_id: input.companyProfileId ?? null,
       origin: input.origin,
       destination: input.destination,
       departure_date: input.departureDate ? input.departureDate.toISOString() : null,
       unit_assembly_id: input.unitAssemblyId,
       status: input.status ?? 'scheduled',
+      trip_number_client: input.tripNumberClient ?? null,
+      observations: input.observations ?? null,
+      client_specific_data: input.clientSpecificData ?? null,
       updated_at: new Date().toISOString(),
     }
   }

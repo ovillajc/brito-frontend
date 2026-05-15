@@ -167,8 +167,11 @@ interface FuelMetricsTableProps {
  * Tabla principal de rendimientos de combustible.
  * Orquesta el Wizard y el DetailsDialog internamente (mismo patrón que EmployeesTable).
  */
+import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
+
 export function FuelMetricsTable({ initialData }: FuelMetricsTableProps) {
   const { data, isLoading } = useFuelMetricsRows(initialData)
+  const canManage = useAuthStore((state) => state.hasPermission('fuel:manage'))
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [selectedRow, setSelectedRow] = useState<TripFuelRowEntity | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
@@ -177,6 +180,7 @@ export function FuelMetricsTable({ initialData }: FuelMetricsTableProps) {
   return (
     <>
       <CrudDataTable<TripFuelRowEntity>
+        canManage={canManage}
         data={data}
         isLoading={isLoading}
         columns={FUEL_METRICS_COLUMNS}

@@ -13,9 +13,13 @@ import { StayDetailsDialog } from '../organisms/StayDetailsDialog'
 const dateFmt = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' })
 const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 })
 
+import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
+
 export default function MaintenancePage() {
   const staysQuery = useWorkshopStays({ limit: 200 })
   const stays = staysQuery.data ?? []
+
+  const canManage = useAuthStore((state) => state.hasPermission('maintenance:manage'))
 
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
@@ -97,12 +101,15 @@ export default function MaintenancePage() {
             </p>
           </div>
         </div>
-        <Button className="h-9 rounded-xl" onClick={() => setIsWizardOpen(true)}>
-          Nueva Estancia
-        </Button>
+        {canManage && (
+          <Button className="h-9 rounded-xl" onClick={() => setIsWizardOpen(true)}>
+            Nueva Estancia
+          </Button>
+        )}
       </div>
 
       <CrudDataTable<WorkshopStayKpiEntity>
+        canManage={canManage}
         data={stays}
         isLoading={staysQuery.isLoading}
         columns={columns}

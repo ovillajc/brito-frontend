@@ -1,0 +1,26 @@
+import { createClient } from '@supabase/supabase-js'
+
+/**
+ * Crea un cliente de Supabase con el Service Role Key.
+ * ATENCIÓN: Este cliente tiene privilegios de administrador que evaden RLS.
+ * ÚSALO SOLO en Server Components o Server Actions, NUNCA en el cliente.
+ */
+export function createAdminClient() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is missing')
+  }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is missing in environment variables.')
+  }
+
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  )
+}
