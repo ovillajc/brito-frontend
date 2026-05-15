@@ -7,10 +7,12 @@ import { z } from 'zod'
 
 export const vehicleStatusSchema = z.enum([
   'available',
-  'in_trip',
   'maintenance',
+  'assigned',
   'out_service',
+  'in_trip',
 ])
+
 
 // Zod schema for creating a truck
 export const createTruckSchema = z.object({
@@ -24,6 +26,7 @@ export const createTruckSchema = z.object({
   companyProfileId: z.string().uuid('ID de compañía inválido').optional().or(z.literal('')),
   status: vehicleStatusSchema,
   engine: z.string().optional().or(z.literal('')),
+
   tireSize: z.string().optional().or(z.literal('')),
   tankCapacity: z.number().nonnegative().optional(),
   theoreticalYield: z.number().nonnegative().optional(),

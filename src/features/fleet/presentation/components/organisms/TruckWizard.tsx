@@ -34,9 +34,8 @@ type SubmissionStatus = 'idle' | 'success' | 'error'
 
 const STATUS_OPTIONS: { label: string; value: vehicleStatus }[] = [
   { label: 'Disponible', value: 'available' },
-  { label: 'En Viaje', value: 'in_trip' },
-  { label: 'Mantenimiento', value: 'maintenance' },
-  { label: 'Fuera de Servicio', value: 'out_service' },
+  { label: 'En Taller', value: 'maintenance' },
+  { label: 'Asignada', value: 'assigned' },
 ]
 
 /**

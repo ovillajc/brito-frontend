@@ -98,6 +98,7 @@ export class TripsMapper {
       id: input.id,
       folio: input.folio ?? null,
       client_id: input.clientId,
+      company_profile_id: input.companyProfileId ?? null,
       origin: input.origin,
       destination: input.destination,
       departure_date: input.departureDate ? input.departureDate.toISOString() : null,

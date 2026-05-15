@@ -81,7 +81,11 @@ const EMPLOYEE_COLUMNS: CrudColumn<EmployeeEntity>[] = [
   },
 ]
 
+import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
+
 export function EmployeesTable({ initialData }: EmployeesTableProps) {
+  const canManage = useAuthStore((state) => state.hasPermission('all_access'))
+
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeEntity | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
@@ -109,6 +113,7 @@ export function EmployeesTable({ initialData }: EmployeesTableProps) {
   return (
     <>
       <CrudDataTable<EmployeeEntity>
+        canManage={canManage}
         data={initialData}
         isLoading={false}
         columns={EMPLOYEE_COLUMNS}

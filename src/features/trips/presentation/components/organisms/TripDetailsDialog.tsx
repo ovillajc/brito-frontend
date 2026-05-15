@@ -52,6 +52,40 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
   const isWalmart = tripRow.clientName?.toLowerCase().includes('walmart')
   const isHolcim = tripRow.clientName?.toLowerCase().includes('holcim')
 
+  const barichon = (() => {
+    const raw = tripRow.clientSpecificData
+    if (!raw || typeof raw !== 'object') return null
+    const b = (raw as Record<string, unknown>).barichon
+    if (!b || typeof b !== 'object') return null
+    const obj = b as Record<string, unknown>
+    const weight = obj.weight && typeof obj.weight === 'object' ? obj.weight as Record<string, unknown> : null
+    const unit = obj.unit && typeof obj.unit === 'object' ? obj.unit as Record<string, unknown> : null
+    return {
+      expensesReviewed: typeof obj.expensesReviewed === 'string' ? obj.expensesReviewed : null,
+      ticket: typeof obj.ticket === 'string' ? obj.ticket : null,
+      unloading: typeof obj.unloading === 'string' ? obj.unloading : null,
+      remision: typeof obj.remision === 'string' ? obj.remision : null,
+      material: typeof obj.material === 'string' ? obj.material : null,
+      factura: typeof obj.factura === 'string' ? obj.factura : null,
+      po: typeof obj.po === 'string' ? obj.po : null,
+      total: typeof obj.total === 'number' ? obj.total : null,
+      weight: {
+        gross: typeof weight?.gross === 'number' ? weight.gross : null,
+        tare: typeof weight?.tare === 'number' ? weight.tare : null,
+        net: typeof weight?.net === 'number' ? weight.net : null,
+      },
+      unit: {
+        economicNumber: typeof unit?.economicNumber === 'string' ? unit.economicNumber : null,
+        operatorName: typeof unit?.operatorName === 'string' ? unit.operatorName : null,
+        truckPlates: typeof unit?.truckPlates === 'string' ? unit.truckPlates : null,
+        trailerPlates: typeof unit?.trailerPlates === 'string' ? unit.trailerPlates : null,
+        trailer2Plates: typeof unit?.trailer2Plates === 'string' ? unit.trailer2Plates : null,
+      },
+    }
+  })()
+
+  const isBarichon = Boolean(barichon)
+
   const holcim = (() => {
     const raw = tripRow.clientSpecificData
     if (!raw || typeof raw !== 'object') return null
@@ -137,6 +171,14 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
                   Datos Holcim
                 </TabsTrigger>
               )}
+              {isBarichon && (
+                <TabsTrigger
+                  value="barichon"
+                  className="px-5 py-2.5 rounded-t-lg rounded-b-none text-white/60 font-semibold text-sm border-b-2 border-transparent data-[state=active]:text-white data-[state=active]:border-white data-[state=active]:bg-white/5 transition-all"
+                >
+                  Barichon
+                </TabsTrigger>
+              )}
             </TabsList>
           </div>
 
@@ -211,6 +253,62 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
                   </div>
                   <div className="mt-6">
                     <DetailItem icon={CheckCircle2} label="Gastos revisados" value={holcim?.expensesReviewed} />
+                  </div>
+                </section>
+              </TabsContent>
+            )}
+
+            {isBarichon && (
+              <TabsContent value="barichon" className="p-8 space-y-8">
+                <section>
+                  <SectionTitle title="Bitácora Barichon" icon={Factory} />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <DetailItem icon={Hash} label="Núm. viaje" value={tripRow.tripNumberClient} />
+                    <DetailItem icon={FileText} label="Ticket" value={barichon?.ticket} />
+                    <DetailItem icon={FileText} label="Descarga" value={barichon?.unloading} />
+                  </div>
+                </section>
+
+                <Separator className="bg-stone-100 dark:bg-zinc-800" />
+
+                <section>
+                  <SectionTitle title="Peso material" icon={FileText} />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <DetailItem icon={Hash} label="Bruto" value={barichon?.weight.gross} />
+                    <DetailItem icon={Hash} label="Tara" value={barichon?.weight.tare} />
+                    <DetailItem icon={Hash} label="Neto" value={barichon?.weight.net} />
+                  </div>
+                </section>
+
+                <Separator className="bg-stone-100 dark:bg-zinc-800" />
+
+                <section>
+                  <SectionTitle title="Documentos" icon={FileText} />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <DetailItem icon={FileText} label="Cliente" value={tripRow.clientName} />
+                    <DetailItem icon={FileText} label="Remisión" value={barichon?.remision} />
+                    <DetailItem icon={FileText} label="Factura" value={barichon?.factura} />
+                    <DetailItem icon={FileText} label="Material" value={barichon?.material} />
+                    <DetailItem icon={FileText} label="PO" value={barichon?.po} />
+                    <DetailItem icon={Hash} label="Total" value={barichon?.total} />
+                  </div>
+                </section>
+
+                <Separator className="bg-stone-100 dark:bg-zinc-800" />
+
+                <section>
+                  <SectionTitle title="Unidad" icon={Truck} />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <DetailItem icon={Truck} label="Unidad" value={barichon?.unit.economicNumber ?? tripRow.unitEconomicNumber} />
+                    <DetailItem icon={User} label="Operador" value={barichon?.unit.operatorName ?? tripRow.operatorName} />
+                    <DetailItem icon={FileText} label="Placas" value={[
+                      barichon?.unit.truckPlates ? `Tracto: ${barichon.unit.truckPlates}` : null,
+                      barichon?.unit.trailerPlates ? `Tolva: ${barichon.unit.trailerPlates}` : null,
+                      barichon?.unit.trailer2Plates ? `Tolva 2: ${barichon.unit.trailer2Plates}` : null,
+                    ].filter(Boolean).join(' · ') || null} />
+                  </div>
+                  <div className="mt-6">
+                    <DetailItem icon={CheckCircle2} label="Gastos revisados" value={barichon?.expensesReviewed} />
                   </div>
                 </section>
               </TabsContent>

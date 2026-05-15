@@ -3,7 +3,14 @@
  * Reflejan la tabla public.trips y los datos mínimos requeridos por la UI.
  */
 
-export type TripStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+export type TripStatus =
+  | 'scheduled'
+  | 'in_progress'
+  | 'in_delivery'
+  | 'completed'
+  | 'cancelled'
+
+
 
 export interface TripEntity {
   id: string

@@ -9,6 +9,7 @@ import FuelLoadPageClient from '@/src/features/trips/presentation/components/pag
 import { getUnitAssembliesAction } from '@/src/features/fleet/presentation/actions/unit-assembly.actions'
 import { getTripsAction } from '@/src/features/trips/presentation/actions/trips.actions'
 import { getFuelLoadHistoryAction } from '@/src/features/trips/presentation/actions/fuel-metrics.actions'
+import { ModuleGuard } from '@/src/features/auth/presentation/components/ModuleGuard'
 
 export default async function FuelLoadRoute() {
   const [unitsResult, tripsInProgressResult, tripsScheduledResult, historyResult] = await Promise.all([
@@ -28,5 +29,9 @@ export default async function FuelLoadRoute() {
     byId.set(t.trip.id, t)
   }
 
-  return <FuelLoadPageClient units={units} trips={[...byId.values()]} initialHistory={initialHistory} />
+  return (
+    <ModuleGuard permission="trips:view_all">
+      <FuelLoadPageClient units={units} trips={[...byId.values()]} initialHistory={initialHistory} />
+    </ModuleGuard>
+  )
 }

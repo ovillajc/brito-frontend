@@ -33,6 +33,8 @@ import { cn } from '@/src/core/infrastructure/utils/cn'
 
 import { useSidebar } from '@/src/core/presentation/context/SidebarContext'
 import { useLogout } from '@/src/features/auth/presentation/hooks/use-logout'
+import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
+
 
 // ─── Navigation Items ────────────────────────────────────────────────────────
 
@@ -40,43 +42,67 @@ interface NavItem {
   label: string
   icon: LucideIcon
   href: string
+  requiredPermission?: string
 }
 
 const MAIN_MODULES: NavItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
   { label: 'Recursos Humanos', icon: Briefcase, href: '/hr' },
-  { label: 'Flotilla', icon: Truck, href: '/fleet' },
-  { label: 'Viajes', icon: Navigation, href: '/trips' },
-  { label: 'Combustible', icon: Fuel, href: '/fuel' },
-  { label: 'Mantenimiento', icon: Wrench, href: '/maintenance' },
-  { label: 'Gastos', icon: Wallet, href: '/expenses' },
-  { label: 'Inventario', icon: Package, href: '/inventory' },
+  { label: 'Flotilla', icon: Truck, href: '/fleet', requiredPermission: 'fleet:view' },
+  { label: 'Viajes', icon: Navigation, href: '/trips', requiredPermission: 'trips:view_all' },
+  { label: 'Combustible', icon: Fuel, href: '/fuel', requiredPermission: 'fuel:view' },
+  { label: 'Mantenimiento', icon: Wrench, href: '/maintenance', requiredPermission: 'maintenance:view' },
+  { label: 'Gastos', icon: Wallet, href: '/expenses', requiredPermission: 'expenses:view' },
+  { label: 'Inventario', icon: Package, href: '/inventory', requiredPermission: 'inventory:view' },
   { label: 'Directorio', icon: Users, href: '/directory' },
-  { label: 'Facturación', icon: FileText, href: '/billing' },
-  { label: 'Logística', icon: Package, href: '/logistics' },
+  { label: 'Facturación', icon: FileText, href: '/billing', requiredPermission: 'billing:view' },
+  { label: 'Logística', icon: Package, href: '/logistics', requiredPermission: 'trips:view_all' },
 ]
 
 const ADMIN_MODULES: NavItem[] = [
-  { label: 'BI Gerencial', icon: BarChart3, href: '/bi' },
-  { label: 'Usuarios', icon: Users, href: '/users' },
-  { label: 'Compañías', icon: Building, href: '/companies' },
+  { label: 'BI Gerencial', icon: BarChart3, href: '/bi', requiredPermission: 'view_all' },
+  { label: 'Usuarios', icon: Users, href: '/users', requiredPermission: 'all_access' },
+  { label: 'Compañías', icon: Building, href: '/companies', requiredPermission: 'all_access' },
 ]
 
 const SYSTEM_ITEMS: NavItem[] = [
-  { label: 'Configuración', icon: Settings, href: '/settings' },
+  { label: 'Configuración', icon: Settings, href: '/settings', requiredPermission: 'all_access' },
   { label: 'Soporte', icon: HelpCircle, href: '/support' },
 ]
 
-// ─── AppSidebar Component ────────────────────────────────────────────────────
 
 /**
  * Sidebar principal del dashboard con navegación colapsable.
  * Soporta expand/collapse con transición suave.
  */
+// ─── AppSidebar Component ────────────────────────────────────────────────────
+
 export function AppSidebar() {
   const pathname = usePathname()
   const { isCollapsed, toggleCollapsed } = useSidebar()
   const { handleLogout } = useLogout()
+  const user = useAuthStore((state) => state.user)
+  const hasPermission = useAuthStore((state) => state.hasPermission)
+
+  const isMonitoringRole = user?.roles.some(r => r.name === 'monitoreo')
+  const isSuperUser = user?.permissions.includes('all_access') || user?.permissions.includes('view_all')
+  const isRestrictedMonitoring = isMonitoringRole && !isSuperUser
+
+  const filteredMainModules = MAIN_MODULES.filter(item => {
+    if (isRestrictedMonitoring && !item.href.startsWith('/trips')) return false
+    return !item.requiredPermission || hasPermission(item.requiredPermission)
+  })
+
+  const filteredAdminModules = ADMIN_MODULES.filter(item => {
+    if (isRestrictedMonitoring) return false
+    return !item.requiredPermission || hasPermission(item.requiredPermission)
+  })
+
+  const filteredSystemItems = SYSTEM_ITEMS.filter(item => {
+    if (isRestrictedMonitoring) return false
+    return !item.requiredPermission || hasPermission(item.requiredPermission)
+  })
+
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -86,9 +112,18 @@ export function AppSidebar() {
         setIsProfileMenuOpen(false)
       }
     }
+
+    // Redirect monitoring users if they are not in trips/profile
+    if (isRestrictedMonitoring && 
+        !pathname.startsWith('/trips') && 
+        !pathname.startsWith('/profile')
+    ) {
+      window.location.href = '/trips'
+    }
+
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }, [isRestrictedMonitoring, pathname])
 
   return (
     <aside
@@ -125,8 +160,9 @@ export function AppSidebar() {
           </p>
         )}
         <ul className="flex flex-col gap-0.5">
-          {MAIN_MODULES.map((item) => {
+          {filteredMainModules.map((item) => {
             const isActive =
+
               pathname === item.href ||
               (item.href !== '/dashboard' && pathname.startsWith(item.href))
 
@@ -162,12 +198,13 @@ export function AppSidebar() {
           </p>
         )}
         <ul className="flex flex-col gap-0.5">
-          {ADMIN_MODULES.map((item) => {
+          {filteredAdminModules.map((item) => {
             const isActive = pathname === item.href
             return (
              <li key={item.href}>
               <Link 
                 href={item.href}
+
                 title={isCollapsed ? item.label : undefined}
                 className={cn(
                   'flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-medium transition-all',
@@ -195,12 +232,13 @@ export function AppSidebar() {
           </p>
         )}
         <ul className="flex flex-col gap-0.5">
-          {SYSTEM_ITEMS.map((item) => {
+          {filteredSystemItems.map((item) => {
             const isActive = pathname === item.href
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
+
                   title={isCollapsed ? item.label : undefined}
                   className={cn(
                     'flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-medium transition-all',
@@ -261,16 +299,16 @@ export function AppSidebar() {
           )}
         >
           <div className="flex items-center justify-center size-8 rounded-full bg-[#1a5c3a]/10 text-[#1a5c3a] text-xs font-bold shrink-0">
-            TB
+            {user?.fullName?.substring(0, 2).toUpperCase() || 'UB'}
           </div>
           {!isCollapsed && (
             <>
               <div className="flex flex-col min-w-0 flex-1">
                 <span className="text-[13px] font-bold text-stone-900 dark:text-zinc-100 truncate tracking-tight">
-                  Transportes Brito
+                  {user?.fullName || 'Usuario Brito'}
                 </span>
                 <span className="text-[11px] text-stone-500 dark:text-zinc-500 font-medium truncate">
-                  Administrador
+                  {user?.roles[0]?.name.replace(/_/g, ' ') || 'Sin Rol'}
                 </span>
               </div>
               <ChevronUp className={cn("size-4 text-stone-400 dark:text-zinc-500 transition-transform duration-200", isProfileMenuOpen && "rotate-180")} />

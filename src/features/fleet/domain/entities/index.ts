@@ -6,12 +6,19 @@
 /**
  * Estado operativo de un vehículo o componente.
  */
-export type vehicleStatus = 'available' | 'in_trip' | 'maintenance' | 'out_service'
+export type vehicleStatus = 'available' | 'maintenance' | 'assigned' | 'out_service' | 'in_trip'
+
 
 /**
  * Estado operativo de un viaje.
  */
-export type TripStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+export type TripStatus = 'scheduled' | 'in_progress' | 'in_delivery' | 'completed' | 'cancelled'
+
+/**
+ * Estado operativo de una Unidad Armada (Unit Assembly).
+ */
+export type UnitStatus = 'returning' | 'at_base' | 'at_client' | 'in_trip' | 'in_workshop'
+
 
 /**
  * Representa un Tractocamión (Truck).
@@ -140,8 +147,10 @@ export interface UnitAssemblyEntity {
   companyProfileId?: string | null
 
   isActive: boolean
+  status: UnitStatus
   createdAt: Date
   updatedAt: Date
+
 
   // Join properties for display (optional)
   employeeName?: string

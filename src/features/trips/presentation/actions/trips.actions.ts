@@ -17,11 +17,86 @@ import type { TripEntity, TripWithRelations } from '@/src/features/trips/domain/
 import type { WalmartTripDataInput } from '@/src/features/trips/domain/entities/walmart-trip-entity'
 import { SaveWalmartTripData } from '@/src/features/trips/application/SaveWalmartTripData'
 import { SaveFuelMetrics, type SaveFuelMetricsInput } from '@/src/features/trips/application/SaveFuelMetrics'
+import { isUnitAssignableForNewTrip } from '@/src/features/trips/domain/rules/is-unit-assignable'
 
 async function getCurrentProfileId(): Promise<string | null> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   return user?.id ?? null
+}
+
+async function getActiveCompanyProfileId(): Promise<Either<Failure, string>> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('company_profile')
+      .select('id')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error) {
+      return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+    }
+
+    if (!data?.id) {
+      return { ok: false, error: { code: 'NO_ACTIVE_COMPANY', message: 'No hay una empresa activa (company_profile) configurada' } }
+    }
+
+    return { ok: true, data: data.id as string }
+  } catch {
+    return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al obtener empresa activa' } }
+  }
+}
+
+async function validateUnitAvailability(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  input: TripUpsertInput
+): Promise<Either<Failure, true>> {
+  try {
+    if (!input.unitAssemblyId) {
+      return { ok: false, error: { code: 'MISSING_UNIT', message: 'La unidad es obligatoria', statusCode: 400 } }
+    }
+
+    let shouldValidate = !input.id
+    if (input.id) {
+      const { data: existing, error: existingError } = await supabase
+        .from('trips')
+        .select('unit_assembly_id')
+        .eq('id', input.id)
+        .maybeSingle()
+      if (existingError) return { ok: false, error: { code: 'DB_ERROR', message: existingError.message } }
+      shouldValidate = Boolean(existing?.unit_assembly_id && existing.unit_assembly_id !== input.unitAssemblyId)
+    }
+
+    if (!shouldValidate) return { ok: true, data: true }
+
+    const { data: unit, error } = await supabase
+      .from('unit_assemblies')
+      .select('status, economic_number')
+      .eq('id', input.unitAssemblyId)
+      .maybeSingle()
+
+    if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+
+    const status = (unit as { status?: string | null } | null)?.status ?? null
+    if (!isUnitAssignableForNewTrip(status)) {
+      const econ = (unit as { economic_number?: string | null } | null)?.economic_number ?? ''
+      return {
+        ok: false,
+        error: {
+          code: 'UNIT_NOT_AVAILABLE',
+          message: `La unidad${econ ? ` ${econ}` : ''} no está disponible para asignarse a un nuevo viaje`,
+          statusCode: 400,
+        },
+      }
+    }
+
+    return { ok: true, data: true }
+  } catch {
+    return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al validar disponibilidad de unidad' } }
+  }
 }
 
 export async function getTripsAction(
@@ -79,7 +154,20 @@ export async function upsertTripWithClientDataAction(
   const supabase = await createClient()
 
   const isCreate = !input.trip.id
-  const tripResult = await UpsertTrip(tripsRepo, input.trip, profileId)
+  const companyResult = await getActiveCompanyProfileId()
+  if (!companyResult.ok) return companyResult
+
+  const unitValidation = await validateUnitAvailability(
+    supabase,
+    { ...input.trip, companyProfileId: input.trip.companyProfileId ?? companyResult.data }
+  )
+  if (!unitValidation.ok) return unitValidation
+
+  const tripResult = await UpsertTrip(
+    tripsRepo,
+    { ...input.trip, companyProfileId: input.trip.companyProfileId ?? companyResult.data },
+    profileId
+  )
   if (!tripResult.ok) return tripResult
 
   const trip = tripResult.data

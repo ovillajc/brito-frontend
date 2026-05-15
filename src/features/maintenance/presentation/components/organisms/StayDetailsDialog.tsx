@@ -21,7 +21,10 @@ interface StayDetailsDialogProps {
   stay: WorkshopStayKpiEntity | null
 }
 
+import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
+
 export function StayDetailsDialog({ isOpen, onClose, stay }: StayDetailsDialogProps) {
+  const canManage = useAuthStore((state) => state.hasPermission('maintenance:manage'))
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkshopWorkOrderEntity | null>(null)
   const [isWorkOrderWizardOpen, setIsWorkOrderWizardOpen] = useState(false)
   const [isPartWizardOpen, setIsPartWizardOpen] = useState(false)
@@ -172,13 +175,16 @@ export function StayDetailsDialog({ isOpen, onClose, stay }: StayDetailsDialogPr
                       <p className="font-semibold text-stone-900 dark:text-zinc-100">Órdenes</p>
                       <p className="text-xs text-stone-500 dark:text-zinc-500">Selecciona una para ver refacciones</p>
                     </div>
-                    <Button className="h-9 rounded-xl" onClick={() => setIsWorkOrderWizardOpen(true)}>
-                      <ClipboardList className="size-4" />
-                      Nueva
-                    </Button>
+                    {canManage && (
+                      <Button className="h-9 rounded-xl" onClick={() => setIsWorkOrderWizardOpen(true)}>
+                        <ClipboardList className="size-4" />
+                        Nueva
+                      </Button>
+                    )}
                   </div>
 
                   <CrudDataTable<WorkshopWorkOrderEntity>
+                    canManage={canManage}
                     data={workOrders}
                     isLoading={workOrdersQuery.isLoading}
                     columns={workOrderColumns}
@@ -201,17 +207,20 @@ export function StayDetailsDialog({ isOpen, onClose, stay }: StayDetailsDialogPr
                         {selectedWorkOrder ? `Trabajo: ${selectedWorkOrder.folio}` : 'Selecciona una orden'}
                       </p>
                     </div>
-                    <Button
-                      className="h-9 rounded-xl"
-                      disabled={!selectedWorkOrder}
-                      onClick={() => setIsPartWizardOpen(true)}
-                    >
-                      <PackagePlus className="size-4" />
-                      Agregar
-                    </Button>
+                    {canManage && (
+                      <Button
+                        className="h-9 rounded-xl"
+                        disabled={!selectedWorkOrder}
+                        onClick={() => setIsPartWizardOpen(true)}
+                      >
+                        <PackagePlus className="size-4" />
+                        Agregar
+                      </Button>
+                    )}
                   </div>
 
                   <CrudDataTable<WorkOrderPartEntity>
+                    canManage={canManage}
                     data={parts}
                     isLoading={partsQuery.isLoading}
                     columns={partColumns}
@@ -236,16 +245,19 @@ export function StayDetailsDialog({ isOpen, onClose, stay }: StayDetailsDialogPr
                     <p className="font-semibold text-stone-900 dark:text-zinc-100">Refacciones (por orden)</p>
                     <p className="text-xs text-stone-500 dark:text-zinc-500">Selecciona una orden en la pestaña anterior.</p>
                   </div>
-                  <Button
-                    className="h-9 rounded-xl"
-                    disabled={!selectedWorkOrder}
-                    onClick={() => setIsPartWizardOpen(true)}
-                  >
-                    <PackagePlus className="size-4" />
-                    Agregar
-                  </Button>
+                  {canManage && (
+                    <Button
+                      className="h-9 rounded-xl"
+                      disabled={!selectedWorkOrder}
+                      onClick={() => setIsPartWizardOpen(true)}
+                    >
+                      <PackagePlus className="size-4" />
+                      Agregar
+                    </Button>
+                  )}
                 </div>
                 <CrudDataTable<WorkOrderPartEntity>
+                  canManage={canManage}
                   data={parts}
                   isLoading={partsQuery.isLoading}
                   columns={partColumns}
@@ -270,15 +282,17 @@ export function StayDetailsDialog({ isOpen, onClose, stay }: StayDetailsDialogPr
           <div className="text-sm text-stone-600 dark:text-zinc-400">
             {stay.reason}
           </div>
-          <Button
-            variant="outline"
-            className="h-9 rounded-xl"
-            disabled={stay.status !== 'open' || closeStay.isPending}
-            onClick={handleCloseStay}
-          >
-            <Lock className="size-4" />
-            Cerrar estancia
-          </Button>
+          {canManage && (
+            <Button
+              variant="outline"
+              className="h-9 rounded-xl"
+              disabled={stay.status !== 'open' || closeStay.isPending}
+              onClick={handleCloseStay}
+            >
+              <Lock className="size-4" />
+              Cerrar estancia
+            </Button>
+          )}
         </div>
       </div>
 

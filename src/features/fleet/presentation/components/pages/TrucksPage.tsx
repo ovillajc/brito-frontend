@@ -60,8 +60,12 @@ const TRUCK_COLUMNS: CrudColumn<TruckEntity>[] = [
   },
 ]
 
+import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
+
 export default function TrucksPage() {
   const { data: trucks, isLoading } = useTractors()
+
+  const canManage = useAuthStore((state) => state.hasPermission('fleet:manage'))
 
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [selectedTruck, setSelectedTruck] = useState<TruckEntity | null>(null)
@@ -96,6 +100,7 @@ export default function TrucksPage() {
   return (
     <div className="flex flex-col gap-6">
       <CrudDataTable<TruckEntity>
+        canManage={canManage}
         data={trucks}
         isLoading={isLoading}
         columns={TRUCK_COLUMNS}

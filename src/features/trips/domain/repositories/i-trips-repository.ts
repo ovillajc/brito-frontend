@@ -18,6 +18,7 @@ export interface TripUpsertInput {
   id?: string
   folio?: string | null
   clientId: string
+  companyProfileId?: string | null
   origin: string
   destination: string
   departureDate: Date | null

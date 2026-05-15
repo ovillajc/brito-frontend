@@ -15,9 +15,13 @@ import { ExpensesTable } from '@/src/features/expenses/presentation/components/o
 
 const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 })
 
+import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
+
 export default function ExpenseAssignmentsPage() {
   const advancesQuery = useExpenseAdvances()
   const tripKpisQuery = useTripExpenseAssignmentKpis(200)
+
+  const canManage = useAuthStore((state) => state.hasPermission('expenses:manage'))
 
   const [isAdvanceWizardOpen, setIsAdvanceWizardOpen] = useState(false)
   const [selectedTrip, setSelectedTrip] = useState<TripExpenseAssignmentKpiEntity | null>(null)
@@ -186,6 +190,7 @@ export default function ExpenseAssignmentsPage() {
 
         <div className="flex flex-col gap-4">
           <CrudDataTable<ExpenseAdvanceEntity>
+            canManage={canManage}
             data={advances}
             isLoading={advancesQuery.isLoading}
             columns={ADVANCE_COLUMNS}

@@ -1,5 +1,29 @@
 import { UnitAssemblyEntity } from '../../domain/entities'
 
+const UNIT_STATUS = {
+  Returning: 'returning',
+  AtBase: 'at_base',
+  AtClient: 'at_client',
+  InTrip: 'in_trip',
+  InWorkshop: 'in_workshop',
+} as const
+
+type UnitStatus = typeof UNIT_STATUS[keyof typeof UNIT_STATUS]
+
+function toUnitStatus(value: unknown): UnitStatus {
+  const v = typeof value === 'string' ? value : ''
+  switch (v) {
+    case UNIT_STATUS.Returning:
+    case UNIT_STATUS.AtBase:
+    case UNIT_STATUS.AtClient:
+    case UNIT_STATUS.InTrip:
+    case UNIT_STATUS.InWorkshop:
+      return v
+    default:
+      return UNIT_STATUS.AtBase
+  }
+}
+
 export class UnitAssemblyMapper {
   static toDomain(raw: Record<string, unknown>): UnitAssemblyEntity {
     return {
@@ -14,6 +38,7 @@ export class UnitAssemblyMapper {
       clientId: raw.client_id as string | null,
       companyProfileId: raw.company_profile_id as string | null,
       isActive: raw.is_active as boolean,
+      status: toUnitStatus(raw.status),
       createdAt: new Date(raw.created_at as string),
       updatedAt: new Date(raw.updated_at as string),
 
@@ -61,6 +86,7 @@ export class UnitAssemblyMapper {
       client_id: input.clientId || null,
       company_profile_id: input.companyProfileId || null,
       is_active: input.isActive ?? true,
+      status: input.status ?? UNIT_STATUS.AtBase,
     }
   }
 
@@ -77,6 +103,7 @@ export class UnitAssemblyMapper {
     if (input.clientId !== undefined) data.client_id = input.clientId || null
     if (input.companyProfileId !== undefined) data.company_profile_id = input.companyProfileId || null
     if (input.isActive !== undefined) data.is_active = input.isActive
+    if (input.status !== undefined) data.status = input.status
 
     return data
   }
