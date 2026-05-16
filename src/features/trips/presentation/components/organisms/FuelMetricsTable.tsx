@@ -18,6 +18,7 @@ import { FuelMetricsDetailsDialog } from './FuelMetricsDetailsDialog'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 import type { TripFuelRowEntity } from '@/src/features/trips/domain/entities/fuel-metrics-entity'
 import { useFuelMetricsRows } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
+import { deleteTripFuelMetricsAction } from '@/src/features/trips/presentation/actions/fuel-metrics.actions'
 
 // ── Entidad de vista ────────────────────────────────────────────────────────
 
@@ -191,6 +192,13 @@ export function FuelMetricsTable({ initialData }: FuelMetricsTableProps) {
         }
         onView={(row) => { setDetailRow(row); setIsDetailsOpen(true) }}
         onEdit={(row) => { setSelectedRow(row); setIsWizardOpen(true) }}
+        onDelete={async (id) => {
+          const result = await deleteTripFuelMetricsAction(id)
+          if (result.ok) {
+            return { ok: true }
+          }
+          return { ok: false, error: { message: result.error.message } }
+        }}
         emptyState={{
           icon: Fuel,
           title: 'Sin registros de combustible',

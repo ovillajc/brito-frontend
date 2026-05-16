@@ -8,7 +8,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { Controller, useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { AnimatePresence } from 'framer-motion'
@@ -20,6 +20,7 @@ import { WizardFooter } from '@/src/core/presentation/components/molecules/wizar
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { Button } from '@/src/core/presentation/components/ui/button'
+import { ConfirmDialog } from '@/src/core/presentation/components/molecules/confirm-dialog'
 import type { TripsTableRowEntity } from './TripsTable'
 import { ClientEntity, TripStatus, UnitAssemblyEntity } from '@/src/features/fleet/domain/entities'
 import { toast } from 'sonner'
@@ -41,6 +42,7 @@ const tripWizardSchema = z.object({
   origin: z.string().min(1, 'El origen es obligatorio'),
   destination: z.string().min(1, 'El destino es obligatorio'),
   unitEconomicNumber: z.string().min(1, 'La unidad es obligatoria'),
+  forceUnitAssignment: z.boolean().optional(),
   operatorName: z.string().min(1, 'El operador es obligatorio'),
   departureDate: z.string().optional(),
   status: z.enum([
@@ -76,6 +78,22 @@ const tripWizardSchema = z.object({
   route: z.string().optional(),
   cartaPorteWalmart: z.string().optional(),
   numStores: z.number({ error: 'Ingresa un número' }).min(1).optional().or(z.literal('')),
+  walmartDepartureTime: z.string().optional(),
+  walmartDestinationCities: z.string().optional(),
+  strNumLoad: z.string().optional(),
+  dhdNumLoad: z.string().optional(),
+  strComplementCartaPorte: z.string().optional(),
+  dhdComplementCartaPorte: z.string().optional(),
+  strPreinvoiceKm: z.number({ error: 'Ingresa un número' }).optional().or(z.literal('')),
+  dhdPreinvoiceKm: z.number({ error: 'Ingresa un número' }).optional().or(z.literal('')),
+  strKmTraveled: z.number({ error: 'Ingresa un número' }).optional().or(z.literal('')),
+  dhdKmTraveled: z.number({ error: 'Ingresa un número' }).optional().or(z.literal('')),
+  strDiesel: z.number({ error: 'Ingresa un número' }).optional().or(z.literal('')),
+  dhdDiesel: z.number({ error: 'Ingresa un número' }).optional().or(z.literal('')),
+  strCasetas: z.number({ error: 'Ingresa un número' }).optional().or(z.literal('')),
+  dhdCasetas: z.number({ error: 'Ingresa un número' }).optional().or(z.literal('')),
+  strTotalInvoice: z.number({ error: 'Ingresa un número' }).optional().or(z.literal('')),
+  dhdTotalInvoice: z.number({ error: 'Ingresa un número' }).optional().or(z.literal('')),
 
   // Step 3 — DETTES (Opcionales)
   dettesLog: z.array(detteLogSchema).optional(),
@@ -88,6 +106,7 @@ type TripWizardValues = z.infer<typeof tripWizardSchema>
 interface TripWizardProps {
   isOpen: boolean
   onClose: () => void
+  onSaved?: (tripId: string) => void | Promise<void>
   tripRow?: TripsTableRowEntity
   clients?: ClientEntity[]
   units?: UnitAssemblyEntity[]
@@ -97,13 +116,16 @@ type SubmissionStatus = 'idle' | 'success' | 'error'
 
 // ── Componente ────────────────────────────────────────────────────────────────
 
-export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] }: TripWizardProps) {
+export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], units = [] }: TripWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('idle')
   const [submissionError, setSubmissionError] = useState<string | null>(null)
   const [holcimTripLabel, setHolcimTripLabel] = useState<string>('')
   const holcimAutoNumberKeyRef = useRef<string>('')
+  const lastConfirmedUnitNumberRef = useRef<string>('')
+  const [isUnitOverrideDialogOpen, setIsUnitOverrideDialogOpen] = useState(false)
+  const [pendingUnitEconomicNumber, setPendingUnitEconomicNumber] = useState<string | null>(null)
 
   const isEdit = !!tripRow
 
@@ -128,6 +150,7 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
       origin: '',
       destination: '',
       unitEconomicNumber: '',
+      forceUnitAssignment: false,
       operatorName: '',
       departureDate: '',
       tripNumberClient: '',
@@ -148,6 +171,22 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
       route: '',
       cartaPorteWalmart: '',
       numStores: '',
+      walmartDepartureTime: '',
+      walmartDestinationCities: '',
+      strNumLoad: '',
+      dhdNumLoad: '',
+      strComplementCartaPorte: '',
+      dhdComplementCartaPorte: '',
+      strPreinvoiceKm: '',
+      dhdPreinvoiceKm: '',
+      strKmTraveled: '',
+      dhdKmTraveled: '',
+      strDiesel: '',
+      dhdDiesel: '',
+      strCasetas: '',
+      dhdCasetas: '',
+      strTotalInvoice: '',
+      dhdTotalInvoice: '',
       dettesLog: [],
       status: 'scheduled',
     },
@@ -263,6 +302,7 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
         origin: tripRow.origin ?? '',
         destination: tripRow.destination ?? '',
         unitEconomicNumber: tripRow.unitEconomicNumber ?? '',
+        forceUnitAssignment: false,
         operatorName: tripRow.operatorName ?? '',
         departureDate: tripRow.departureDate ? tripRow.departureDate.substring(0, 16) : '', // yyyy-MM-ddThh:mm
 
@@ -287,12 +327,34 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
         route: tripRow.walmartData?.route ?? '',
         cartaPorteWalmart: tripRow.walmartData?.cartaPorteWalmart ?? '',
         numStores: tripRow.walmartData?.numStores ?? '',
+        walmartDepartureTime: '',
+        walmartDestinationCities: '',
+        strNumLoad: '',
+        dhdNumLoad: '',
+        strComplementCartaPorte: '',
+        dhdComplementCartaPorte: '',
+        strPreinvoiceKm: '',
+        dhdPreinvoiceKm: '',
+        strKmTraveled: '',
+        dhdKmTraveled: '',
+        strDiesel: '',
+        dhdDiesel: '',
+        strCasetas: '',
+        dhdCasetas: '',
+        strTotalInvoice: '',
+        dhdTotalInvoice: '',
         dettesLog: [],
         status: tripRow.status ?? 'scheduled',
       })
+      lastConfirmedUnitNumberRef.current = tripRow.unitEconomicNumber ?? ''
+      setPendingUnitEconomicNumber(null)
+      setIsUnitOverrideDialogOpen(false)
 
     } else if (isOpen && !tripRow) {
       reset()
+      lastConfirmedUnitNumberRef.current = ''
+      setPendingUnitEconomicNumber(null)
+      setIsUnitOverrideDialogOpen(false)
     }
   }, [isOpen, tripRow, reset, holcimDefaults, barichonDefaults])
 
@@ -515,7 +577,8 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
       }
 
       const isSameUnitAsExisting = Boolean(isEdit && tripRow?.unitAssemblyId && tripRow.unitAssemblyId === unitAssemblyId)
-      if (!isSameUnitAsExisting && !isUnitAssignableForNewTrip(selectedUnit?.status)) {
+      const forceUnitAssignment = Boolean(data.forceUnitAssignment)
+      if (!forceUnitAssignment && !isSameUnitAsExisting && !isUnitAssignableForNewTrip(selectedUnit?.status)) {
         const msg = 'La unidad seleccionada no está disponible para asignarse a un nuevo viaje'
         toast.error(msg)
         setError('unitEconomicNumber', { type: 'validate', message: msg })
@@ -561,6 +624,29 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
                 : clientSpecificData
             )
 
+      const baseClientSpecific =
+        clientSpecificDataWithHolcim && typeof clientSpecificDataWithHolcim === 'object'
+          ? (clientSpecificDataWithHolcim as Record<string, unknown>)
+          : null
+
+      const destinationCitiesRaw = data.walmartDestinationCities?.trim() ?? ''
+      const clientSpecificDataFinal =
+        isWalmart
+          ? {
+              ...(baseClientSpecific ?? {}),
+              walmart: {
+                ...(baseClientSpecific?.walmart && typeof baseClientSpecific.walmart === 'object'
+                  ? (baseClientSpecific.walmart as Record<string, unknown>)
+                  : {}),
+                destinationCities: destinationCitiesRaw.length > 0 ? destinationCitiesRaw : null,
+              },
+            }
+          : (
+              baseClientSpecific && 'walmart' in baseClientSpecific
+                ? Object.fromEntries(Object.entries(baseClientSpecific).filter(([k]) => k !== 'walmart'))
+                : baseClientSpecific
+            )
+
       const tripNumberClient = (isHolcim || isBarichon) && typeof data.tripNumberClient === 'number'
         ? data.tripNumberClient
         : null
@@ -577,14 +663,34 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
           status: data.status as TripStatus,
           tripNumberClient,
 
-          clientSpecificData: clientSpecificDataWithHolcim && typeof clientSpecificDataWithHolcim === 'object' && Object.keys(clientSpecificDataWithHolcim).length > 0 ? clientSpecificDataWithHolcim : null,
+          clientSpecificData: clientSpecificDataFinal && Object.keys(clientSpecificDataFinal).length > 0 ? clientSpecificDataFinal : null,
         },
+        forceUnitAssignment,
         walmart: isWalmart
           ? {
               coordinatorName: data.coordinatorName?.trim() || null,
               route: data.route?.trim() || null,
               cartaPorteWalmart: data.cartaPorteWalmart?.trim() || null,
               numStores: typeof data.numStores === 'number' ? data.numStores : null,
+              departureTime: data.walmartDepartureTime ? new Date(data.walmartDepartureTime).toISOString() : null,
+              str: {
+                numLoad: data.strNumLoad?.trim() || null,
+                complementCartaPorte: data.strComplementCartaPorte?.trim() || null,
+                preinvoiceKm: typeof data.strPreinvoiceKm === 'number' ? data.strPreinvoiceKm : null,
+                kmTraveled: typeof data.strKmTraveled === 'number' ? data.strKmTraveled : null,
+                diesel: typeof data.strDiesel === 'number' ? data.strDiesel : null,
+                casetas: typeof data.strCasetas === 'number' ? data.strCasetas : null,
+                totalInvoice: typeof data.strTotalInvoice === 'number' ? data.strTotalInvoice : null,
+              },
+              dhd: {
+                numLoad: data.dhdNumLoad?.trim() || null,
+                complementCartaPorte: data.dhdComplementCartaPorte?.trim() || null,
+                preinvoiceKm: typeof data.dhdPreinvoiceKm === 'number' ? data.dhdPreinvoiceKm : null,
+                kmTraveled: typeof data.dhdKmTraveled === 'number' ? data.dhdKmTraveled : null,
+                diesel: typeof data.dhdDiesel === 'number' ? data.dhdDiesel : null,
+                casetas: typeof data.dhdCasetas === 'number' ? data.dhdCasetas : null,
+                totalInvoice: typeof data.dhdTotalInvoice === 'number' ? data.dhdTotalInvoice : null,
+              },
               dettesLog: (data.dettesLog ?? []).map((d: { storeName: string; appointmentAt?: string }) => ({
                 storeId: d.storeName,
                 storeName: d.storeName,
@@ -602,6 +708,9 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
       }
 
       toast.success(isEdit ? 'Viaje actualizado' : 'Viaje creado')
+      if (onSaved) {
+        await onSaved(result.data.trip.id)
+      }
       setSubmissionError(null)
       setSubmissionStatus('success')
     } catch {
@@ -635,6 +744,20 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
 
   const inputClass = 'flex h-12 w-full rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/20 transition-colors'
   const errorClass = 'text-xs text-red-500 mt-1'
+  const statusSuffixForUnit = (unit: UnitAssemblyEntity): string => {
+    const status = unit.status
+    const map: Record<string, string> = {
+      at_base: 'Disponible',
+      assigned: 'Asignada',
+      in_trip: 'En viaje',
+      in_route: 'En ruta',
+      returning: 'Regresando',
+      at_client: 'En cliente',
+      in_workshop: 'En taller',
+    }
+    const label = map[status] ?? status
+    return label ? ` — ${label}` : ''
+  }
 
   // Step 1 — Datos Base
   const step1 = (
@@ -668,21 +791,49 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
             <Label htmlFor="unitEconomicNumber">Unidad (Tracto)</Label>
-            <select id="unitEconomicNumber" className={inputClass} {...register('unitEconomicNumber')}>
-              <option value="">Selecciona una unidad</option>
-              {units.map(u => (
-                <option
-                  key={u.id}
-                  value={u.economicNumber}
-                  disabled={
-                    !(isEdit && tripRow?.unitAssemblyId && tripRow.unitAssemblyId === u.id) &&
-                    !isUnitAssignableForNewTrip(u.status)
-                  }
+            <Controller
+              name="unitEconomicNumber"
+              control={control}
+              render={({ field }) => (
+                <select
+                  id="unitEconomicNumber"
+                  className={inputClass}
+                  value={field.value}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    const unit = units.find((u) => u.economicNumber === next) ?? null
+                    const unitAssemblyId = unit?.id ?? null
+                    const isSameUnitAsExisting = Boolean(
+                      isEdit &&
+                      tripRow?.unitAssemblyId &&
+                      unitAssemblyId &&
+                      tripRow.unitAssemblyId === unitAssemblyId
+                    )
+                    const isBlocked = Boolean(unit && !isSameUnitAsExisting && !isUnitAssignableForNewTrip(unit.status))
+
+                    if (isBlocked) {
+                      setPendingUnitEconomicNumber(next)
+                      setIsUnitOverrideDialogOpen(true)
+                      return
+                    }
+
+                    field.onChange(next)
+                    lastConfirmedUnitNumberRef.current = next
+                    setValue('forceUnitAssignment', false, { shouldValidate: false })
+                  }}
                 >
-                  {u.name} ({u.economicNumber})
-                </option>
-              ))}
-            </select>
+                  <option value="">Selecciona una unidad</option>
+                  {units.map((u) => (
+                    <option key={u.id} value={u.economicNumber}>
+                      {u.name} ({u.economicNumber})
+                      {statusSuffixForUnit(u)}
+                    </option>
+                  ))}
+                </select>
+              )}
+            />
             {errors.unitEconomicNumber && <p className={errorClass}>{errors.unitEconomicNumber.message}</p>}
           </div>
           <div className="grid gap-2">
@@ -957,6 +1108,155 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
             {...register('numStores', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })} 
           />
         </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="walmartDepartureTime">Fecha (Walmart)</Label>
+            <Input id="walmartDepartureTime" type="datetime-local" {...register('walmartDepartureTime')} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="walmartDestinationCities">Ciudades de destino</Label>
+            <Input id="walmartDestinationCities" placeholder="Ej. Monterrey, Saltillo..." {...register('walmartDestinationCities')} />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-stone-200 dark:border-zinc-700 overflow-hidden">
+          <div className="grid grid-cols-3 bg-stone-50 dark:bg-zinc-800/50">
+            <div className="px-4 py-2 text-xs font-bold text-stone-700 dark:text-zinc-200">Campo</div>
+            <div className="px-4 py-2 text-xs font-bold text-stone-700 dark:text-zinc-200">STR</div>
+            <div className="px-4 py-2 text-xs font-bold text-stone-700 dark:text-zinc-200">DHD</div>
+          </div>
+
+          <div className="grid grid-cols-3 border-t border-stone-200 dark:border-zinc-700">
+            <div className="px-4 py-3 text-xs text-stone-600 dark:text-zinc-400">Número de carga</div>
+            <div className="px-4 py-2">
+              <Input placeholder="Ej. 12345" {...register('strNumLoad')} />
+            </div>
+            <div className="px-4 py-2">
+              <Input placeholder="Ej. 12345" {...register('dhdNumLoad')} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 border-t border-stone-200 dark:border-zinc-700">
+            <div className="px-4 py-3 text-xs text-stone-600 dark:text-zinc-400">Complemento carta porte</div>
+            <div className="px-4 py-2">
+              <Input placeholder="Ej. CCP-001" {...register('strComplementCartaPorte')} />
+            </div>
+            <div className="px-4 py-2">
+              <Input placeholder="Ej. CCP-001" {...register('dhdComplementCartaPorte')} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 border-t border-stone-200 dark:border-zinc-700">
+            <div className="px-4 py-3 text-xs text-stone-600 dark:text-zinc-400">Prefactura (KM)</div>
+            <div className="px-4 py-2">
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0"
+                className={inputClass}
+                {...register('strPreinvoiceKm', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+              />
+            </div>
+            <div className="px-4 py-2">
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0"
+                className={inputClass}
+                {...register('dhdPreinvoiceKm', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 border-t border-stone-200 dark:border-zinc-700">
+            <div className="px-4 py-3 text-xs text-stone-600 dark:text-zinc-400">Kilómetros recorridos</div>
+            <div className="px-4 py-2">
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0"
+                className={inputClass}
+                {...register('strKmTraveled', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+              />
+            </div>
+            <div className="px-4 py-2">
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0"
+                className={inputClass}
+                {...register('dhdKmTraveled', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 border-t border-stone-200 dark:border-zinc-700">
+            <div className="px-4 py-3 text-xs text-stone-600 dark:text-zinc-400">Diésel</div>
+            <div className="px-4 py-2">
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0"
+                className={inputClass}
+                {...register('strDiesel', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+              />
+            </div>
+            <div className="px-4 py-2">
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0"
+                className={inputClass}
+                {...register('dhdDiesel', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 border-t border-stone-200 dark:border-zinc-700">
+            <div className="px-4 py-3 text-xs text-stone-600 dark:text-zinc-400">Casetas</div>
+            <div className="px-4 py-2">
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0"
+                className={inputClass}
+                {...register('strCasetas', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+              />
+            </div>
+            <div className="px-4 py-2">
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0"
+                className={inputClass}
+                {...register('dhdCasetas', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 border-t border-stone-200 dark:border-zinc-700">
+            <div className="px-4 py-3 text-xs text-stone-600 dark:text-zinc-400">Total a facturar</div>
+            <div className="px-4 py-2">
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0"
+                className={inputClass}
+                {...register('strTotalInvoice', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+              />
+            </div>
+            <div className="px-4 py-2">
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0"
+                className={inputClass}
+                {...register('dhdTotalInvoice', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+              />
+            </div>
+          </div>
+        </div>
       </div>
       <WizardFooter isFirstStep={false} isLastStep={false} onCancel={handleClose} onBack={goBack} onNext={goNext} />
     </div>
@@ -1046,38 +1346,70 @@ export function TripWizard({ isOpen, onClose, tripRow, clients = [], units = [] 
     setActiveStep(Math.max(0, steps.length - 1))
   }, [activeStep, isOpen, steps.length])
 
+  const pendingUnit = pendingUnitEconomicNumber
+    ? (units.find((u) => u.economicNumber === pendingUnitEconomicNumber) ?? null)
+    : null
+
   return (
-    <AnimatePresence mode="wait">
-      {submissionStatus !== 'idle' ? (
-        <Dialog key="feedback" isOpen={isOpen} onClose={handleClose} size="md">
-          <ActionFeedback
-            status={submissionStatus}
-            title={submissionStatus === 'success'
-              ? (isEdit ? '¡Viaje Actualizado!' : '¡Viaje Creado!')
-              : 'Error al procesar'}
-            message={submissionStatus === 'success'
-              ? `El viaje ha sido ${isEdit ? 'actualizado' : 'registrado'} correctamente.`
-              : (submissionError ?? 'No pudimos completar la operación en este momento.')}
-            primaryActionLabel="Finalizar"
-            onPrimaryAction={handleClose}
-            secondaryActionLabel={submissionStatus === 'success' && !isEdit ? 'Crear otro' : undefined}
-            onSecondaryAction={!isEdit ? handleReset : undefined}
+    <>
+      <AnimatePresence mode="wait">
+        {submissionStatus !== 'idle' ? (
+          <Dialog key="feedback" isOpen={isOpen} onClose={handleClose} size="md">
+            <ActionFeedback
+              status={submissionStatus}
+              title={submissionStatus === 'success'
+                ? (isEdit ? '¡Viaje Actualizado!' : '¡Viaje Creado!')
+                : 'Error al procesar'}
+              message={submissionStatus === 'success'
+                ? `El viaje ha sido ${isEdit ? 'actualizado' : 'registrado'} correctamente.`
+                : (submissionError ?? 'No pudimos completar la operación en este momento.')}
+              primaryActionLabel="Finalizar"
+              onPrimaryAction={handleClose}
+              secondaryActionLabel={submissionStatus === 'success' && !isEdit ? 'Crear otro' : undefined}
+              onSecondaryAction={!isEdit ? handleReset : undefined}
+            />
+          </Dialog>
+        ) : (
+          <Wizard
+            key="wizard"
+            isOpen={isOpen}
+            onClose={handleClose}
+            title={isEdit ? 'Editar Viaje' : 'Registrar Nuevo Viaje'}
+            description={isEdit && tripRow ? `Editando viaje ${tripRow.folio}` : 'Ingresa los datos del servicio a realizar'}
+            icon={<MapPin className="size-5" />}
+            steps={steps}
+            activeStep={activeStep}
+            size="lg"
           />
-        </Dialog>
-      ) : (
-        <Wizard
-          key="wizard"
-          isOpen={isOpen}
-          onClose={handleClose}
-          title={isEdit ? 'Editar Viaje' : 'Registrar Nuevo Viaje'}
-          description={isEdit && tripRow ? `Editando viaje ${tripRow.folio}` : 'Ingresa los datos del servicio a realizar'}
-          icon={<MapPin className="size-5" />}
-          steps={steps}
-          activeStep={activeStep}
-          size="lg"
-        />
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+
+      <ConfirmDialog
+        isOpen={isUnitOverrideDialogOpen}
+        onClose={() => {
+          setIsUnitOverrideDialogOpen(false)
+          setPendingUnitEconomicNumber(null)
+        }}
+        onConfirm={() => {
+          const next = pendingUnitEconomicNumber ?? ''
+          setIsUnitOverrideDialogOpen(false)
+          setPendingUnitEconomicNumber(null)
+          if (!next) return
+          setValue('unitEconomicNumber', next, { shouldValidate: true })
+          setValue('forceUnitAssignment', true, { shouldValidate: false })
+          lastConfirmedUnitNumberRef.current = next
+        }}
+        title="Unidad no disponible"
+        description={
+          pendingUnit
+            ? `La unidad ${pendingUnit.economicNumber} no está disponible (por ejemplo: en viaje). ¿Seguro que deseas asignarla de todos modos?`
+            : 'La unidad seleccionada no está disponible (por ejemplo: en viaje). ¿Seguro que deseas asignarla de todos modos?'
+        }
+        confirmLabel="Asignar"
+        cancelLabel="Cancelar"
+        variant="warning"
+      />
+    </>
   )
 }
 

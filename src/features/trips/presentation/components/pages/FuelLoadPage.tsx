@@ -15,7 +15,6 @@ import { FuelLoadWizard } from '@/src/features/trips/presentation/components/org
 import { FuelLoadDetailsDialog } from '@/src/features/trips/presentation/components/organisms/FuelLoadDetailsDialog'
 import { useDeleteFuelLoad } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
 import { Fuel } from 'lucide-react'
-import { toast } from 'sonner'
 
 interface FuelLoadPageProps {
   trips: TripWithRelations[]
@@ -40,7 +39,12 @@ import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
 export default function FuelLoadPage({ trips, units, initialHistory = [] }: FuelLoadPageProps) {
   const historyQuery = useFuelLoadHistory(200, initialHistory)
   const deleteFuelLoad = useDeleteFuelLoad()
-  const canManage = useAuthStore((state) => state.hasPermission('fuel:manage'))
+  const canManageFuel = useAuthStore((state) => state.hasPermission('fuel:manage'))
+  const canManageFinances = useAuthStore((state) => state.hasPermission('finances:manage'))
+  const canCreateFuelLoad = useAuthStore((state) => state.hasPermission('fuel_load:create'))
+  const canCreate = canManageFuel || canManageFinances || canCreateFuelLoad
+  const canEdit = canManageFuel || canManageFinances
+  const canDelete = canManageFuel || canManageFinances
   
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
@@ -54,15 +58,6 @@ export default function FuelLoadPage({ trips, units, initialHistory = [] }: Fuel
   const handleDetails = (row: FuelLoadHistoryRowEntity) => {
     setSelectedRow(row)
     setIsDetailsOpen(true)
-  }
-
-  const handleDelete = async (row: FuelLoadHistoryRowEntity) => {
-    if (!confirm('¿Estás seguro de eliminar este registro de carga? Esta acción no se puede deshacer.')) return
-    
-    const result = await deleteFuelLoad.mutateAsync(row.id)
-    if (result.ok) {
-      historyQuery.refetch()
-    }
   }
 
   const columns: CrudColumn<FuelLoadHistoryRowEntity>[] = [
@@ -174,7 +169,6 @@ export default function FuelLoadPage({ trips, units, initialHistory = [] }: Fuel
       />
 
       <CrudDataTable<FuelLoadHistoryRowEntity>
-        canManage={canManage}
         data={historyQuery.data ?? []}
         isLoading={historyQuery.isLoading}
         columns={columns}
@@ -183,17 +177,17 @@ export default function FuelLoadPage({ trips, units, initialHistory = [] }: Fuel
           [row.folio, row.clientName, row.unitEconomicNumber, row.operatorName, row.ticketFolio]
             .some((val) => val?.toLowerCase().includes(term))
         }
-        actionLabel="Registrar Carga"
-        onAction={() => setIsWizardOpen(true)}
+        actionLabel={canCreate ? 'Registrar Carga' : undefined}
+        onAction={canCreate ? (() => setIsWizardOpen(true)) : undefined}
         onView={handleDetails}
-        onEdit={handleEdit}
-        onDelete={async (id) => {
+        onEdit={canEdit ? handleEdit : undefined}
+        onDelete={canDelete ? (async (id) => {
           const result = await deleteFuelLoad.mutateAsync(id)
           if (result.ok) {
             historyQuery.refetch()
           }
           return result
-        }}
+        }) : undefined}
         emptyState={{
           icon: Fuel,
           title: 'Sin cargas registradas',

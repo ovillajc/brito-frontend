@@ -5,8 +5,10 @@
 
 import React from 'react'
 import { ShieldCheck } from 'lucide-react'
+import { redirect } from 'next/navigation'
 import { ModuleGuard } from '@/src/features/auth/presentation/components/ModuleGuard'
 import { ModuleNavTabs, type ModuleNavItem } from '@/src/core/presentation/components/molecules/ModuleNavTabs'
+import { verifySession } from '@/src/features/auth/infrastructure/dal'
 
 const BI_NAV = [
   { name: 'Resumen Ejecutivo', href: '/bi', iconKey: 'LayoutDashboard' },
@@ -14,7 +16,19 @@ const BI_NAV = [
   { name: 'Calculadora de Rendimiento', href: '/bi/yield', iconKey: 'Calculator' },
 ] satisfies ModuleNavItem[]
 
-export default function BiLayout({ children }: { children: React.ReactNode }) {
+export default async function BiLayout({ children }: { children: React.ReactNode }) {
+  const user = await verifySession()
+  if (!user) redirect('/login')
+
+  const isWalmartOpsManager = user.roles.some(
+    r => r.name === 'gerente_operaciones_walmart' || r.name === 'gerente operaciones walmart'
+  )
+  const isSuperUser = user.permissions.includes('all_access')
+
+  if (isWalmartOpsManager && !isSuperUser) {
+    redirect('/trips/list')
+  }
+
   return (
     <ModuleGuard permission="view_all">
       <div className="flex flex-col gap-6 p-6">

@@ -16,7 +16,7 @@ const EXPENSES_NAV = [
 
 export default function ExpensesLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ModuleGuard permission="expenses:view">
+    <ModuleGuard permissions={['expenses:manage', 'expenses:create', 'expenses:view']}>
       <div className="flex flex-col gap-6 p-6">
         <header className="flex flex-col gap-4">
           <div>
