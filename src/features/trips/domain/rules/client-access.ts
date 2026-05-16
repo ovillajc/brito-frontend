@@ -15,3 +15,15 @@ export function isLogisticsAllowedClientName(clientName: string | null | undefin
   const normalized = normalizeClientName(clientName)
   return LOGISTICS_CLIENT_KEYWORDS.some((k) => normalized.includes(k))
 }
+
+export function canManageTripsForClient(input: {
+  clientName: string | null | undefined
+  canManageAll: boolean
+  canManageWalmart: boolean
+  canManageLogistics: boolean
+}): boolean {
+  if (input.canManageAll) return true
+  if (isWalmartClientName(input.clientName)) return input.canManageWalmart
+  if (isLogisticsAllowedClientName(input.clientName)) return input.canManageLogistics
+  return false
+}

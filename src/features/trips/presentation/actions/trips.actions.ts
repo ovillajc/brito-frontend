@@ -13,13 +13,13 @@ import { SupabaseFuelMetricsRepository } from '@/src/features/trips/infrastructu
 import { GetTrips } from '@/src/features/trips/application/GetTrips'
 import { UpsertTrip } from '@/src/features/trips/application/UpsertTrip'
 import type { TripsListFilters, TripUpsertInput } from '@/src/features/trips/domain/repositories/i-trips-repository'
-import type { TripEntity, TripWithRelations } from '@/src/features/trips/domain/entities/trip-entity'
+import type { TripEntity, TripStatus, TripWithRelations } from '@/src/features/trips/domain/entities/trip-entity'
 import type { WalmartTripDataInput } from '@/src/features/trips/domain/entities/walmart-trip-entity'
 import { SaveWalmartTripData } from '@/src/features/trips/application/SaveWalmartTripData'
 import { SaveFuelMetrics, type SaveFuelMetricsInput } from '@/src/features/trips/application/SaveFuelMetrics'
 import { isUnitAssignableForNewTrip } from '@/src/features/trips/domain/rules/is-unit-assignable'
 import { hasPermission } from '@/src/features/auth/infrastructure/dal'
-import { isLogisticsAllowedClientName, isWalmartClientName } from '@/src/features/trips/domain/rules/client-access'
+import { canManageTripsForClient, isLogisticsAllowedClientName, isWalmartClientName } from '@/src/features/trips/domain/rules/client-access'
 
 async function getCurrentProfileId(): Promise<string | null> {
   const supabase = await createClient()
@@ -60,7 +60,7 @@ async function getWalmartClientId(
       .from('clients')
       .select('id, trade_name, company_name')
       .or('trade_name.ilike.%walmart%,company_name.ilike.%walmart%')
-      .order('created_at', { ascending: false })
+      .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle()
 
@@ -94,9 +94,11 @@ async function getClientNameById(
 
 async function validateUnitAvailability(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  input: TripUpsertInput
+  input: TripUpsertInput,
+  forceUnitAssignment: boolean
 ): Promise<Either<Failure, true>> {
   try {
+    if (forceUnitAssignment) return { ok: true, data: true }
     if (!input.unitAssemblyId) {
       return { ok: false, error: { code: 'MISSING_UNIT', message: 'La unidad es obligatoria', statusCode: 400 } }
     }
@@ -203,6 +205,72 @@ export async function getTripsAction(
   return { ok: true, data: filtered }
 }
 
+export async function updateTripStatusAction(
+  tripId: string,
+  status: TripStatus
+): Promise<Either<Failure, true>> {
+  const profileId = await getCurrentProfileId()
+  if (!profileId) {
+    return { ok: false, error: { code: 'UNAUTHORIZED', message: 'Usuario no autenticado', statusCode: 401 } }
+  }
+
+  const allowedStatuses: ReadonlySet<TripStatus> = new Set([
+    'scheduled',
+    'in_progress',
+    'in_delivery',
+    'completed',
+    'cancelled',
+  ])
+  if (!allowedStatuses.has(status)) {
+    return { ok: false, error: { code: 'INVALID_STATUS', message: 'Estado inválido', statusCode: 400 } }
+  }
+
+  const canManageAll = await hasPermission('trips:manage_all')
+  const canManageWalmart = await hasPermission('trips:manage_walmart')
+  const canManageLogistica = await hasPermission('trips:manage_logistica')
+
+  if (!canManageAll && !canManageWalmart && !canManageLogistica) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
+
+  try {
+    const supabase = await createClient()
+    const { data: tripRow, error: tripError } = await supabase
+      .from('trips')
+      .select('id, clients(trade_name, company_name)')
+      .eq('id', tripId)
+      .maybeSingle()
+
+    if (tripError) return { ok: false, error: { code: 'DB_ERROR', message: tripError.message } }
+    if (!tripRow?.id) return { ok: false, error: { code: 'NOT_FOUND', message: 'Viaje no encontrado', statusCode: 404 } }
+
+    const clientObj = (tripRow as unknown as { clients?: { trade_name?: string | null; company_name?: string | null } | null }).clients
+    const clientName = ((clientObj?.trade_name ?? clientObj?.company_name ?? '') as string).trim()
+
+    const canManageForClient = canManageTripsForClient({
+      clientName,
+      canManageAll,
+      canManageWalmart,
+      canManageLogistics: canManageLogistica,
+    })
+    if (!canManageForClient) {
+      return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+    }
+
+    const { error: updateError } = await supabase
+      .from('trips')
+      .update({ status })
+      .eq('id', tripId)
+
+    if (updateError) return { ok: false, error: { code: 'DB_ERROR', message: updateError.message } }
+
+    revalidatePath('/trips/list')
+    return { ok: true, data: true }
+  } catch {
+    return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al actualizar estado del viaje' } }
+  }
+}
+
 export async function getTripsForFuelLoadAction(
   filters?: TripsListFilters
 ): Promise<Either<Failure, TripWithRelations[]>> {
@@ -288,11 +356,31 @@ export async function getNextTripNumberClientForMonthAction(
 
 export interface UpsertTripWithClientDataInput {
   trip: TripUpsertInput
+  forceUnitAssignment?: boolean
   walmart?: {
     coordinatorName: string | null
     route: string | null
     cartaPorteWalmart: string | null
     numStores: number | null
+    departureTime: string | null
+    str: {
+      numLoad: string | null
+      complementCartaPorte: string | null
+      preinvoiceKm: number | null
+      kmTraveled: number | null
+      diesel: number | null
+      casetas: number | null
+      totalInvoice: number | null
+    }
+    dhd: {
+      numLoad: string | null
+      complementCartaPorte: string | null
+      preinvoiceKm: number | null
+      kmTraveled: number | null
+      diesel: number | null
+      casetas: number | null
+      totalInvoice: number | null
+    }
     dettesLog: { storeId: string; storeName: string; appointmentAt: string | null }[]
   }
   fuelMetrics?: Pick<SaveFuelMetricsInput, 'kmInitial' | 'kmFinal' | 'totalKmPreinvoice'>
@@ -343,7 +431,8 @@ export async function upsertTripWithClientDataAction(
 
   const unitValidation = await validateUnitAvailability(
     supabase,
-    { ...input.trip, companyProfileId: input.trip.companyProfileId ?? companyResult.data }
+    { ...input.trip, companyProfileId: input.trip.companyProfileId ?? companyResult.data },
+    Boolean(input.forceUnitAssignment)
   )
   if (!unitValidation.ok) return unitValidation
 
@@ -357,44 +446,61 @@ export async function upsertTripWithClientDataAction(
   const trip = tripResult.data
 
   if (input.walmart) {
+    const existingWalmartResult = isCreate ? { ok: true as const, data: null } : await walmartRepo.getByTripId(trip.id)
+    if (!existingWalmartResult.ok) {
+      if (isCreate) {
+        await supabase.from('trips').delete().eq('id', trip.id)
+      }
+      return existingWalmartResult
+    }
+
+    const existing = existingWalmartResult.data
+    const pick = <T>(next: T | null, prev: T | null | undefined): T | null => (isCreate ? next : (next ?? (prev ?? null)))
+
     const walmartInput: WalmartTripDataInput = {
       tripId: trip.id,
-      tripNumberWalmart: null,
-      coordinatorName: input.walmart.coordinatorName,
-      route: input.walmart.route,
-      cargoType: null,
-      cartaPorteWalmart: input.walmart.cartaPorteWalmart,
-      statusWalmart: null,
+      tripNumberWalmart: pick(null, existing?.tripNumberWalmart),
+      coordinatorName: pick(input.walmart.coordinatorName, existing?.coordinatorName),
+      route: pick(input.walmart.route, existing?.route),
+      cargoType: pick(null, existing?.cargoType),
+      cartaPorteWalmart: pick(input.walmart.cartaPorteWalmart, existing?.cartaPorteWalmart),
+      statusWalmart: pick(null, existing?.statusWalmart),
       str: {
-        numLoad: null,
-        complementCartaPorte: null,
-        preinvoiceKm: null,
-        kmTraveled: null,
-        diesel: null,
-        casetas: null,
-        totalInvoice: null,
+        numLoad: pick(input.walmart.str.numLoad, existing?.str.numLoad),
+        complementCartaPorte: pick(input.walmart.str.complementCartaPorte, existing?.str.complementCartaPorte),
+        preinvoiceKm: pick(input.walmart.str.preinvoiceKm, existing?.str.preinvoiceKm),
+        kmTraveled: pick(input.walmart.str.kmTraveled, existing?.str.kmTraveled),
+        diesel: pick(input.walmart.str.diesel, existing?.str.diesel),
+        casetas: pick(input.walmart.str.casetas, existing?.str.casetas),
+        totalInvoice: pick(input.walmart.str.totalInvoice, existing?.str.totalInvoice),
       },
       dhd: {
-        numLoad: null,
-        complementCartaPorte: null,
-        preinvoiceKm: null,
-        kmTraveled: null,
-        diesel: null,
-        casetas: null,
-        totalInvoice: null,
+        numLoad: pick(input.walmart.dhd.numLoad, existing?.dhd.numLoad),
+        complementCartaPorte: pick(input.walmart.dhd.complementCartaPorte, existing?.dhd.complementCartaPorte),
+        preinvoiceKm: pick(input.walmart.dhd.preinvoiceKm, existing?.dhd.preinvoiceKm),
+        kmTraveled: pick(input.walmart.dhd.kmTraveled, existing?.dhd.kmTraveled),
+        diesel: pick(input.walmart.dhd.diesel, existing?.dhd.diesel),
+        casetas: pick(input.walmart.dhd.casetas, existing?.dhd.casetas),
+        totalInvoice: pick(input.walmart.dhd.totalInvoice, existing?.dhd.totalInvoice),
       },
-      dettesLog: input.walmart.dettesLog.map((d, idx) => ({
-        storeId: d.storeId,
-        storeName: d.storeName,
-        appointmentAt: d.appointmentAt,
-        arrivedAt: null,
-        departedAt: null,
-        stopNumber: idx + 1,
-      })),
-      departureTemperature: null,
-      departureTime: null,
-      numStores: input.walmart.numStores,
-      incidencias: null,
+      dettesLog:
+        input.walmart.dettesLog.length > 0
+          ? input.walmart.dettesLog.map((d, idx) => ({
+              storeId: d.storeId,
+              storeName: d.storeName,
+              appointmentAt: d.appointmentAt,
+              arrivedAt: null,
+              departedAt: null,
+              stopNumber: idx + 1,
+            }))
+          : (existing?.dettesLog ?? []),
+      departureTemperature: pick(null, existing?.departureTemperature),
+      departureTime: pick(
+        input.walmart.departureTime ? new Date(input.walmart.departureTime) : null,
+        existing?.departureTime
+      ),
+      numStores: pick(input.walmart.numStores, existing?.numStores),
+      incidencias: pick(null, existing?.incidencias),
     }
 
     const walmartResult = await SaveWalmartTripData(walmartRepo, walmartInput)
