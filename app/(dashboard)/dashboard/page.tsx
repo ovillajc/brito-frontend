@@ -28,10 +28,14 @@ export default async function DashboardPage() {
   const user = await verifySession()
   if (!user) redirect('/login')
   const isWalmartCoordinator = user.roles.some(r => r.name === 'coordinador_walmart')
+  const isExpenseController = user.roles.some(r => r.name === 'controlador_gastos')
   const isSuperUser = user.permissions.includes('all_access') || user.permissions.includes('view_all')
 
   if (isWalmartCoordinator && !isSuperUser) {
     redirect('/trips/list')
+  }
+  if (isExpenseController && !isSuperUser) {
+    redirect('/expenses')
   }
 
   return (

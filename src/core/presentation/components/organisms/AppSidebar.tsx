@@ -58,7 +58,7 @@ const MAIN_MODULES: NavItem[] = [
   },
   { label: 'Combustible', icon: Fuel, href: '/fuel', requiredPermission: 'fuel:view' },
   { label: 'Mantenimiento', icon: Wrench, href: '/maintenance', requiredPermission: 'maintenance:view' },
-  { label: 'Gastos', icon: Wallet, href: '/expenses', requiredPermission: 'expenses:manage' },
+  { label: 'Gastos', icon: Wallet, href: '/expenses', requiredPermissions: ['expenses:manage', 'expenses:create', 'expenses:view'] },
   { label: 'Inventario', icon: Package, href: '/inventory', requiredPermission: 'inventory:view' },
   { label: 'Directorio', icon: Users, href: '/directory' },
   { label: 'Facturación', icon: FileText, href: '/billing', requiredPermission: 'billing:view' },
@@ -94,6 +94,7 @@ export function AppSidebar() {
   const isMonitoringRole = user?.roles.some(r => r.name === 'monitoreo')
   const isWalmartCoordinatorRole = user?.roles.some(r => r.name === 'coordinador_walmart')
   const isFinanceSupportRole = user?.roles.some(r => r.name === 'apoyo_finanzas_full')
+  const isExpenseControllerRole = user?.roles.some(r => r.name === 'controlador_gastos')
   const isWalmartOpsManagerRole = user?.roles.some(
     r => r.name === 'gerente_operaciones_walmart' || r.name === 'gerente operaciones walmart'
   )
@@ -105,17 +106,23 @@ export function AppSidebar() {
     !hasPermission('trips:view_all') &&
     !hasPermission('trips:manage_all')
   const isRestrictedWalmartOpsManager = !!isWalmartOpsManagerRole && !isSuperUser
+  const isRestrictedExpenseController = !!isExpenseControllerRole && !isSuperUser
 
-  const homeHref = isRestrictedMonitoring || isRestrictedWalmartCoordinator ? '/trips/list' : '/dashboard'
+  const homeHref =
+    isRestrictedMonitoring || isRestrictedWalmartCoordinator
+      ? '/trips/list'
+      : (isRestrictedExpenseController ? '/expenses' : '/dashboard')
   const tripsHref = isRestrictedWalmartCoordinator
     ? '/trips/list'
-    : (isFinanceSupportRole ? '/trips/fuel/load' : '/trips')
+    : ((isFinanceSupportRole || isRestrictedExpenseController) ? '/trips/fuel/load' : '/trips')
 
   const filteredMainModules = MAIN_MODULES.filter(item => {
+    if (isRestrictedExpenseController && !['/expenses', '/trips'].includes(item.href)) return false
     if (isRestrictedMonitoring && !item.href.startsWith('/trips')) return false
     if (isRestrictedWalmartCoordinator && !item.href.startsWith('/trips')) return false
     if (isRestrictedWalmartOpsManager && ['/inventory', '/fuel'].includes(item.href)) return false
     if (isFinanceSupportRole && item.href === '/trips') return true
+    if (isRestrictedExpenseController && item.href === '/trips') return true
     if (item.requiredPermissions?.length) return item.requiredPermissions.some(hasPermission)
     return !item.requiredPermission || hasPermission(item.requiredPermission)
   })
@@ -156,9 +163,18 @@ export function AppSidebar() {
       window.location.href = '/trips/list'
     }
 
+    if (
+      isRestrictedExpenseController &&
+      !pathname.startsWith('/expenses') &&
+      !pathname.startsWith('/trips/fuel/load') &&
+      !pathname.startsWith('/profile')
+    ) {
+      window.location.href = '/expenses'
+    }
+
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isRestrictedMonitoring, isRestrictedWalmartCoordinator, pathname])
+  }, [isRestrictedMonitoring, isRestrictedWalmartCoordinator, isRestrictedExpenseController, pathname])
 
   return (
     <aside

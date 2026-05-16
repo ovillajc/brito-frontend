@@ -9,7 +9,7 @@ import { redirect } from 'next/navigation'
 
 export default async function TripsTablePage() {
   const user = await verifySession()
-  if (user?.roles.some(r => r.name === 'apoyo_finanzas_full')) {
+  if (user?.roles.some(r => r.name === 'apoyo_finanzas_full' || r.name === 'controlador_gastos')) {
     redirect('/trips/fuel/load')
   }
 

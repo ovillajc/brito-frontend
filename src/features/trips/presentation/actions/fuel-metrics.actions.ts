@@ -119,6 +119,21 @@ export async function getFuelMetricsRowsAction(): Promise<Either<Failure, TripFu
 export async function getFuelLoadHistoryAction(
   limit: number
 ): Promise<Either<Failure, FuelLoadHistoryRowEntity[]>> {
+  const canManageFuel = await hasPermission('fuel:manage')
+  const canManageFinances = await hasPermission('finances:manage')
+  const canFuelLoadView = await hasPermission('fuel_load:view')
+  const canFuelLoadCreate = await hasPermission('fuel_load:create')
+  const canViewTrips =
+    (await hasPermission('trips:view_all')) ||
+    (await hasPermission('trips:manage_all')) ||
+    (await hasPermission('trips:view_walmart')) ||
+    (await hasPermission('trips:manage_walmart'))
+
+  const allowed = canManageFuel || canManageFinances || canFuelLoadView || canFuelLoadCreate || canViewTrips
+  if (!allowed) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
+
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
@@ -221,6 +236,13 @@ export async function saveFuelMetricsAction(
 export async function registerFuelLoadAction(
   data: RegisterFuelLoadInput
 ): Promise<Either<Failure, FuelLoadEntity>> {
+  const canManageFuel = await hasPermission('fuel:manage')
+  const canManageFinances = await hasPermission('finances:manage')
+  const canCreateFuelLoad = await hasPermission('fuel_load:create')
+  if (!(canManageFuel || canManageFinances || canCreateFuelLoad)) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
+
   const profileId = await getCurrentProfileId()
   if (!profileId) {
     return { ok: false, error: { code: 'UNAUTHORIZED', message: 'Usuario no autenticado', statusCode: 401 } }
@@ -409,6 +431,12 @@ export async function updateFuelLoadAction(
   id: string,
   data: Partial<Omit<FuelLoadEntity, 'id' | 'createdAt'>>
 ): Promise<Either<Failure, FuelLoadEntity>> {
+  const canManageFuel = await hasPermission('fuel:manage')
+  const canManageFinances = await hasPermission('finances:manage')
+  if (!(canManageFuel || canManageFinances)) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
+
   const repo = new SupabaseFuelMetricsRepository()
   const result = await UpdateFuelLoad(repo, id, data)
 
@@ -424,6 +452,12 @@ export async function updateFuelLoadAction(
  * Elimina una carga de combustible.
  */
 export async function deleteFuelLoadAction(id: string): Promise<Either<Failure, void>> {
+  const canManageFuel = await hasPermission('fuel:manage')
+  const canManageFinances = await hasPermission('finances:manage')
+  if (!(canManageFuel || canManageFinances)) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
+
   const repo = new SupabaseFuelMetricsRepository()
   const result = await DeleteFuelLoad(repo, id)
 

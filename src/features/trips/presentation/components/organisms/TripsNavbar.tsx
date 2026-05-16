@@ -1,10 +1,9 @@
 'use client'
-
-import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 import { LayoutDashboard, Map, Fuel } from 'lucide-react'
+import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
 
 const TRIPS_NAV = [
   { name: 'Dashboard', href: '/trips', icon: LayoutDashboard },
@@ -19,10 +18,22 @@ interface TripsNavbarProps {
 
 export function TripsNavbar({ hiddenHrefs = [] }: TripsNavbarProps) {
   const pathname = usePathname()
+  const userRoles = useAuthStore((state) => state.user?.roles ?? [])
+  const userPermissions = useAuthStore((state) => state.user?.permissions ?? [])
+
+  const isExpenseControllerRole = userRoles.some((r) => r.name === 'controlador_gastos')
+  const isSuperUser = userPermissions.includes('all_access') || userPermissions.includes('view_all')
+
+  const effectiveHiddenHrefs = new Set(hiddenHrefs)
+  if (isExpenseControllerRole && !isSuperUser) {
+    effectiveHiddenHrefs.add('/trips')
+    effectiveHiddenHrefs.add('/trips/list')
+    effectiveHiddenHrefs.add('/trips/fuel')
+  }
 
   return (
     <nav className="flex items-center gap-1 border-b border-outline-variant/30">
-      {TRIPS_NAV.filter(item => !hiddenHrefs.includes(item.href)).map((item) => {
+      {TRIPS_NAV.filter((item) => !effectiveHiddenHrefs.has(item.href)).map((item) => {
         const isActive = pathname === item.href
         return (
           <Link

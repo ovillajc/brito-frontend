@@ -30,7 +30,16 @@ export default async function FuelLoadRoute() {
   }
 
   return (
-    <ModuleGuard permissions={['finances:manage', 'fuel:manage', 'trips:view_all', 'trips:manage_all']}>
+    <ModuleGuard
+      permissions={[
+        'fuel_load:view',
+        'fuel_load:create',
+        'finances:manage',
+        'fuel:manage',
+        'trips:view_all',
+        'trips:manage_all',
+      ]}
+    >
       <FuelLoadPageClient units={units} trips={[...byId.values()]} initialHistory={initialHistory} />
     </ModuleGuard>
   )

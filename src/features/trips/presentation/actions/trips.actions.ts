@@ -156,10 +156,14 @@ export async function getTripsForFuelLoadAction(
   const canManageWalmart = await hasPermission('trips:manage_walmart')
   const canManageFinances = await hasPermission('finances:manage')
   const canManageFuel = await hasPermission('fuel:manage')
+  const canFuelLoadView = await hasPermission('fuel_load:view')
+  const canFuelLoadCreate = await hasPermission('fuel_load:create')
+  const canFuelLoad = canFuelLoadView || canFuelLoadCreate
 
   const allowed =
     canManageFinances ||
     canManageFuel ||
+    canFuelLoad ||
     canViewAll ||
     canManageAll ||
     canViewWalmart ||
@@ -170,7 +174,7 @@ export async function getTripsForFuelLoadAction(
   }
 
   const isTripsOnly =
-    (canViewAll || canManageAll || canViewWalmart || canManageWalmart) && !(canManageFinances || canManageFuel)
+    (canViewAll || canManageAll || canViewWalmart || canManageWalmart) && !(canManageFinances || canManageFuel || canFuelLoad)
   if (!isTripsOnly) {
     const status = filters?.status ?? null
     if (status && status !== 'in_progress' && status !== 'scheduled') {
