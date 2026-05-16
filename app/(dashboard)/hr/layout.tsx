@@ -1,5 +1,7 @@
 import React from 'react'
+import { redirect } from 'next/navigation'
 import { ModuleNavTabs, type ModuleNavItem } from '@/src/core/presentation/components/molecules/ModuleNavTabs'
+import { verifySession } from '@/src/features/auth/infrastructure/dal'
 
 const HR_NAV = [
   { name: 'Dashboard', href: '/hr', iconKey: 'LayoutDashboard' },
@@ -8,7 +10,17 @@ const HR_NAV = [
   { name: 'Asistencia', href: '/hr/attendance', iconKey: 'Clock' },
 ] satisfies ModuleNavItem[]
 
-export default function HrLayout({ children }: { children: React.ReactNode }) {
+export default async function HrLayout({ children }: { children: React.ReactNode }) {
+  const user = await verifySession()
+  if (!user) redirect('/login')
+
+  const isWalmartCoordinator = user.roles.some(r => r.name === 'coordinador_walmart')
+  const isSuperUser = user.permissions.includes('all_access') || user.permissions.includes('view_all')
+
+  if (isWalmartCoordinator && !isSuperUser) {
+    redirect('/trips/list')
+  }
+
   return (
     <div className="flex flex-col gap-6 p-6">
       <header className="flex flex-col gap-4">

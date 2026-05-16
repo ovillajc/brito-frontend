@@ -13,6 +13,7 @@ import { UpdateExpense } from '@/src/features/expenses/application/UpdateExpense
 import { DeleteExpense } from '@/src/features/expenses/application/DeleteExpense'
 import type { CreateExpenseInput } from '@/src/features/expenses/domain/schemas/create-expense.schema'
 import type { ExpenseEntity } from '@/src/features/expenses/domain/entities/expense-entity'
+import { hasPermission } from '@/src/features/auth/infrastructure/dal'
 
 async function getCurrentProfileId(): Promise<string | null> {
   const supabase = await createClient()
@@ -27,7 +28,16 @@ async function getCurrentProfileId(): Promise<string | null> {
 export async function createExpenseAction(
   input: CreateExpenseInput
 ): Promise<Either<Failure, ExpenseEntity>> {
+  const canManage = await hasPermission('expenses:manage')
+  const canCreate = canManage || (await hasPermission('expenses:create'))
+  if (!canCreate) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
+
   const profileId = await getCurrentProfileId()
+  if (!profileId) {
+    return { ok: false, error: { code: 'UNAUTHORIZED', message: 'Usuario no autenticado', statusCode: 401 } }
+  }
   const repo = new SupabaseExpensesServerRepository()
   const result = await CreateExpense(repo, input, profileId)
   if (result.ok) {
@@ -41,6 +51,10 @@ export async function updateExpenseAction(
   expenseId: string,
   input: CreateExpenseInput
 ): Promise<Either<Failure, ExpenseEntity>> {
+  const canManage = await hasPermission('expenses:manage')
+  if (!canManage) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
   const repo = new SupabaseExpensesServerRepository()
   const result = await UpdateExpense(repo, expenseId, input)
   if (result.ok) {
@@ -56,6 +70,10 @@ export async function updateExpenseAction(
 export async function deleteExpenseAction(
   expenseId: string
 ): Promise<Either<Failure, void>> {
+  const canManage = await hasPermission('expenses:manage')
+  if (!canManage) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
   const repo = new SupabaseExpensesServerRepository()
   const result = await DeleteExpense(repo, expenseId)
   if (result.ok) {

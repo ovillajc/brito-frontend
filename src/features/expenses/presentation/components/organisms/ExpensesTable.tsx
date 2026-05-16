@@ -121,6 +121,7 @@ export function ExpensesTable({ tripIdFilter }: ExpensesTableProps) {
   const rows = query.data ?? []
 
   const canManage = useAuthStore((state) => state.hasPermission('expenses:manage'))
+  const canCreate = useAuthStore((state) => state.hasPermission('expenses:create')) || canManage
 
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [selectedRow, setSelectedRow] = useState<ExpensesTableRowEntity | null>(null)
@@ -147,7 +148,6 @@ export function ExpensesTable({ tripIdFilter }: ExpensesTableProps) {
   return (
     <>
       <CrudDataTable<ExpensesTableRowEntity>
-        canManage={canManage}
         data={rows}
         isLoading={query.isLoading}
         columns={EXPENSES_COLUMNS}
@@ -156,10 +156,10 @@ export function ExpensesTable({ tripIdFilter }: ExpensesTableProps) {
           [row.description, row.categoryName, row.subcategoryName, row.comments]
             .some((val) => val?.toLowerCase().includes(term))
         }
-        actionLabel="Nuevo Gasto"
-        onAction={() => { setWizardMode('create'); setSelectedRow(null); setIsWizardOpen(true) }}
+        actionLabel={canCreate ? 'Nuevo Gasto' : undefined}
+        onAction={canCreate ? (() => { setWizardMode('create'); setSelectedRow(null); setIsWizardOpen(true) }) : undefined}
         onView={handleView}
-        onEdit={handleEdit}
+        onEdit={canManage ? handleEdit : undefined}
         emptyState={{
           icon: Receipt,
           title: 'Sin gastos registrados',

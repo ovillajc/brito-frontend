@@ -5,7 +5,9 @@
 
 import React from 'react'
 import { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 import { DashboardContainer } from '@/src/features/dashboard/presentation/components/organisms/DashboardContainer'
+import { verifySession } from '@/src/features/auth/infrastructure/dal'
 
 /**
  * Metadatos para SEO y redes sociales.
@@ -22,7 +24,33 @@ export const metadata: Metadata = {
 /**
  * Componente de página del Dashboard (Server Component por defecto).
  */
-function DashboardPage() {
+export default async function DashboardPage() {
+  const user = await verifySession()
+  if (!user) redirect('/login')
+  const isWalmartCoordinator = user.roles.some(r => r.name === 'coordinador_walmart')
+  const isExpenseController = user.roles.some(r => r.name === 'controlador_gastos')
+  const isLogisticsBoss = user.roles.some(r =>
+    r.name === 'jefe_logistica' ||
+    r.name === 'jefe_logisitica' ||
+    r.name === 'auxiliar_logistica' ||
+    r.name === 'auxiliar_logisitica'
+  )
+  const isQhseSupervisor = user.roles.some(r => r.name === 'supervisor_qhse')
+  const isSuperUser = user.permissions.includes('all_access') || user.permissions.includes('view_all')
+
+  if (isWalmartCoordinator && !isSuperUser) {
+    redirect('/trips/list')
+  }
+  if (isExpenseController && !isSuperUser) {
+    redirect('/expenses')
+  }
+  if (isLogisticsBoss && !isSuperUser) {
+    redirect('/trips/list')
+  }
+  if (isQhseSupervisor && !isSuperUser) {
+    redirect('/trips/list')
+  }
+
   return (
     <main className="p-6 lg:p-8 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -53,5 +81,3 @@ function DashboardPage() {
     </main>
   )
 }
-
-export default DashboardPage

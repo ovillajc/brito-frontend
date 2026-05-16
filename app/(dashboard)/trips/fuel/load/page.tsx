@@ -7,15 +7,27 @@
 
 import FuelLoadPageClient from '@/src/features/trips/presentation/components/pages/FuelLoadPage'
 import { getUnitAssembliesAction } from '@/src/features/fleet/presentation/actions/unit-assembly.actions'
-import { getTripsAction } from '@/src/features/trips/presentation/actions/trips.actions'
+import { getTripsForFuelLoadAction } from '@/src/features/trips/presentation/actions/trips.actions'
 import { getFuelLoadHistoryAction } from '@/src/features/trips/presentation/actions/fuel-metrics.actions'
 import { ModuleGuard } from '@/src/features/auth/presentation/components/ModuleGuard'
+import { verifySession } from '@/src/features/auth/infrastructure/dal'
+import { redirect } from 'next/navigation'
 
 export default async function FuelLoadRoute() {
+  const user = await verifySession()
+  if (user?.roles.some(r =>
+    r.name === 'jefe_logistica' ||
+    r.name === 'jefe_logisitica' ||
+    r.name === 'auxiliar_logistica' ||
+    r.name === 'auxiliar_logisitica'
+  )) {
+    redirect('/trips/list')
+  }
+
   const [unitsResult, tripsInProgressResult, tripsScheduledResult, historyResult] = await Promise.all([
     getUnitAssembliesAction(),
-    getTripsAction({ status: 'in_progress', limit: 200 }),
-    getTripsAction({ status: 'scheduled', limit: 200 }),
+    getTripsForFuelLoadAction({ status: 'in_progress', limit: 200 }),
+    getTripsForFuelLoadAction({ status: 'scheduled', limit: 200 }),
     getFuelLoadHistoryAction(200),
   ])
 
@@ -30,7 +42,16 @@ export default async function FuelLoadRoute() {
   }
 
   return (
-    <ModuleGuard permission="trips:view_all">
+    <ModuleGuard
+      permissions={[
+        'fuel_load:view',
+        'fuel_load:create',
+        'finances:manage',
+        'fuel:manage',
+        'trips:view_all',
+        'trips:manage_all',
+      ]}
+    >
       <FuelLoadPageClient units={units} trips={[...byId.values()]} initialHistory={initialHistory} />
     </ModuleGuard>
   )
