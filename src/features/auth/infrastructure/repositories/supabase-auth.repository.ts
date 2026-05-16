@@ -1,5 +1,5 @@
 import { createClient } from '@/src/core/lib/supabase/server'
-import type { IAuthRepository } from '../../domain/repositories/auth.repository'
+import type { IAuthSessionRepository } from '../../domain/repositories/auth.repository'
 import type { AuthUserEntity } from '../../domain/entities/auth-user.entity'
 import type { Either, Failure } from '@/src/core/domain/either'
 import { AuthMapper } from '../mappers/auth.mapper'
@@ -7,7 +7,7 @@ import { AuthMapper } from '../mappers/auth.mapper'
 /**
  * Implementación de IAuthRepository utilizando Supabase.
  */
-export class SupabaseAuthRepository implements IAuthRepository {
+export class SupabaseAuthRepository implements IAuthSessionRepository {
   async getAuthenticatedUser(): Promise<Either<Failure, AuthUserEntity>> {
     try {
       const supabase = await createClient()

@@ -19,6 +19,7 @@ import { useQueryClient } from '@tanstack/react-query'
 
 const STATUS_LABELS: Record<vehicleStatus, { label: string; className: string }> = {
   available:   { label: 'Disponible',        className: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
+  assigned:    { label: 'Asignado',          className: 'bg-sky-500/10 text-sky-600 border-sky-500/20' },
   in_trip:     { label: 'En Viaje',          className: '' },
   maintenance: { label: 'Mantenimiento',     className: 'bg-orange-500/10 text-orange-600 border-orange-500/20' },
   out_service: { label: 'Fuera de Servicio', className: 'bg-red-500/10 text-red-600 border-red-500/20' },
