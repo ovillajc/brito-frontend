@@ -15,6 +15,10 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "Sociedad Brito | Logística y Suministro Industrial",
   description: "Operador híbrido líder en el sureste de México. Transporte de carga pesada, refrigerada y suministro de barita grado API.",
+  icons: {
+    icon: [{ url: "/favicon.ico", type: "image/x-icon" }],
+    apple: "/assets/images/logo.png",
+  },
 };
 
 import { QueryProvider } from "@/src/core/presentation/providers/query-provider";
@@ -44,4 +48,3 @@ export default function RootLayout({
     </html>
   );
 }
-

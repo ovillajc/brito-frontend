@@ -239,6 +239,7 @@ export class MockFleetRepository implements IFleetRepository {
       trailerId: trailer.id,
       clientId: client?.id ?? null,
       isActive: true,
+      status: truck.status === 'in_trip' ? 'in_trip' : 'at_base',
       createdAt: new Date(),
       updatedAt: new Date(),
       employeeName: `${operator.firstName} ${operator.lastName}`,

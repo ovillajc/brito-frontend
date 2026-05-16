@@ -1,5 +1,6 @@
 import { Either, Failure } from '@/src/core/domain/either'
 import { UserAccountEntity, CreateUserAccountInput, UpdateUserAccountInput } from '../entities/user-account.entity'
+import type { RoleEntity } from '@/src/features/auth/domain/entities/auth-user.entity'
 
 /**
  * Interfaz para el repositorio de administración de usuarios.
