@@ -17,6 +17,8 @@ import { ClientEntity, UnitAssemblyEntity } from '@/src/features/fleet/domain/en
 import type { TripWithRelations, TripStatus } from '@/src/features/trips/domain/entities/trip-entity'
 import { useTripsList } from '../../hooks/use-trips'
 import { deleteTripAction } from '@/src/features/trips/presentation/actions/trips.actions'
+import type { TripsListFilters } from '@/src/features/trips/domain/repositories/i-trips-repository'
+import { isLogisticsAllowedClientName, isWalmartClientName } from '@/src/features/trips/domain/rules/client-access'
 
 // ── Entidades de vista ────────────────────────────────────────────────────────
 
@@ -123,6 +125,7 @@ interface TripsTableProps {
   clients?: ClientEntity[]
   units?: UnitAssemblyEntity[]
   trips?: TripWithRelations[]
+  filters?: TripsListFilters
 }
 
 function mapToRowEntity(item: TripWithRelations): TripsTableRowEntity {
@@ -151,8 +154,8 @@ function mapToRowEntity(item: TripWithRelations): TripsTableRowEntity {
 
 import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
 
-export function TripsTable({ clients = [], units = [], trips = [] }: TripsTableProps) {
-  const tripsQuery = useTripsList(undefined, trips)
+export function TripsTable({ clients = [], units = [], trips = [], filters }: TripsTableProps) {
+  const tripsQuery = useTripsList(filters, filters ? undefined : trips)
   const rows = (tripsQuery.data ?? []).map(mapToRowEntity)
 
   const [isWizardOpen, setIsWizardOpen] = useState(false)
@@ -163,18 +166,27 @@ export function TripsTable({ clients = [], units = [], trips = [] }: TripsTableP
 
   const canManageAll = useAuthStore((state) => state.hasPermission('trips:manage_all'))
   const canManageWalmart = useAuthStore((state) => state.hasPermission('trips:manage_walmart'))
-  const canManageLogistics = useAuthStore((state) => state.hasPermission('trips:manage_holcim_barita'))
+  const canManageLogistics = useAuthStore((state) => state.hasPermission('trips:manage_logistica'))
 
   // Determinar si puede editar una fila específica
   const canEditRow = (row: TripsTableRowEntity) => {
     if (canManageAll) return true
-    if (canManageWalmart && row.clientName.toLowerCase().includes('walmart')) return true
-    if (canManageLogistics && (row.clientName.toLowerCase().includes('holcim') || row.clientName.toLowerCase().includes('barita'))) return true
+    if (canManageWalmart && isWalmartClientName(row.clientName)) return true
+    if (canManageLogistics && isLogisticsAllowedClientName(row.clientName)) return true
     return false
   }
 
   const canCreate = canManageAll || canManageWalmart || canManageLogistics
   const canDelete = canManageAll
+
+  const creatableClients = canManageAll
+    ? clients
+    : clients.filter((c) => {
+        const name = c.tradeName ?? c.companyName ?? ''
+        if (canManageWalmart && isWalmartClientName(name)) return true
+        if (canManageLogistics && isLogisticsAllowedClientName(name)) return true
+        return false
+      })
 
   const handleView = (row: TripsTableRowEntity) => {
     setDetailRow(row)
@@ -227,7 +239,7 @@ export function TripsTable({ clients = [], units = [], trips = [] }: TripsTableP
         isOpen={isWizardOpen}
         onClose={handleCloseWizard}
         tripRow={selectedRow ?? undefined}
-        clients={clients}
+        clients={creatableClients}
         units={units}
       />
 

@@ -10,8 +10,20 @@ import { getUnitAssembliesAction } from '@/src/features/fleet/presentation/actio
 import { getTripsForFuelLoadAction } from '@/src/features/trips/presentation/actions/trips.actions'
 import { getFuelLoadHistoryAction } from '@/src/features/trips/presentation/actions/fuel-metrics.actions'
 import { ModuleGuard } from '@/src/features/auth/presentation/components/ModuleGuard'
+import { verifySession } from '@/src/features/auth/infrastructure/dal'
+import { redirect } from 'next/navigation'
 
 export default async function FuelLoadRoute() {
+  const user = await verifySession()
+  if (user?.roles.some(r =>
+    r.name === 'jefe_logistica' ||
+    r.name === 'jefe_logisitica' ||
+    r.name === 'auxiliar_logistica' ||
+    r.name === 'auxiliar_logisitica'
+  )) {
+    redirect('/trips/list')
+  }
+
   const [unitsResult, tripsInProgressResult, tripsScheduledResult, historyResult] = await Promise.all([
     getUnitAssembliesAction(),
     getTripsForFuelLoadAction({ status: 'in_progress', limit: 200 }),

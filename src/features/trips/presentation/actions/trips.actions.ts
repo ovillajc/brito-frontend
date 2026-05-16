@@ -19,6 +19,7 @@ import { SaveWalmartTripData } from '@/src/features/trips/application/SaveWalmar
 import { SaveFuelMetrics, type SaveFuelMetricsInput } from '@/src/features/trips/application/SaveFuelMetrics'
 import { isUnitAssignableForNewTrip } from '@/src/features/trips/domain/rules/is-unit-assignable'
 import { hasPermission } from '@/src/features/auth/infrastructure/dal'
+import { isLogisticsAllowedClientName, isWalmartClientName } from '@/src/features/trips/domain/rules/client-access'
 
 async function getCurrentProfileId(): Promise<string | null> {
   const supabase = await createClient()
@@ -68,6 +69,26 @@ async function getWalmartClientId(
     return { ok: true, data: data.id as string }
   } catch {
     return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al resolver cliente Walmart' } }
+  }
+}
+
+async function getClientNameById(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  clientId: string
+): Promise<Either<Failure, string>> {
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('trade_name, company_name')
+      .eq('id', clientId)
+      .maybeSingle()
+
+    if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+    const name = ((data?.trade_name ?? data?.company_name ?? '') as string).trim()
+    if (!name) return { ok: false, error: { code: 'CLIENT_NOT_FOUND', message: 'Cliente no encontrado' } }
+    return { ok: true, data: name }
+  } catch {
+    return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al resolver cliente' } }
   }
 }
 
@@ -127,8 +148,9 @@ export async function getTripsAction(
   const canManageAll = await hasPermission('trips:manage_all')
   const canViewWalmart = await hasPermission('trips:view_walmart')
   const canManageWalmart = await hasPermission('trips:manage_walmart')
+  const canManageLogistica = await hasPermission('trips:manage_logistica')
 
-  if (!canViewAll && !canManageAll && !canViewWalmart && !canManageWalmart) {
+  if (!canViewAll && !canManageAll && !canViewWalmart && !canManageWalmart && !canManageLogistica) {
     return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
   }
 
@@ -137,14 +159,48 @@ export async function getTripsAction(
 
   const effectiveFilters: TripsListFilters = { ...(filters ?? {}) }
 
-  const isWalmartOnly = (canViewWalmart || canManageWalmart) && !(canViewAll || canManageAll)
+  const allowAllClients = canViewAll || canManageAll
+  if (!allowAllClients && effectiveFilters.clientId) {
+    const clientNameResult = await getClientNameById(supabase, effectiveFilters.clientId)
+    if (!clientNameResult.ok) return clientNameResult
+
+    const clientName = clientNameResult.data
+    const canSeeWalmart = canViewWalmart || canManageWalmart
+    if (isWalmartClientName(clientName)) {
+      if (!canSeeWalmart) {
+        return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+      }
+    } else if (isLogisticsAllowedClientName(clientName)) {
+      if (!canManageLogistica) {
+        return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+      }
+    } else {
+      return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+    }
+  }
+
+  const isWalmartOnly =
+    (canViewWalmart || canManageWalmart) &&
+    !(canViewAll || canManageAll || canManageLogistica)
   if (isWalmartOnly) {
     const walmartIdResult = await getWalmartClientId(supabase)
     if (!walmartIdResult.ok) return walmartIdResult
     effectiveFilters.clientId = walmartIdResult.data
   }
 
-  return GetTrips(repo, effectiveFilters)
+  const result = await GetTrips(repo, effectiveFilters)
+  if (!result.ok) return result
+  if (allowAllClients) return result
+
+  const canSeeWalmart = canViewWalmart || canManageWalmart
+  const filtered = result.data.filter((t) => {
+    const name = t.clientName ?? ''
+    if (canSeeWalmart && isWalmartClientName(name)) return true
+    if (canManageLogistica && isLogisticsAllowedClientName(name)) return true
+    return false
+  })
+
+  return { ok: true, data: filtered }
 }
 
 export async function getTripsForFuelLoadAction(
@@ -252,6 +308,11 @@ export async function upsertTripWithClientDataAction(
 
   const canManageAll = await hasPermission('trips:manage_all')
   const canManageWalmart = await hasPermission('trips:manage_walmart')
+  const canManageLogistica = await hasPermission('trips:manage_logistica')
+
+  if (!canManageAll && !canManageWalmart && !canManageLogistica) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
 
   const tripsRepo = new SupabaseTripsRepository()
   const walmartRepo = new SupabaseWalmartRepository()
@@ -262,12 +323,21 @@ export async function upsertTripWithClientDataAction(
   const companyResult = await getActiveCompanyProfileId()
   if (!companyResult.ok) return companyResult
 
-  const isWalmartOnly = canManageWalmart && !canManageAll
-  if (isWalmartOnly) {
-    const walmartIdResult = await getWalmartClientId(supabase)
-    if (!walmartIdResult.ok) return walmartIdResult
-    if (input.trip.clientId !== walmartIdResult.data) {
-      return { ok: false, error: { code: 'FORBIDDEN', message: 'Solo puedes crear/editar viajes de Walmart', statusCode: 403 } }
+  const clientNameResult = await getClientNameById(supabase, input.trip.clientId)
+  if (!clientNameResult.ok) return clientNameResult
+  const clientName = clientNameResult.data
+
+  if (isWalmartClientName(clientName)) {
+    if (!(canManageAll || canManageWalmart)) {
+      return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado para registrar viajes de Walmart', statusCode: 403 } }
+    }
+  } else if (isLogisticsAllowedClientName(clientName)) {
+    if (!(canManageAll || canManageLogistica)) {
+      return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado para registrar viajes de este cliente', statusCode: 403 } }
+    }
+  } else {
+    if (!canManageAll) {
+      return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado para registrar viajes de este cliente', statusCode: 403 } }
     }
   }
 

@@ -18,13 +18,25 @@ export default async function TripsLayout({ children }: { children: React.ReactN
   const isMonitoringRole = user.roles.some(r => r.name === 'monitoreo')
   const isWalmartRole = user.roles.some(r => r.name === 'coordinador_walmart')
   const isFinanceSupportRole = user.roles.some(r => r.name === 'apoyo_finanzas_full')
+  const isQhseSupervisorRole = user.roles.some(r => r.name === 'supervisor_qhse')
+  const isLogisticsBossRole = user.roles.some(r =>
+    r.name === 'jefe_logistica' ||
+    r.name === 'jefe_logisitica' ||
+    r.name === 'auxiliar_logistica' ||
+    r.name === 'auxiliar_logisitica'
+  )
   const isSuperUser = user.permissions.includes('all_access') || user.permissions.includes('view_all')
   const isRestrictedMonitoring = isMonitoringRole && !isSuperUser
+  const isRestrictedQhseSupervisor = isQhseSupervisorRole && !isSuperUser
 
-  // Ocultar Rendimientos para monitoreo restringido
+  // Ocultar submodulos para monitoreo restringido
   const hiddenHrefs: string[] = []
   if (isRestrictedMonitoring) {
+    hiddenHrefs.push('/trips')
     hiddenHrefs.push('/trips/fuel')
+  }
+  if (isRestrictedQhseSupervisor) {
+    hiddenHrefs.push('/trips')
   }
 
   const isWalmartOnly = isWalmartRole && !isSuperUser
@@ -38,6 +50,12 @@ export default async function TripsLayout({ children }: { children: React.ReactN
     hiddenHrefs.push('/trips')
     hiddenHrefs.push('/trips/list')
     hiddenHrefs.push('/trips/fuel')
+  }
+
+  if (isLogisticsBossRole && !isSuperUser) {
+    hiddenHrefs.push('/trips')
+    hiddenHrefs.push('/trips/fuel')
+    hiddenHrefs.push('/trips/fuel/load')
   }
 
   return (

@@ -29,6 +29,13 @@ export default async function DashboardPage() {
   if (!user) redirect('/login')
   const isWalmartCoordinator = user.roles.some(r => r.name === 'coordinador_walmart')
   const isExpenseController = user.roles.some(r => r.name === 'controlador_gastos')
+  const isLogisticsBoss = user.roles.some(r =>
+    r.name === 'jefe_logistica' ||
+    r.name === 'jefe_logisitica' ||
+    r.name === 'auxiliar_logistica' ||
+    r.name === 'auxiliar_logisitica'
+  )
+  const isQhseSupervisor = user.roles.some(r => r.name === 'supervisor_qhse')
   const isSuperUser = user.permissions.includes('all_access') || user.permissions.includes('view_all')
 
   if (isWalmartCoordinator && !isSuperUser) {
@@ -36,6 +43,12 @@ export default async function DashboardPage() {
   }
   if (isExpenseController && !isSuperUser) {
     redirect('/expenses')
+  }
+  if (isLogisticsBoss && !isSuperUser) {
+    redirect('/trips/list')
+  }
+  if (isQhseSupervisor && !isSuperUser) {
+    redirect('/trips/list')
   }
 
   return (

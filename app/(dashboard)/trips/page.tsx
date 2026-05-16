@@ -8,6 +8,17 @@ export default async function TripsPage() {
   if (user?.roles.some(r => r.name === 'apoyo_finanzas_full' || r.name === 'controlador_gastos')) {
     redirect('/trips/fuel/load')
   }
+  if (user?.roles.some(r => r.name === 'supervisor_qhse')) {
+    redirect('/trips/list')
+  }
+  if (user?.roles.some(r =>
+    r.name === 'jefe_logistica' ||
+    r.name === 'jefe_logisitica' ||
+    r.name === 'auxiliar_logistica' ||
+    r.name === 'auxiliar_logisitica'
+  )) {
+    redirect('/trips/list')
+  }
 
   return (
     <ModuleGuard permission="trips:view_all">

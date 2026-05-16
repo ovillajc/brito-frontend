@@ -75,11 +75,21 @@ export async function getTripFuelMetricsAction(
   trailerR1Id: string | null,
   trailerR2Id: string | null
 ): Promise<Either<Failure, FuelMetricsCalculated>> {
+  const canManageFuel = await hasPermission('fuel:manage')
+  const canView = await hasPermission('fuel_metrics:view')
+  if (!(canManageFuel || canView)) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
   const repo = new SupabaseFuelMetricsRepository()
   return GetTripFuelMetrics(repo, tripId, truckId, trailerR1Id, trailerR2Id)
 }
 
 export async function getFuelMetricsRowsAction(): Promise<Either<Failure, TripFuelRowEntity[]>> {
+  const canManageFuel = await hasPermission('fuel:manage')
+  const canView = await hasPermission('fuel_metrics:view')
+  if (!(canManageFuel || canView)) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
@@ -481,6 +491,11 @@ export async function getFuelMetricsKpisAction(
   theoreticalYield: number
   savingsExcess: number
 }>> {
+  const canManageFuel = await hasPermission('fuel:manage')
+  const canView = await hasPermission('fuel_metrics:view')
+  if (!(canManageFuel || canView)) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
   try {
     const supabase = await createClient()
     const startDate = `${month}-01`
