@@ -1,8 +1,20 @@
-import React from 'react'
-import { UnderDevelopment } from '@/src/core/presentation/components/organisms/UnderDevelopment'
+import UsersListPage from '@/src/features/users/presentation/pages/UsersListPage'
+import { ModuleGuard } from '@/src/features/auth/presentation/components/ModuleGuard'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Usuarios | Brito ERP',
+  description: 'Gestión de cuentas y roles de usuario.'
+}
 
 export default function UsersPage() {
   return (
-    <UnderDevelopment />
+    <ModuleGuard 
+      permission="all_access" 
+      title="Acceso de Administrador Requerido"
+      description="Este módulo es exclusivo para el desarrollador y administradores de alto nivel."
+    >
+      <UsersListPage />
+    </ModuleGuard>
   )
 }

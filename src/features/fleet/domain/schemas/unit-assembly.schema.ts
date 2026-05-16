@@ -14,7 +14,9 @@ export const createUnitAssemblySchema = z.object({
   trailer2Id: z.union([z.string().uuid('ID del segundo remolque inválido'), z.literal('')]).optional(),
   clientId: z.union([z.string().uuid('ID de cliente inválido'), z.literal('')]).optional(),
   companyProfileId: z.union([z.string().uuid('ID de compañía inválido'), z.literal('')]).optional(),
+  status: z.enum(['returning', 'at_base', 'at_client', 'in_trip', 'in_workshop']).optional(),
   isActive: z.boolean().optional(),
+
 })
 
 export type CreateUnitAssemblyInput = z.infer<typeof createUnitAssemblySchema>

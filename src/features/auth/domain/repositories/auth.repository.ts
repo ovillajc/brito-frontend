@@ -1,30 +1,14 @@
 import type { Either, Failure } from '@/src/core/domain/either'
-import type { UserEntity } from '../entities/user.entity'
-import { LoginFormInput } from '../schemas/login.schema'
+import type { AuthUserEntity } from '../entities/auth-user.entity'
 
 /**
- * @fileoverview Interfaz del repositorio de autenticación.
- * Define las operaciones permitidas para la gestión de usuarios.
+ * Interfaz para el repositorio de autenticación.
+ * Define el contrato para obtener el usuario autenticado y sus permisos.
  */
-
 export interface IAuthRepository {
   /**
-   * Inicia sesión utilizando correo electrónico y contraseña.
+   * Obtiene la información del usuario autenticado desde la sesión actual.
+   * Incluye roles y permisos.
    */
-  loginWithEmail(credentials: LoginFormInput): Promise<Either<Failure, UserEntity>>
-
-  /**
-   * Inicia sesión con un proveedor externo (Google, Apple, etc.).
-   */
-  loginWithProvider(provider: 'google' | 'apple'): Promise<Either<Failure, void>>
-
-  /**
-   * Cierra la sesión del usuario actual.
-   */
-  logout(): Promise<Either<Failure, void>>
-
-  /**
-   * Obtiene el usuario autenticado actualmente.
-   */
-  getCurrentUser(): Promise<Either<Failure, UserEntity | null>>
+  getAuthenticatedUser(): Promise<Either<Failure, AuthUserEntity>>
 }

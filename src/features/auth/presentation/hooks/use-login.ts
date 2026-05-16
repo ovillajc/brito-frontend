@@ -4,8 +4,8 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '../store'
 import { loginFormSchema, type LoginFormInput } from '../../domain/schemas/login.schema'
 import { LoginWithEmailUseCase } from '../../aplication/use-cases/LoginWithEmailUseCase'
-import { SupabaseAuthRepository } from '../../infraestructure/repositories/SupabaseAuthRepository'
 import { toast } from 'sonner'
+import { SupabaseAuthRepository } from '../../infrastructure/repositories/SupabaseAuthRepository'
 
 /**
  * @fileoverview Hook para la lógica del inicio de sesión.

@@ -21,7 +21,8 @@ import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { createUnitAssemblySchema, CreateUnitAssemblyInput } from '../../../domain/schemas/unit-assembly.schema'
 import { createUnitAssemblyAction, updateUnitAssemblyAction } from '../../actions/unit-assembly.actions'
-import { UnitAssemblyEntity } from '../../../domain/entities'
+import { UnitAssemblyEntity, UnitStatus } from '../../../domain/entities'
+
 import { useCompanyProfiles } from '../../../../company-profile/presentation/hooks/use-company-profile'
 import { useTractors, useTrailers, useClients } from '../../hooks/use-fleet'
 import { getEmployeesAction } from '@/src/features/hr/presentation/actions/employee.actions'
@@ -37,6 +38,15 @@ interface UnitAssemblyWizardProps {
 }
 
 type SubmissionStatus = 'idle' | 'success' | 'error'
+
+const UNIT_STATUS_OPTIONS: { label: string; value: UnitStatus }[] = [
+  { label: 'Retornando', value: 'returning' },
+  { label: 'En Base', value: 'at_base' },
+  { label: 'En Base Cliente', value: 'at_client' },
+  { label: 'En Viaje', value: 'in_trip' },
+  { label: 'En Taller', value: 'in_workshop' },
+]
+
 
 /**
  * Wizard multi-paso para crear o editar una Unidad Armada.
@@ -84,7 +94,9 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
       clientId: '',
       companyProfileId: '',
       isActive: true,
+      status: 'at_base',
     },
+
   })
 
   useEffect(() => {
@@ -100,7 +112,9 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
         clientId: assembly.clientId || '',
         companyProfileId: assembly.companyProfileId || '',
         isActive: assembly.isActive,
+        status: assembly.status || 'at_base',
       })
+
     } else if (isOpen && !assembly) {
       reset({
         name: '',
@@ -281,6 +295,15 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
           />
           <Label htmlFor="isActive" className="cursor-pointer">Unidad activa</Label>
         </div>
+        <div className="grid gap-2 mt-4">
+          <Label htmlFor="status">Estado Operativo de la Unidad</Label>
+          <select id="status" className={SELECT_CLASS} {...register('status')}>
+            {UNIT_STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+
       </div>
       <WizardFooter
         isFirstStep={false}

@@ -1,4 +1,5 @@
 import MaintenancePage from '@/src/features/maintenance/presentation/components/pages/MaintenancePage'
+import { ModuleGuard } from '@/src/features/auth/presentation/components/ModuleGuard'
 
 export const metadata = {
   title: 'Mantenimiento | Brito',
@@ -6,6 +7,9 @@ export const metadata = {
 }
 
 export default function Page() {
-  return <MaintenancePage />
+  return (
+    <ModuleGuard permission="maintenance:view">
+      <MaintenancePage />
+    </ModuleGuard>
+  )
 }
-

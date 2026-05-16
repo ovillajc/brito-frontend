@@ -114,9 +114,13 @@ interface ExpensesTableProps {
   tripIdFilter?: string
 }
 
+import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
+
 export function ExpensesTable({ tripIdFilter }: ExpensesTableProps) {
   const query = useExpenses(tripIdFilter !== 'all' && tripIdFilter ? { tripId: tripIdFilter } : undefined)
   const rows = query.data ?? []
+
+  const canManage = useAuthStore((state) => state.hasPermission('expenses:manage'))
 
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [selectedRow, setSelectedRow] = useState<ExpensesTableRowEntity | null>(null)
@@ -143,6 +147,7 @@ export function ExpensesTable({ tripIdFilter }: ExpensesTableProps) {
   return (
     <>
       <CrudDataTable<ExpensesTableRowEntity>
+        canManage={canManage}
         data={rows}
         isLoading={query.isLoading}
         columns={EXPENSES_COLUMNS}

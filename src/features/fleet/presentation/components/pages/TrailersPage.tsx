@@ -64,9 +64,13 @@ const TRAILER_COLUMNS: CrudColumn<TrailerEntity>[] = [
   },
 ]
 
+import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
+
 export default function TrailersPage() {
   const { data: trailers, isLoading } = useTrailers()
   const queryClient = useQueryClient()
+
+  const canManage = useAuthStore((state) => state.hasPermission('fleet:manage'))
 
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [selectedTrailer, setSelectedTrailer] = useState<TrailerEntity | null>(null)
@@ -99,6 +103,7 @@ export default function TrailersPage() {
   return (
     <div className="flex flex-col gap-6">
       <CrudDataTable<TrailerEntity>
+        canManage={canManage}
         data={trailers}
         isLoading={isLoading}
         columns={TRAILER_COLUMNS}

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useAuthStore } from '../store'
 import { LogoutUseCase } from '../../aplication/use-cases/LogoutUseCase'
-import { SupabaseAuthRepository } from '../../infraestructure/repositories/SupabaseAuthRepository'
+import { SupabaseAuthRepository } from '../../infrastructure/repositories/SupabaseAuthRepository'
 
 /**
  * Hook para manejar el cierre de sesión del usuario.

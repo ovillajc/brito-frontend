@@ -3,10 +3,12 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, Phone } from 'lucide-react'
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { BrandLogo } from '@/src/core/presentation/components/ui/brand-logo'
+import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
 
 const NAV_LINKS = [
   { href: '#nosotros', label: 'Nosotros' },
@@ -22,6 +24,8 @@ const NAV_LINKS = [
  * Incluye menú responsive, branding real y efectos de scroll.
  */
 export const Navbar = () => {
+  const router = useRouter()
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
@@ -60,7 +64,7 @@ export const Navbar = () => {
                 {link.label}
               </Link>
             ))}
-            <Button
+            {/* <Button
               id="nav-cta"
               variant="orange"
               size="sm"
@@ -70,6 +74,14 @@ export const Navbar = () => {
               }}
             >
               Solicitar Cotización
+            </Button> */}
+            <Button
+              variant="green"
+              size="sm"
+              className="rounded-full px-5 shadow-md"
+              onClick={() => router.push(isAuthenticated ? '/dashboard' : '/login')}
+            >
+              Acceder
             </Button>
           </div>
 
@@ -106,16 +118,28 @@ export const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
-              <Button
-                variant="orange"
-                className="rounded-full mt-2 w-full"
-                onClick={() => {
-                  setIsMobileOpen(false)
-                  document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })
-                }}
-              >
-                Solicitar Cotización
-              </Button>
+              <div className="flex flex-col gap-2 mt-2">
+                <Button
+                  variant="green"
+                  className="rounded-full w-full"
+                  onClick={() => {
+                    setIsMobileOpen(false)
+                    router.push(isAuthenticated ? '/dashboard' : '/login')
+                  }}
+                >
+                  Acceder
+                </Button>
+                <Button
+                  variant="orange"
+                  className="rounded-full w-full"
+                  onClick={() => {
+                    setIsMobileOpen(false)
+                    document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })
+                  }}
+                >
+                  Solicitar Cotización
+                </Button>
+              </div>
             </div>
           </motion.div>
         )}

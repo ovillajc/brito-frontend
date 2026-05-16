@@ -69,9 +69,13 @@ const UNIT_COLUMNS: CrudColumn<UnitAssemblyEntity>[] = [
   },
 ]
 
+import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
+
 export default function UnitsPage() {
   const { data: assemblies, isLoading } = useUnitAssemblies()
   const queryClient = useQueryClient()
+
+  const canManage = useAuthStore((state) => state.hasPermission('fleet:manage'))
 
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [selectedAssembly, setSelectedAssembly] = useState<UnitAssemblyEntity | null>(null)
@@ -104,6 +108,7 @@ export default function UnitsPage() {
   return (
     <div className="flex flex-col gap-6">
       <CrudDataTable<UnitAssemblyEntity>
+        canManage={canManage}
         data={assemblies}
         isLoading={isLoading}
         columns={UNIT_COLUMNS}

@@ -35,9 +35,12 @@ function formatDateIso(value: string | null) {
   return value
 }
 
+import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
+
 export default function FuelLoadPage({ trips, units, initialHistory = [] }: FuelLoadPageProps) {
   const historyQuery = useFuelLoadHistory(200, initialHistory)
   const deleteFuelLoad = useDeleteFuelLoad()
+  const canManage = useAuthStore((state) => state.hasPermission('fuel:manage'))
   
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
@@ -171,6 +174,7 @@ export default function FuelLoadPage({ trips, units, initialHistory = [] }: Fuel
       />
 
       <CrudDataTable<FuelLoadHistoryRowEntity>
+        canManage={canManage}
         data={historyQuery.data ?? []}
         isLoading={historyQuery.isLoading}
         columns={columns}

@@ -87,4 +87,30 @@ export class SupabaseTripsRepository implements ITripsRepository {
       return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al guardar viaje' } }
     }
   }
+
+  async getNextTripNumberClientForRange(
+    clientId: string,
+    from: Date,
+    to: Date
+  ): Promise<Either<Failure, number>> {
+    try {
+      const supabase = await createClient()
+      const { data, error } = await supabase
+        .from('trips')
+        .select('trip_number_client')
+        .eq('client_id', clientId)
+        .gte('departure_date', from.toISOString())
+        .lt('departure_date', to.toISOString())
+        .order('trip_number_client', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+
+      const max = data?.trip_number_client ?? 0
+      return { ok: true, data: (typeof max === 'number' ? max : 0) + 1 }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al calcular número de viaje' } }
+    }
+  }
 }

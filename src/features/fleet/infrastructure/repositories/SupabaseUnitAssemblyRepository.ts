@@ -3,7 +3,7 @@ import { IUnitAssemblyRepository } from '../../domain/repositories/IUnitAssembly
 import { UnitAssemblyEntity, UnitAssemblyLogEntity, UnitAssemblyLogAction } from '../../domain/entities'
 import { UnitAssemblyMapper } from '../mappers/UnitAssemblyMapper'
 
-const SELECT_QUERY = '*, employees(full_name), trucks(economic_number), trailers!unit_assemblies_trailer_id_fkey(economic_number), trailer2:trailers!unit_assemblies_trailer2_id_fkey(economic_number), clients(trade_name, company_name), company_profile(legal_name)'
+const SELECT_QUERY = '*, employees(full_name), trucks(economic_number, plates), trailers!unit_assemblies_trailer_id_fkey(economic_number, plates), trailer2:trailers!unit_assemblies_trailer2_id_fkey(economic_number, plates), clients(trade_name, company_name), company_profile(legal_name)'
 
 type UnitAssemblyPersistPayload = {
   employee_id?: string | null
