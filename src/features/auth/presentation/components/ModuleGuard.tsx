@@ -3,7 +3,8 @@ import { ReactNode } from 'react'
 import { Unauthorized } from '@/src/core/presentation/components/organisms/Unauthorized'
 
 interface ModuleGuardProps {
-  permission: string
+  permission?: string
+  permissions?: string[]
   children: ReactNode
   title?: string
   description?: string
@@ -16,11 +17,14 @@ interface ModuleGuardProps {
  */
 export async function ModuleGuard({ 
   permission, 
+  permissions,
   children, 
   title, 
   description 
 }: ModuleGuardProps) {
-  const allowed = await hasPermission(permission)
+  const permissionsToCheck = permissions ?? (permission ? [permission] : [])
+  const results = await Promise.all(permissionsToCheck.map((p) => hasPermission(p)))
+  const allowed = results.some(Boolean)
 
   if (!allowed) {
     return (

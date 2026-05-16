@@ -18,6 +18,7 @@ import type { WalmartTripDataInput } from '@/src/features/trips/domain/entities/
 import { SaveWalmartTripData } from '@/src/features/trips/application/SaveWalmartTripData'
 import { SaveFuelMetrics, type SaveFuelMetricsInput } from '@/src/features/trips/application/SaveFuelMetrics'
 import { isUnitAssignableForNewTrip } from '@/src/features/trips/domain/rules/is-unit-assignable'
+import { hasPermission } from '@/src/features/auth/infrastructure/dal'
 
 async function getCurrentProfileId(): Promise<string | null> {
   const supabase = await createClient()
@@ -47,6 +48,26 @@ async function getActiveCompanyProfileId(): Promise<Either<Failure, string>> {
     return { ok: true, data: data.id as string }
   } catch {
     return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al obtener empresa activa' } }
+  }
+}
+
+async function getWalmartClientId(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<Either<Failure, string>> {
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('id, trade_name, company_name')
+      .or('trade_name.ilike.%walmart%,company_name.ilike.%walmart%')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+    if (!data?.id) return { ok: false, error: { code: 'WALMART_NOT_FOUND', message: 'Cliente Walmart no configurado' } }
+    return { ok: true, data: data.id as string }
+  } catch {
+    return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al resolver cliente Walmart' } }
   }
 }
 
@@ -102,8 +123,85 @@ async function validateUnitAvailability(
 export async function getTripsAction(
   filters?: TripsListFilters
 ): Promise<Either<Failure, TripWithRelations[]>> {
+  const canViewAll = await hasPermission('trips:view_all')
+  const canManageAll = await hasPermission('trips:manage_all')
+  const canViewWalmart = await hasPermission('trips:view_walmart')
+  const canManageWalmart = await hasPermission('trips:manage_walmart')
+
+  if (!canViewAll && !canManageAll && !canViewWalmart && !canManageWalmart) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
+
+  const supabase = await createClient()
   const repo = new SupabaseTripsRepository()
-  return GetTrips(repo, filters)
+
+  const effectiveFilters: TripsListFilters = { ...(filters ?? {}) }
+
+  const isWalmartOnly = (canViewWalmart || canManageWalmart) && !(canViewAll || canManageAll)
+  if (isWalmartOnly) {
+    const walmartIdResult = await getWalmartClientId(supabase)
+    if (!walmartIdResult.ok) return walmartIdResult
+    effectiveFilters.clientId = walmartIdResult.data
+  }
+
+  return GetTrips(repo, effectiveFilters)
+}
+
+export async function getTripsForFuelLoadAction(
+  filters?: TripsListFilters
+): Promise<Either<Failure, TripWithRelations[]>> {
+  const canViewAll = await hasPermission('trips:view_all')
+  const canManageAll = await hasPermission('trips:manage_all')
+  const canViewWalmart = await hasPermission('trips:view_walmart')
+  const canManageWalmart = await hasPermission('trips:manage_walmart')
+  const canManageFinances = await hasPermission('finances:manage')
+  const canManageFuel = await hasPermission('fuel:manage')
+
+  const allowed =
+    canManageFinances ||
+    canManageFuel ||
+    canViewAll ||
+    canManageAll ||
+    canViewWalmart ||
+    canManageWalmart
+
+  if (!allowed) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
+
+  const isTripsOnly =
+    (canViewAll || canManageAll || canViewWalmart || canManageWalmart) && !(canManageFinances || canManageFuel)
+  if (!isTripsOnly) {
+    const status = filters?.status ?? null
+    if (status && status !== 'in_progress' && status !== 'scheduled') {
+      return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+    }
+  }
+
+  const repo = new SupabaseTripsRepository()
+  const effectiveFilters: TripsListFilters = { ...(filters ?? {}) }
+  if (!effectiveFilters.limit || effectiveFilters.limit > 200) effectiveFilters.limit = 200
+
+  return GetTrips(repo, effectiveFilters)
+}
+
+export async function deleteTripAction(id: string): Promise<Either<Failure, void>> {
+  const allowed = await hasPermission('trips:manage_all')
+  if (!allowed) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
+
+  try {
+    const supabase = await createClient()
+    const { error } = await supabase.from('trips').delete().eq('id', id)
+    if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+
+    revalidatePath('/trips/list')
+    revalidatePath('/trips')
+    return { ok: true, data: undefined }
+  } catch {
+    return { ok: false, error: { code: 'UNEXPECTED', message: 'Error inesperado al eliminar el viaje' } }
+  }
 }
 
 export async function getNextTripNumberClientForMonthAction(
@@ -148,6 +246,9 @@ export async function upsertTripWithClientDataAction(
     return { ok: false, error: { code: 'UNAUTHORIZED', message: 'Usuario no autenticado', statusCode: 401 } }
   }
 
+  const canManageAll = await hasPermission('trips:manage_all')
+  const canManageWalmart = await hasPermission('trips:manage_walmart')
+
   const tripsRepo = new SupabaseTripsRepository()
   const walmartRepo = new SupabaseWalmartRepository()
   const fuelRepo = new SupabaseFuelMetricsRepository()
@@ -156,6 +257,15 @@ export async function upsertTripWithClientDataAction(
   const isCreate = !input.trip.id
   const companyResult = await getActiveCompanyProfileId()
   if (!companyResult.ok) return companyResult
+
+  const isWalmartOnly = canManageWalmart && !canManageAll
+  if (isWalmartOnly) {
+    const walmartIdResult = await getWalmartClientId(supabase)
+    if (!walmartIdResult.ok) return walmartIdResult
+    if (input.trip.clientId !== walmartIdResult.data) {
+      return { ok: false, error: { code: 'FORBIDDEN', message: 'Solo puedes crear/editar viajes de Walmart', statusCode: 403 } }
+    }
+  }
 
   const unitValidation = await validateUnitAvailability(
     supabase,

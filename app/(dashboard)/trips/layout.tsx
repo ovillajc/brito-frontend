@@ -16,12 +16,27 @@ export default async function TripsLayout({ children }: { children: React.ReactN
   }
   
   const isMonitoringRole = user.roles.some(r => r.name === 'monitoreo')
+  const isWalmartRole = user.roles.some(r => r.name === 'coordinador_walmart')
+  const isFinanceSupportRole = user.roles.some(r => r.name === 'apoyo_finanzas_full')
   const isSuperUser = user.permissions.includes('all_access') || user.permissions.includes('view_all')
   const isRestrictedMonitoring = isMonitoringRole && !isSuperUser
 
   // Ocultar Rendimientos para monitoreo restringido
   const hiddenHrefs: string[] = []
   if (isRestrictedMonitoring) {
+    hiddenHrefs.push('/trips/fuel')
+  }
+
+  const isWalmartOnly = isWalmartRole && !isSuperUser
+  if (isWalmartOnly) {
+    hiddenHrefs.push('/trips')
+    hiddenHrefs.push('/trips/fuel')
+    hiddenHrefs.push('/trips/fuel/load')
+  }
+
+  if (isFinanceSupportRole && !isSuperUser) {
+    hiddenHrefs.push('/trips')
+    hiddenHrefs.push('/trips/list')
     hiddenHrefs.push('/trips/fuel')
   }
 

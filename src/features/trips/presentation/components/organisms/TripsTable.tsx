@@ -16,6 +16,7 @@ import { TripDetailsDialog } from './TripDetailsDialog'
 import { ClientEntity, UnitAssemblyEntity } from '@/src/features/fleet/domain/entities'
 import type { TripWithRelations, TripStatus } from '@/src/features/trips/domain/entities/trip-entity'
 import { useTripsList } from '../../hooks/use-trips'
+import { deleteTripAction } from '@/src/features/trips/presentation/actions/trips.actions'
 
 // ── Entidades de vista ────────────────────────────────────────────────────────
 
@@ -173,6 +174,7 @@ export function TripsTable({ clients = [], units = [], trips = [] }: TripsTableP
   }
 
   const canCreate = canManageAll || canManageWalmart || canManageLogistics
+  const canDelete = canManageAll
 
   const handleView = (row: TripsTableRowEntity) => {
     setDetailRow(row)
@@ -205,6 +207,14 @@ export function TripsTable({ clients = [], units = [], trips = [] }: TripsTableP
         onView={handleView}
         onEdit={handleEdit}
         canEdit={canEditRow}
+        onDelete={canDelete ? async (id) => {
+          const result = await deleteTripAction(id)
+          if (result.ok) {
+            await tripsQuery.refetch()
+            return { ok: true }
+          }
+          return { ok: false, error: { message: result.error.message } }
+        } : undefined}
         emptyState={{
           icon: MapPin,
           title: 'Sin viajes registrados',

@@ -4,8 +4,20 @@ import { getUnitAssembliesAction } from '@/src/features/fleet/presentation/actio
 import { getTripsAction } from '@/src/features/trips/presentation/actions/trips.actions'
 
 import { ModuleGuard } from '@/src/features/auth/presentation/components/ModuleGuard'
+import { hasPermission, verifySession } from '@/src/features/auth/infrastructure/dal'
+import { redirect } from 'next/navigation'
 
 export default async function TripsTablePage() {
+  const user = await verifySession()
+  if (user?.roles.some(r => r.name === 'apoyo_finanzas_full')) {
+    redirect('/trips/fuel/load')
+  }
+
+  const canViewAll = await hasPermission('trips:view_all')
+  const canManageAll = await hasPermission('trips:manage_all')
+  const canViewWalmart = await hasPermission('trips:view_walmart')
+  const canManageWalmart = await hasPermission('trips:manage_walmart')
+
   const [clientsResult, unitsResult, tripsResult] = await Promise.all([
     getClientsAction(),
     getUnitAssembliesAction(),
@@ -16,10 +28,14 @@ export default async function TripsTablePage() {
   const units = unitsResult.ok ? unitsResult.data : []
   const trips = tripsResult.ok ? tripsResult.data : []
 
+  const isWalmartOnly = (canViewWalmart || canManageWalmart) && !(canViewAll || canManageAll)
+  const visibleClients = isWalmartOnly
+    ? clients.filter((c) => (c.tradeName ?? c.companyName ?? '').toLowerCase().includes('walmart'))
+    : clients
+
   return (
-    <ModuleGuard permission="trips:view_all">
-      <TripsListPage clients={clients} units={units} trips={trips} />
+    <ModuleGuard permissions={['trips:view_all', 'trips:manage_all', 'trips:view_walmart', 'trips:manage_walmart']}>
+      <TripsListPage clients={visibleClients} units={units} trips={trips} />
     </ModuleGuard>
   )
 }
-

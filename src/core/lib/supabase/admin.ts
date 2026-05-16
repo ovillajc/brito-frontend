@@ -9,13 +9,14 @@ export function createAdminClient() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL is missing')
   }
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is missing in environment variables.')
+  const adminKey = process.env.SUPABASE_SECRET_KEY
+  if (!adminKey) {
+    throw new Error('SUPABASE_SECRET_KEY is missing in environment variables.')
   }
 
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    adminKey,
     {
       auth: {
         autoRefreshToken: false,

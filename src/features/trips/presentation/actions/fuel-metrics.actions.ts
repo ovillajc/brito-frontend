@@ -21,6 +21,7 @@ import type { FuelLoadHistoryRowEntity, FuelMetricsCalculated, FuelMetricsInputE
 import type { WalmartTripDataEntity, WalmartTripDataInput } from '@/src/features/trips/domain/entities/walmart-trip-entity'
 import { createClient } from '@/src/core/lib/supabase/server'
 import { FuelMetricsMapper, type FuelLoadHistoryRow, type FuelMetricsListTripRow } from '@/src/features/trips/infrastructure/mappers/FuelMetricsMapper'
+import { hasPermission } from '@/src/features/auth/infrastructure/dal'
 
 // ── Helpers de autenticación ─────────────────────────────────────────────────
 
@@ -149,6 +150,24 @@ export async function getFuelLoadHistoryAction(
     return { ok: true, data: rows.map(FuelMetricsMapper.fuelLoadHistoryToEntity) }
   } catch {
     return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al listar cargas de diésel' } }
+  }
+}
+
+export async function deleteTripFuelMetricsAction(tripId: string): Promise<Either<Failure, void>> {
+  const allowed = await hasPermission('fuel:manage')
+  if (!allowed) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
+
+  try {
+    const supabase = await createClient()
+    const { error } = await supabase.from('trip_fuel_metrics').delete().eq('trip_id', tripId)
+    if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+
+    revalidatePath(`/trips/fuel`)
+    return { ok: true, data: undefined }
+  } catch {
+    return { ok: false, error: { code: 'UNEXPECTED', message: 'Error inesperado al eliminar rendimientos' } }
   }
 }
 
