@@ -35,7 +35,7 @@ export class SupabaseExpenseAssignmentsRepository implements IExpenseAssignments
       const { data, error } = await supabase
         .from('trip_expense_assignment_kpis')
         .select('*')
-        .order('departure_date', { ascending: false })
+        .order('trip_number', { ascending: false })
         .limit(limit)
 
       if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
@@ -57,4 +57,3 @@ export class SupabaseExpenseAssignmentsRepository implements IExpenseAssignments
     return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
   }
 }
-

@@ -78,7 +78,7 @@ export class SupabaseUnitAssemblyRepository implements IUnitAssemblyRepository {
     profileId?: string
   ) {
     const supabase = await createClient()
-    await supabase.from('unit_assemblies_logs').insert({
+    await supabase.from('unit_assembly_logs').insert({
       unit_assembly_id: unitId,
       employee_id: payload.employee_id,
       truck_id: payload.truck_id,
@@ -93,9 +93,16 @@ export class SupabaseUnitAssemblyRepository implements IUnitAssemblyRepository {
     const supabase = await createClient()
     const payload = UnitAssemblyMapper.toPersistCreate(input)
 
+    console.log('[SupabaseUnitAssemblyRepository.create] Payload to insert:', payload)
+
     // Si tiene remolques, destrabarlos de otras unidades primero
-    if (payload.trailer_id) await this.detachTrailerFromOthers(payload.trailer_id, undefined, profileId)
-    if (payload.trailer2_id) await this.detachTrailerFromOthers(payload.trailer2_id, undefined, profileId)
+    try {
+      if (payload.trailer_id) await this.detachTrailerFromOthers(payload.trailer_id, undefined, profileId)
+      if (payload.trailer2_id) await this.detachTrailerFromOthers(payload.trailer2_id, undefined, profileId)
+    } catch (detachError) {
+      console.error('[SupabaseUnitAssemblyRepository.create] detachTrailer Error:', detachError)
+      throw detachError
+    }
 
     const { data, error } = await supabase
       .from('unit_assemblies')
@@ -103,10 +110,18 @@ export class SupabaseUnitAssemblyRepository implements IUnitAssemblyRepository {
       .select(SELECT_QUERY)
       .single()
 
-    if (error) throw new Error(`Error al crear unidad: ${error.message}`)
+    if (error) {
+      console.error('[SupabaseUnitAssemblyRepository.create] Supabase Insert Error:', error)
+      throw new Error(`Error al crear unidad: ${error.message}`)
+    }
 
-    // Log the creation
-    await this.logAction('CREATED', data.id, payload, profileId)
+    try {
+      // Log the creation
+      await this.logAction('CREATED', data.id, payload, profileId)
+    } catch (logError) {
+      console.error('[SupabaseUnitAssemblyRepository.create] logAction Error:', logError)
+      throw logError
+    }
 
     return UnitAssemblyMapper.toDomain(data)
   }

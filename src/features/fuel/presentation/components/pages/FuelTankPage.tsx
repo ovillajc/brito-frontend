@@ -5,6 +5,9 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
+import { AnimatePresence } from 'framer-motion'
+import { Dialog } from '@/src/core/presentation/components/ui/dialog'
+import { ActionFeedback } from '@/src/core/presentation/components/molecules/ActionFeedback'
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
@@ -37,6 +40,8 @@ const adjustSchema = z.object({
 })
 type AdjustValues = z.input<typeof adjustSchema>
 
+type SubmissionStatus = 'idle' | 'success' | 'error'
+
 function formatMoney(value: number | null) {
   if (value == null || !Number.isFinite(value)) return '—'
   return value.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
@@ -53,6 +58,11 @@ export default function FuelTankPage({ initialSummary, initialMovements }: FuelT
   const [isBootstrapping, setIsBootstrapping] = useState(false)
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isAdjusting, setIsAdjusting] = useState(false)
+
+  // ── Feedback states ──
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('idle')
+  const [submissionMessage, setSubmissionMessage] = useState('')
 
   const purchaseForm = useForm<PurchaseValues>({
     resolver: zodResolver(purchaseSchema),
@@ -126,7 +136,9 @@ export default function FuelTankPage({ initialSummary, initialMovements }: FuelT
       })
 
       if (!result.ok) {
-        toast.error(result.error.message)
+        setSubmissionStatus('error')
+        setSubmissionMessage(result.error.message || 'No pudimos registrar la compra.')
+        setIsFeedbackOpen(true)
         return
       }
 
@@ -138,7 +150,10 @@ export default function FuelTankPage({ initialSummary, initialMovements }: FuelT
         purchasedAt: new Date().toISOString().slice(0, 16),
         description: '',
       })
-      toast.success('Compra registrada')
+      
+      setSubmissionStatus('success')
+      setSubmissionMessage('La compra ha sido registrada correctamente en el inventario y el costo promedio ha sido actualizado.')
+      setIsFeedbackOpen(true)
     } finally {
       setIsPurchasing(false)
     }
@@ -352,6 +367,21 @@ export default function FuelTankPage({ initialSummary, initialMovements }: FuelT
           </div>
         </>
       )}
+
+      {/* ── Action Feedback Dialog ── */}
+      <AnimatePresence mode="wait">
+        {isFeedbackOpen && (
+          <Dialog key="feedback" isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} size="md">
+            <ActionFeedback
+              status={submissionStatus === 'idle' ? 'success' : submissionStatus}
+              title={submissionStatus === 'success' ? '¡Compra Registrada!' : 'Error en la operación'}
+              message={submissionMessage}
+              primaryActionLabel="Finalizar"
+              onPrimaryAction={() => setIsFeedbackOpen(false)}
+            />
+          </Dialog>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

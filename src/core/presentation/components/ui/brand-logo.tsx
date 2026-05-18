@@ -7,9 +7,10 @@ interface BrandLogoProps {
   className?: string
   href?: string
   size?: 'sm' | 'md' | 'lg'
+  showText?: boolean
 }
 
-export const BrandLogo = ({ theme = 'dark', className = '', href = '/', size = 'md' }: BrandLogoProps) => {
+export const BrandLogo = ({ theme = 'dark', className = '', href = '/', size = 'md', showText = true }: BrandLogoProps) => {
   const isDarkTheme = theme === 'dark'
 
   const sizeStyles = {
@@ -41,22 +42,20 @@ export const BrandLogo = ({ theme = 'dark', className = '', href = '/', size = '
           sizes={size === 'lg' ? '64px' : size === 'md' ? '48px' : '40px'}
         />
       </div>
-      <div className="flex flex-col leading-none">
-        <span
-          className={`${sizeStyles.title} font-black tracking-tight uppercase transition-colors ${
-            isDarkTheme ? 'text-stone-900' : 'text-white'
-          }`}
-        >
-          Transportes <span className="text-[#e07020]">Brito</span>
-        </span>
-        <span
-          className={`${sizeStyles.subtitle} font-medium tracking-widest uppercase transition-colors ${
-            isDarkTheme ? 'text-stone-500' : 'text-white/70'
-          }`}
-        >
-          Barita de la Chontalpa
-        </span>
-      </div>
+      {showText && (
+        <div className="flex flex-col leading-none min-w-0">
+          <span
+            className={`${sizeStyles.title} font-black tracking-tight uppercase transition-colors text-stone-900 dark:text-white truncate`}
+          >
+            Transportes <span className="text-[#e07020]">Brito</span>
+          </span>
+          <span
+            className={`${sizeStyles.subtitle} font-medium tracking-widest uppercase transition-colors text-stone-500 dark:text-zinc-400 truncate`}
+          >
+            Barita de la Chontalpa
+          </span>
+        </div>
+      )}
     </Link>
   )
 }

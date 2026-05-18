@@ -182,9 +182,42 @@ export default function ExpenseAssignmentsPage() {
           <div className="flex items-center justify-between mt-2">
             <div>
               <h2 className="text-base font-bold text-stone-900 dark:text-zinc-100">Cuentas hechas</h2>
-              <p className="text-sm text-stone-500 dark:text-zinc-500">Viajes ya liquidados</p>
+              <p className="text-sm text-stone-500 dark:text-zinc-500">Viajes ya liquidados (historial reciente)</p>
             </div>
             <Badge variant="secondary">{settledTrips.length}</Badge>
+          </div>
+
+          <div className="space-y-3">
+            {settledTrips.length === 0 ? (
+              <div className="p-6 rounded-2xl border border-stone-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/40 text-sm text-stone-600 dark:text-zinc-400">
+                No hay cuentas liquidadas recientemente.
+              </div>
+            ) : (
+              settledTrips.slice(0, 10).map((k) => (
+                <button
+                  key={k.tripId}
+                  onClick={() => openSettlement(k)}
+                  className="w-full text-left p-4 rounded-2xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-stone-50/70 dark:hover:bg-zinc-800/40 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-mono font-bold text-stone-900 dark:text-zinc-100">
+                        {k.folio ?? `VJE-${k.tripNumber ?? '—'}`}
+                      </p>
+                      <p className="text-xs text-stone-500 dark:text-zinc-500 mt-1">
+                        Enviado: {money.format(k.assignedAmount)} · Comprobado: {money.format(k.spentAmount)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <Badge className="bg-[#1a5c3a] dark:bg-primary-container/80 text-white dark:text-zinc-950 font-bold">Hechas</Badge>
+                      <p className={cn('text-sm font-bold mt-2', k.balanceAmount > 0 ? 'text-emerald-700' : k.balanceAmount < 0 ? 'text-amber-700' : 'text-stone-500')}>
+                        {money.format(Math.abs(k.balanceAmount))}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
           </div>
         </div>
 

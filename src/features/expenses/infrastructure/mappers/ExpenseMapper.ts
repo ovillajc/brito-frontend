@@ -145,22 +145,22 @@ export class ExpenseMapper {
     createdByProfileId: string | null
   ): Omit<ExpenseRow, 'id' | 'created_at' | 'expense_categories' | 'expense_subcategories' | 'measurement_units' | 'cargo_types'> {
     return {
-      trip_id: input.tripId,
-      truck_id: input.truckId,
-      trailer_id: input.trailerId,
-      category_id: input.categoryId,
-      subcategory_id: input.subcategoryId,
+      trip_id: input.tripId || null,
+      truck_id: input.truckId || null,
+      trailer_id: input.trailerId || null,
+      category_id: input.categoryId || null,
+      subcategory_id: input.subcategoryId || null,
       description: input.description,
       unit_price: input.unitPrice,
       quantity: input.quantity,
-      unit_id: input.unitId,
+      unit_id: input.unitId || null,
       amount: input.amount,
-      frequency: input.frequency,
-      cargo_type_id: input.cargoTypeId,
-      comments: input.comments,
+      frequency: input.frequency || null,
+      cargo_type_id: input.cargoTypeId || null,
+      comments: input.comments || null,
       expense_date: input.expenseDate,
-      receipt_url: input.receiptUrl,
-      created_by: createdByProfileId,
+      receipt_url: input.receiptUrl || null,
+      created_by: createdByProfileId || null,
     }
   }
 
@@ -177,21 +177,21 @@ export class ExpenseMapper {
     | 'cargo_types'
   > {
     return {
-      trip_id: input.tripId,
-      truck_id: input.truckId,
-      trailer_id: input.trailerId,
-      category_id: input.categoryId,
-      subcategory_id: input.subcategoryId,
+      trip_id: input.tripId || null,
+      truck_id: input.truckId || null,
+      trailer_id: input.trailerId || null,
+      category_id: input.categoryId || null,
+      subcategory_id: input.subcategoryId || null,
       description: input.description,
       unit_price: input.unitPrice,
       quantity: input.quantity,
-      unit_id: input.unitId,
+      unit_id: input.unitId || null,
       amount: input.amount,
-      frequency: input.frequency,
-      cargo_type_id: input.cargoTypeId,
-      comments: input.comments,
+      frequency: input.frequency || null,
+      cargo_type_id: input.cargoTypeId || null,
+      comments: input.comments || null,
       expense_date: input.expenseDate,
-      receipt_url: input.receiptUrl,
+      receipt_url: input.receiptUrl || null,
     }
   }
 }

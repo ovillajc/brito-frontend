@@ -13,7 +13,7 @@ const SELECT_LIST =
     '*',
     'clients(trade_name, company_name)',
     'unit_assemblies(economic_number, trailer2_id, employees(full_name))',
-    'walmart_trip_data(coordinator_name, route, carta_porte_walmart, num_stores)',
+    'walmart_trip_data(*)',
   ].join(', ')
 
 export class SupabaseTripsRepository implements ITripsRepository {
