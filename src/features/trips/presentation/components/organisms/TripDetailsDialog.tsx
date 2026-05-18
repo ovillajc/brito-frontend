@@ -225,7 +225,49 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
                     <DetailItem icon={User} label="Coordinador" value={tripRow.walmartData?.coordinatorName} />
                     <DetailItem icon={MapPin} label="Ruta Walmart" value={tripRow.walmartData?.route} />
                     <DetailItem icon={FileText} label="Carta Porte" value={tripRow.walmartData?.cartaPorteWalmart} />
+                    <DetailItem icon={Hash} label="Estatus" value={tripRow.walmartData?.statusWalmart} />
                     <DetailItem icon={Hash} label="Núm. Tiendas" value={tripRow.walmartData?.numStores} />
+                    <DetailItem icon={MapPin} label="Temp. Salida" value={tripRow.walmartData?.departureTemperature} />
+                    <DetailItem icon={Calendar} label="Hora Salida" value={tripRow.walmartData?.departureTime ? new Date(tripRow.walmartData.departureTime).toLocaleString('es-MX') : null} />
+                  </div>
+                </section>
+
+                <Separator className="bg-stone-100 dark:bg-zinc-800" />
+
+                <section>
+                  <SectionTitle title="Métricas STR" icon={Hash} />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <DetailItem icon={Hash} label="Num Load" value={tripRow.walmartData?.strNumLoad} />
+                    <DetailItem icon={FileText} label="Compl. Carta Porte" value={tripRow.walmartData?.strComplementCartaPorte} />
+                    <DetailItem icon={Hash} label="KM Pre-facturados" value={tripRow.walmartData?.strPreinvoiceKm} />
+                    <DetailItem icon={Hash} label="KM Recorridos" value={tripRow.walmartData?.strKmTraveled} />
+                    <DetailItem icon={Hash} label="Diesel" value={tripRow.walmartData?.strDiesel} />
+                    <DetailItem icon={Hash} label="Casetas" value={tripRow.walmartData?.strCasetas} />
+                    <DetailItem icon={Hash} label="Total Facturado" value={tripRow.walmartData?.strTotalInvoice} />
+                  </div>
+                </section>
+
+                <Separator className="bg-stone-100 dark:bg-zinc-800" />
+
+                <section>
+                  <SectionTitle title="Métricas DHD" icon={Hash} />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <DetailItem icon={Hash} label="Num Load" value={tripRow.walmartData?.dhdNumLoad} />
+                    <DetailItem icon={FileText} label="Compl. Carta Porte" value={tripRow.walmartData?.dhdComplementCartaPorte} />
+                    <DetailItem icon={Hash} label="KM Pre-facturados" value={tripRow.walmartData?.dhdPreinvoiceKm} />
+                    <DetailItem icon={Hash} label="KM Recorridos" value={tripRow.walmartData?.dhdKmTraveled} />
+                    <DetailItem icon={Hash} label="Diesel" value={tripRow.walmartData?.dhdDiesel} />
+                    <DetailItem icon={Hash} label="Casetas" value={tripRow.walmartData?.dhdCasetas} />
+                    <DetailItem icon={Hash} label="Total Facturado" value={tripRow.walmartData?.dhdTotalInvoice} />
+                  </div>
+                </section>
+
+                <Separator className="bg-stone-100 dark:bg-zinc-800" />
+
+                <section>
+                  <SectionTitle title="Incidencias" icon={FileText} />
+                  <div className="grid grid-cols-1 gap-6">
+                    <DetailItem icon={FileText} label="Observaciones" value={tripRow.walmartData?.incidencias} />
                   </div>
                 </section>
 

@@ -49,5 +49,24 @@ export interface TripWithRelations {
     route: string | null
     cartaPorteWalmart: string | null
     numStores: number | null
+    statusWalmart: string | null
+    strNumLoad: string | null
+    strComplementCartaPorte: string | null
+    strPreinvoiceKm: number | null
+    strKmTraveled: number | null
+    strDiesel: number | null
+    strCasetas: number | null
+    strTotalInvoice: number | null
+    dhdNumLoad: string | null
+    dhdComplementCartaPorte: string | null
+    dhdPreinvoiceKm: number | null
+    dhdKmTraveled: number | null
+    dhdDiesel: number | null
+    dhdCasetas: number | null
+    dhdTotalInvoice: number | null
+    dettesLog: unknown
+    departureTemperature: string | null
+    departureTime: string | null
+    incidencias: string | null
   } | null
 }

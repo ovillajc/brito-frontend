@@ -124,6 +124,9 @@ interface CrudDataTableProps<T extends { id: string }> {
 
   /** Clase CSS opcional para el contenedor raíz. */
   className?: string
+
+  /** Número de registros por página. Por defecto: 10. Si es 0 desactiva paginación. */
+  pageSize?: number
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -131,7 +134,7 @@ interface CrudDataTableProps<T extends { id: string }> {
 /**
  * Tabla CRUD genérica y reutilizable.
  * Maneja internamente: búsqueda client-side, confirm dialog de eliminación,
- * skeletons de carga y estado vacío.
+ * skeletons de carga, estado vacío y paginación.
  */
 export function CrudDataTable<T extends { id: string }>({
   data,
@@ -149,10 +152,17 @@ export function CrudDataTable<T extends { id: string }>({
   skeletonRows = 3,
   className,
   canManage = true,
+  pageSize = 10,
 }: CrudDataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('')
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+
+  // Reset page when search changes
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
 
   const _onAction = canManage ? onAction : undefined
   const _onEdit = canManage ? onEdit : undefined
@@ -170,6 +180,12 @@ export function CrudDataTable<T extends { id: string }>({
     : []
 
   const isEmpty = !isLoading && filteredData.length === 0
+
+  // Paginación
+  const itemsPerPage = pageSize > 0 ? pageSize : Number.MAX_SAFE_INTEGER
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage))
+  const safeCurrentPage = Math.min(currentPage, totalPages)
+  const paginatedData = filteredData.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage)
 
   const handleDeleteRequest = (id: string) => setPendingDeleteId(id)
   const handleCancelDelete = () => setPendingDeleteId(null)
@@ -218,113 +234,147 @@ export function CrudDataTable<T extends { id: string }>({
           </p>
         </div>
       ) : (
-        <TableContainer>
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-stone-50/50 dark:bg-zinc-900/50">
-                {columns.map((col) => (
-                  <TableHead
-                    key={col.header}
-                    className={`font-bold text-stone-900 dark:text-zinc-100 ${col.headerClassName ?? ''}`}
-                  >
-                    {col.header}
-                  </TableHead>
-                ))}
-                {hasRowActions && (
-                  <TableHead className="text-right font-bold text-stone-900 dark:text-zinc-100">
-                    Acciones
-                  </TableHead>
+        <>
+          <TableContainer>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-stone-50/50 dark:bg-zinc-900/50">
+                  {columns.map((col) => (
+                    <TableHead
+                      key={col.header}
+                      className={`font-bold text-stone-900 dark:text-zinc-100 ${col.headerClassName ?? ''}`}
+                    >
+                      {col.header}
+                    </TableHead>
+                  ))}
+                  {hasRowActions && (
+                    <TableHead className="text-right font-bold text-stone-900 dark:text-zinc-100">
+                      Acciones
+                    </TableHead>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  // Skeleton rows
+                  Array.from({ length: skeletonRows }).map((_, i) => (
+                    <TableRow key={i} className="animate-pulse">
+                      {Array.from({ length: totalCols }).map((_, j) => (
+                        <TableCell key={j}>
+                          <div className="h-4 bg-surface-container rounded w-3/4" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  paginatedData.map((item) => (
+                    <TableRow
+                      key={item.id}
+                      className="hover:bg-stone-50/50 dark:hover:bg-zinc-800/30 transition-colors cursor-pointer group"
+                      onClick={() => onView?.(item)}
+                    >
+                      {columns.map((col) => (
+                        <TableCell
+                          key={col.header}
+                          className={col.className}
+                        >
+                          {col.cell(item)}
+                        </TableCell>
+                      ))}
+                      {hasRowActions && (
+                        <TableCell
+                          className="text-right"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            {onView && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-stone-400 hover:text-stone-900 dark:hover:text-zinc-100"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onView(item)
+                                }}
+                              >
+                                <Eye className="size-3.5" />
+                              </Button>
+                            )}
+                            {_onEdit && (!canEdit || canEdit(item)) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-stone-400 hover:text-stone-900 dark:hover:text-zinc-100"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  _onEdit(item)
+                                }}
+                              >
+                                <Edit2 className="size-3.5" />
+                              </Button>
+                            )}
+                            {_onDelete && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-stone-400 hover:text-red-600 dark:hover:text-red-400"
+                                disabled={isDeleting && pendingDeleteId === item.id}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteRequest(item.id)
+                                }}
+                              >
+                                <Trash2
+                                  className={`size-3.5 ${
+                                    isDeleting && pendingDeleteId === item.id
+                                      ? 'animate-pulse'
+                                      : ''
+                                  }`}
+                                />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))
                 )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                // Skeleton rows
-                Array.from({ length: skeletonRows }).map((_, i) => (
-                  <TableRow key={i} className="animate-pulse">
-                    {Array.from({ length: totalCols }).map((_, j) => (
-                      <TableCell key={j}>
-                        <div className="h-4 bg-surface-container rounded w-3/4" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                filteredData.map((item) => (
-                  <TableRow
-                    key={item.id}
-                    className="hover:bg-stone-50/50 dark:hover:bg-zinc-800/30 transition-colors cursor-pointer group"
-                    onClick={() => onView?.(item)}
-                  >
-                    {columns.map((col) => (
-                      <TableCell
-                        key={col.header}
-                        className={col.className}
-                      >
-                        {col.cell(item)}
-                      </TableCell>
-                    ))}
-                    {hasRowActions && (
-                      <TableCell
-                        className="text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="flex items-center justify-end gap-1">
-                          {onView && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-stone-400 hover:text-stone-900 dark:hover:text-zinc-100"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onView(item)
-                              }}
-                            >
-                              <Eye className="size-3.5" />
-                            </Button>
-                          )}
-                          {_onEdit && (!canEdit || canEdit(item)) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-stone-400 hover:text-stone-900 dark:hover:text-zinc-100"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                _onEdit(item)
-                              }}
-                            >
-                              <Edit2 className="size-3.5" />
-                            </Button>
-                          )}
-                          {_onDelete && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-stone-400 hover:text-red-600 dark:hover:text-red-400"
-                              disabled={isDeleting && pendingDeleteId === item.id}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDeleteRequest(item.id)
-                              }}
-                            >
-                              <Trash2
-                                className={`size-3.5 ${
-                                  isDeleting && pendingDeleteId === item.id
-                                    ? 'animate-pulse'
-                                    : ''
-                                }`}
-                              />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {/* Pagination Controls */}
+          {!isLoading && totalPages > 1 && (
+            <div className="flex items-center justify-between px-2 pt-2 border-t border-stone-200 dark:border-zinc-800 mt-2">
+              <p className="text-sm text-stone-500 dark:text-zinc-400">
+                Mostrando {(safeCurrentPage - 1) * itemsPerPage + 1} a {Math.min(safeCurrentPage * itemsPerPage, filteredData.length)} de {filteredData.length} resultados
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={safeCurrentPage === 1}
+                >
+                  Anterior
+                </Button>
+                <span className="text-sm font-medium text-stone-600 dark:text-zinc-300">
+                  Página {safeCurrentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={safeCurrentPage === totalPages}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Confirm Delete Dialog */}

@@ -11,7 +11,8 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { AnimatePresence } from 'framer-motion'
-import { Receipt } from 'lucide-react'
+import { Receipt, ExternalLink, FileText } from 'lucide-react'
+import { FileUploadButton } from '@/src/core/presentation/components/molecules/FileUploadButton'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { ActionFeedback } from '@/src/core/presentation/components/molecules/ActionFeedback'
 import { Wizard, type WizardStep } from '@/src/core/presentation/components/organisms/wizard'
@@ -24,6 +25,56 @@ import { createExpenseSchema, type CreateExpenseInput } from '../../../domain/sc
 import { useExpenseCatalogs, useExpenseSubcategories } from '../../hooks/use-expense-catalogs'
 import { useCreateExpense, useUpdateExpense } from '../../hooks/use-expenses'
 import { useTripsList } from '@/src/features/trips/presentation/hooks/use-trips'
+
+// ── ReceiptPreview ───────────────────────────────────────────────────────────
+
+/**
+ * Muestra una previsualización inline del comprobante adjunto.
+ * Detecta si es imagen (PNG, JPG, WEBP) o PDF y renderiza el componente adecuado.
+ */
+function ReceiptPreview({ url }: { url: string | null }) {
+  if (!url) {
+    return (
+      <div className="flex items-center gap-2 p-3 rounded-lg border border-dashed border-stone-200 dark:border-zinc-700 text-stone-400 dark:text-zinc-500 text-sm">
+        <FileText className="size-4 shrink-0" />
+        <span>Sin comprobante adjunto</span>
+      </div>
+    )
+  }
+
+  const isImage = /\.(png|jpe?g|webp)$/i.test(url)
+  const isPdf   = /\.pdf$/i.test(url)
+
+  return (
+    <div className="flex flex-col gap-2">
+      {isImage && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={url}
+          alt="Comprobante del gasto"
+          className="rounded-xl border border-stone-200 dark:border-zinc-700 max-h-56 object-contain bg-stone-50 dark:bg-zinc-900 w-full"
+        />
+      )}
+      {isPdf && (
+        <iframe
+          src={url}
+          title="Comprobante del gasto"
+          className="w-full rounded-xl border border-stone-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-900"
+          style={{ height: '220px' }}
+        />
+      )}
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1.5 text-xs text-[#1a5c3a] dark:text-emerald-400 hover:underline"
+      >
+        <ExternalLink className="size-3.5 shrink-0" />
+        Abrir documento en nueva pestaña
+      </a>
+    </div>
+  )
+}
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -250,7 +301,7 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
             <select id="categoryId" className={inputClass} disabled={loadingCatalogs || isReadOnly} {...register('categoryId')}>
               <option value="">{loadingCatalogs ? 'Cargando...' : 'Selecciona categoría'}</option>
               {(catalogs?.categories ?? []).map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>{c.name.replace(/_/g, ' ')}</option>
               ))}
             </select>
             {errors.categoryId && <p className={errorClass}>{errors.categoryId.message}</p>}
@@ -261,7 +312,7 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
             <select id="subcategoryId" className={inputClass} disabled={!selectedCategoryId || loadingSubs || isReadOnly} {...register('subcategoryId')}>
               <option value="">{!selectedCategoryId ? 'Primero selecciona categoría' : loadingSubs ? 'Cargando...' : 'Selecciona detalle'}</option>
               {subcategories.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.id} value={s.id}>{s.name.replace(/_/g, ' ')}</option>
               ))}
             </select>
             {errors.subcategoryId && <p className={errorClass}>{errors.subcategoryId.message}</p>}
@@ -339,6 +390,23 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
           <Label htmlFor="amount">Monto total (MXN)</Label>
           <Input id="amount" type="number" step="0.01" placeholder="0.00" readOnly tabIndex={-1} {...register('amount', { valueAsNumber: true })} />
           {errors.amount && <p className={errorClass}>{errors.amount.message}</p>}
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="receiptUrl">Ticket / Factura</Label>
+          {isReadOnly ? (
+            // ── Modo Vista: Previsualización del comprobante ────────────────
+            <ReceiptPreview url={watch('receiptUrl') ?? null} />
+          ) : (
+            // ── Modo Edición/Creación: Botón de carga ───────────────────────
+            <FileUploadButton
+              folder="expenses/receipts"
+              label="Adjuntar Ticket o Factura (PDF / Imagen)"
+              currentUrl={watch('receiptUrl')}
+              onUploadComplete={(url) => setValue('receiptUrl', url)}
+              disabled={isReadOnly}
+            />
+          )}
         </div>
 
         <div className="grid gap-2">

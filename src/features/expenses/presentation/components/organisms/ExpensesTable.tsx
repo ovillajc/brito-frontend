@@ -9,6 +9,7 @@ import { Receipt, Calendar, CreditCard } from 'lucide-react'
 import { CrudDataTable, type CrudColumn } from '@/src/core/presentation/components/organisms/CrudDataTable'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { ExpenseWizard } from './ExpenseForm'
+import { ExpenseDetailsDialog } from './ExpenseDetailsDialog'
 import type { ExpenseEntity } from '../../../domain/entities/expense-entity'
 import { useExpenses } from '../../hooks/use-expenses'
 import { EXPENSE_FREQUENCY } from '../../../domain/entities/expense-entity'
@@ -40,7 +41,7 @@ const EXPENSES_COLUMNS: CrudColumn<ExpensesTableRowEntity>[] = [
           {row.description}
         </span>
         <span className="text-[11px] text-stone-500 dark:text-zinc-400 mt-0.5 truncate max-w-[200px]">
-          {row.subcategoryName ?? 'Sin detalle'}
+          {row.subcategoryName?.replace(/_/g, ' ') ?? 'Sin detalle'}
         </span>
       </div>
     ),
@@ -54,7 +55,7 @@ const EXPENSES_COLUMNS: CrudColumn<ExpensesTableRowEntity>[] = [
         </div>
         <div className="flex flex-col">
           <span className="text-sm font-semibold text-stone-800 dark:text-zinc-200">
-            {row.categoryName ?? '—'}
+            {row.categoryName?.replace(/_/g, ' ') ?? '—'}
           </span>
           <span className="text-[11px] text-stone-400 dark:text-zinc-500">
             {row.cargoTypeName ?? 'Genérico'}
@@ -112,25 +113,33 @@ const EXPENSES_COLUMNS: CrudColumn<ExpensesTableRowEntity>[] = [
 
 interface ExpensesTableProps {
   tripIdFilter?: string
+  expenseType?: 'operativo' | 'general' | 'all'
 }
 
 import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
 
-export function ExpensesTable({ tripIdFilter }: ExpensesTableProps) {
-  const query = useExpenses(tripIdFilter !== 'all' && tripIdFilter ? { tripId: tripIdFilter } : undefined)
+export function ExpensesTable({ tripIdFilter, expenseType }: ExpensesTableProps) {
+  const query = useExpenses({
+    ...(tripIdFilter !== 'all' && tripIdFilter ? { tripId: tripIdFilter } : {}),
+    ...(expenseType ? { expenseType } : {})
+  })
   const rows = query.data ?? []
 
   const canManage = useAuthStore((state) => state.hasPermission('expenses:manage'))
   const canCreate = useAuthStore((state) => state.hasPermission('expenses:create')) || canManage
 
+  // Estado del wizard (crear/editar)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [selectedRow, setSelectedRow] = useState<ExpensesTableRowEntity | null>(null)
-  const [wizardMode, setWizardMode] = useState<'create' | 'edit' | 'view'>('create')
+  const [wizardMode, setWizardMode] = useState<'create' | 'edit'>('create')
+
+  // Estado del dialog de detalles
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [detailExpense, setDetailExpense] = useState<ExpensesTableRowEntity | null>(null)
 
   const handleView = (row: ExpensesTableRowEntity) => {
-    setWizardMode('view')
-    setSelectedRow(row)
-    setIsWizardOpen(true)
+    setDetailExpense(row)
+    setIsDetailsOpen(true)
   }
 
   const handleEdit = (row: ExpensesTableRowEntity) => {
@@ -165,8 +174,10 @@ export function ExpensesTable({ tripIdFilter }: ExpensesTableProps) {
           title: 'Sin gastos registrados',
           description: 'Aún no hay gastos registrados en el sistema.',
         }}
+        pageSize={5}
       />
 
+      {/* Wizard de creación/edición */}
       <ExpenseWizard
         isOpen={isWizardOpen}
         onClose={handleCloseWizard}
@@ -174,6 +185,14 @@ export function ExpensesTable({ tripIdFilter }: ExpensesTableProps) {
         defaultTripId={tripIdFilter !== 'all' ? tripIdFilter : undefined}
         mode={wizardMode}
       />
+
+      {/* Dialog de detalles (solo lectura) */}
+      <ExpenseDetailsDialog
+        isOpen={isDetailsOpen}
+        expense={detailExpense}
+        onClose={() => { setIsDetailsOpen(false); setDetailExpense(null) }}
+      />
     </>
   )
 }
+

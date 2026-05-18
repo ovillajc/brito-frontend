@@ -31,7 +31,7 @@ export class SupabaseExpenseAssignmentsServerRepository implements IExpenseAssig
       const { data, error } = await supabase
         .from('trip_expense_assignment_kpis')
         .select('*')
-        .order('departure_date', { ascending: false })
+        .order('trip_number', { ascending: false })
         .limit(limit)
       if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
       return { ok: true, data: (data ?? []).map((r) => ExpenseAssignmentMapper.tripKpiToDomain(r as unknown as TripExpenseAssignmentKpiRow)) }
@@ -100,4 +100,3 @@ export class SupabaseExpenseAssignmentsServerRepository implements IExpenseAssig
     }
   }
 }
-

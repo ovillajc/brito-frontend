@@ -38,6 +38,8 @@ import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
 import type { AuthUserEntity } from '@/src/features/auth/domain/entities/auth-user.entity'
 
 
+import { BrandLogo } from '@/src/core/presentation/components/ui/brand-logo'
+
 // ─── Navigation Items ────────────────────────────────────────────────────────
 
 interface NavItem {
@@ -228,21 +230,12 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
     >
       {/* Header / Logo */}
       <div className={cn('flex items-center border-b border-stone-100 dark:border-zinc-800 h-14 shrink-0', isCollapsed ? 'justify-center px-2' : 'px-4 gap-3')}>
-        <Link href={homeHref} className="flex items-center gap-3 min-w-0">
-          <div className="flex items-center justify-center size-8 rounded-lg bg-[#1a5c3a] text-white font-headline font-bold text-[10px] shrink-0">
-            SB
-          </div>
-          {!isCollapsed && (
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-bold text-on-surface dark:text-zinc-100 font-headline truncate">
-                Sociedad Brito
-              </span>
-              <span className="text-[10px] text-on-surface-variant dark:text-zinc-500 truncate">
-                Logística & Suministro
-              </span>
-            </div>
-          )}
-        </Link>
+        <BrandLogo 
+          href={homeHref} 
+          size="sm" 
+          showText={!isCollapsed} 
+          className="min-w-0"
+        />
       </div>
 
       {/* Main Navigation */}

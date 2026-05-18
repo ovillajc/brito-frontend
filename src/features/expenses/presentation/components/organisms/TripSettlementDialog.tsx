@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useMemo } from 'react'
+import { FileUploadButton } from '@/src/core/presentation/components/molecules/FileUploadButton'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { Button } from '@/src/core/presentation/components/ui/button'
@@ -39,20 +40,40 @@ export function TripSettlementDialog({ isOpen, onClose, trip, children }: TripSe
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<z.input<typeof createTripSettlementSchema>>({
     resolver: zodResolver(createTripSettlementSchema),
     defaultValues: {
-      tripId: trip?.tripId ?? '',
-      operatorId: trip?.operatorId ?? null,
+      tripId: '',
+      operatorId: null,
       receiptUrl: null,
       notes: null,
     },
   })
 
+  // Sincronizar el formulario con el viaje seleccionado al abrir el diálogo
+  React.useEffect(() => {
+    if (isOpen && trip) {
+      reset({
+        tripId: trip.tripId,
+        operatorId: trip.operatorId ?? null,
+        receiptUrl: null,
+        notes: null,
+      })
+    }
+  }, [isOpen, trip, reset])
+
   const handleClose = () => {
     reset()
     onClose()
+  }
+
+  // Debug: capturamos errores si la validación falla
+  const onError = (errs: any) => {
+    console.error('Errores de validación:', JSON.stringify(errs, null, 2))
+    toast.error('Por favor, verifica los campos e inténtalo de nuevo')
   }
 
   const onSubmit = handleSubmit(async (vals) => {
@@ -69,11 +90,18 @@ export function TripSettlementDialog({ isOpen, onClose, trip, children }: TripSe
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al registrar comprobación')
     }
-  })
+  }, onError)
 
   if (!trip) return null
 
-  const balanceLabel = trip.balanceAmount >= 0 ? 'Saldo a favor del operador' : 'Saldo a favor de la empresa'
+  // trip.balanceAmount = assignedAmount - spentAmount
+  // Si assigned = 1000, spent = 800 -> balance = 200 (El operador debe devolver a la empresa)
+  // Si assigned = 1000, spent = 1200 -> balance = -200 (La empresa debe al operador)
+  const balanceLabel = trip.balanceAmount > 0 
+    ? 'Saldo a favor de la empresa (El operador debe devolver dinero)' 
+    : trip.balanceAmount < 0 
+      ? 'Saldo a favor del operador (La empresa debe reembolsar)' 
+      : 'Cuentas cuadradas exactamente'
 
   const inputClass = cn(
     'h-10 rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#006d37]/30'
@@ -109,12 +137,14 @@ export function TripSettlementDialog({ isOpen, onClose, trip, children }: TripSe
             <p className="text-sm font-semibold text-stone-900 dark:text-zinc-100">Resumen</p>
             <p className="text-xs text-stone-500 dark:text-zinc-500 mt-1">{balanceLabel}</p>
             <div className="flex items-center gap-2 mt-3">
-              {trip.balanceAmount >= 0 ? (
+              {trip.balanceAmount > 0 ? (
+                <CheckCircle2 className="size-4 text-emerald-600" />
+              ) : trip.balanceAmount < 0 ? (
                 <AlertTriangle className="size-4 text-amber-600" />
               ) : (
-                <CheckCircle2 className="size-4 text-emerald-600" />
+                <CheckCircle2 className="size-4 text-stone-400" />
               )}
-              <span className={cn('text-lg font-bold', trip.balanceAmount >= 0 ? 'text-amber-700' : 'text-emerald-700')}>
+              <span className={cn('text-lg font-bold', trip.balanceAmount > 0 ? 'text-emerald-700' : trip.balanceAmount < 0 ? 'text-amber-700' : 'text-stone-500')}>
                 {money.format(Math.abs(trip.balanceAmount))}
               </span>
             </div>
@@ -153,17 +183,18 @@ export function TripSettlementDialog({ isOpen, onClose, trip, children }: TripSe
           <div className="rounded-2xl border border-stone-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-900">
             <div className="p-4 border-b border-stone-100 dark:border-zinc-800">
               <p className="text-sm font-semibold text-stone-900 dark:text-zinc-100">Ticket de cuenta</p>
-              <p className="text-xs text-stone-500 dark:text-zinc-500 mt-1">Por ahora se guarda una URL. Luego se integra carga de foto.</p>
+              <p className="text-xs text-stone-500 dark:text-zinc-500 mt-1">Adjunta la foto o PDF del ticket de cuentas del operador.</p>
             </div>
 
             <form className="p-4 space-y-4" onSubmit={onSubmit}>
               <div className="grid gap-2">
-                <Label htmlFor="receiptUrl">URL evidencia (Opcional)</Label>
-                <Input
-                  id="receiptUrl"
-                  className={inputClass}
-                  placeholder="https://..."
-                  {...register('receiptUrl', { setValueAs: (v) => (v ? String(v) : null) })}
+                <Label htmlFor="receiptUrl">Comprobante (PDF / Imagen)</Label>
+                <FileUploadButton
+                  folder="settlements/receipts"
+                  label="Adjuntar comprobante de cuentas"
+                  currentUrl={watch('receiptUrl') as string | null}
+                  onUploadComplete={(url) => setValue('receiptUrl', url)}
+                  disabled={trip.isSettled}
                 />
                 {errors.receiptUrl && <p className={errorClass}>{errors.receiptUrl.message}</p>}
               </div>

@@ -2,6 +2,7 @@ import TripsDashboardPage from '@/src/features/trips/presentation/components/pag
 import { ModuleGuard } from '@/src/features/auth/presentation/components/ModuleGuard'
 import { verifySession } from '@/src/features/auth/infrastructure/dal'
 import { redirect } from 'next/navigation'
+import { getActiveFuelTankSummaryAction } from '@/src/features/fuel/presentation/actions/fuel-tanks.actions'
 
 export default async function TripsPage() {
   const user = await verifySession()
@@ -20,9 +21,12 @@ export default async function TripsPage() {
     redirect('/trips/list')
   }
 
+  const fuelTankResult = await getActiveFuelTankSummaryAction()
+  const fuelTankSummary = fuelTankResult.ok ? fuelTankResult.data : null
+
   return (
     <ModuleGuard permission="trips:view_all">
-      <TripsDashboardPage />
+      <TripsDashboardPage fuelTankSummary={fuelTankSummary} />
     </ModuleGuard>
   )
 }

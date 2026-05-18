@@ -20,6 +20,7 @@ export async function CreateUnitAssemblyUseCase(
   try {
     return { ok: true, data: await repository.create(input, profileId) }
   } catch (e) {
+    console.error('[CreateUnitAssemblyUseCase] Error:', e)
     return { ok: false, error: { code: 'CREATE_ERROR', message: e instanceof Error ? e.message : 'Error al crear' } }
   }
 }

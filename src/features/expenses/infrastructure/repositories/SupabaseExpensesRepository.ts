@@ -34,6 +34,12 @@ export class SupabaseExpensesRepository implements IExpensesRepository {
       if (filters.to)         query = query.lte('expense_date', filters.to.toISOString())
       if (filters.limit)      query = query.limit(filters.limit)
 
+      if (filters.expenseType === 'operativo') {
+        query = query.or('trip_id.not.is.null,truck_id.not.is.null,trailer_id.not.is.null')
+      } else if (filters.expenseType === 'general') {
+        query = query.is('trip_id', null).is('truck_id', null).is('trailer_id', null)
+      }
+
       const { data, error } = await query
       if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
 

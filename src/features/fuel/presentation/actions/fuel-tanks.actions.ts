@@ -30,6 +30,27 @@ async function ensureExpenseCategoryId(name: string): Promise<Either<Failure, st
   return { ok: true, data: (created as ExpenseCategoryRow).id }
 }
 
+async function ensureMeasurementUnitId(name: string, abbreviation: string): Promise<Either<Failure, string>> {
+  const supabase = await createClient()
+  const { data: found, error: findError } = await supabase
+    .from('measurement_units')
+    .select('id,name')
+    .ilike('name', name)
+    .maybeSingle()
+
+  if (findError) return { ok: false, error: { code: 'DB_ERROR', message: findError.message } }
+  if (found) return { ok: true, data: (found as ExpenseCategoryRow).id }
+
+  const { data: created, error: createError } = await supabase
+    .from('measurement_units')
+    .insert({ name, abbreviation })
+    .select('id')
+    .single()
+
+  if (createError) return { ok: false, error: { code: 'DB_ERROR', message: createError.message } }
+  return { ok: true, data: (created as ExpenseCategoryRow).id }
+}
+
 export async function getActiveFuelTankSummaryAction(): Promise<Either<Failure, FuelTankSummaryEntity | null>> {
   const repo = new SupabaseFuelTankRepository()
   const tankResult = await repo.getActiveTank()
@@ -93,6 +114,9 @@ export async function registerFuelTankPurchaseAction(
   const categoryIdResult = await ensureExpenseCategoryId('Combustible')
   if (!categoryIdResult.ok) return categoryIdResult
 
+  const unitIdResult = await ensureMeasurementUnitId('Litros', 'L')
+  if (!unitIdResult.ok) return unitIdResult
+
   const supabase = await createClient()
   const amount = input.liters * input.pricePerLiter
   const { data: expense, error: expenseError } = await supabase
@@ -103,6 +127,9 @@ export async function registerFuelTankPurchaseAction(
       trailer_id: null,
       category_id: categoryIdResult.data,
       amount,
+      unit_price: input.pricePerLiter,
+      quantity: input.liters,
+      unit_id: unitIdResult.data,
       expense_date: input.purchasedAt.toISOString(),
       description: input.description ?? 'Compra diésel (tanque)',
       receipt_url: null,

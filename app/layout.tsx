@@ -13,7 +13,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Sociedad Brito | Logística y Suministro Industrial",
+  title: "Transportes Brito | Logística y Barita",
   description: "Operador híbrido líder en el sureste de México. Transporte de carga pesada, refrigerada y suministro de barita grado API.",
   icons: {
     icon: [{ url: "/favicon.ico", type: "image/x-icon" }],

@@ -31,7 +31,31 @@ export interface TripRow {
 export interface TripListRow extends TripRow {
   clients?: { trade_name: string | null; company_name: string | null } | null
   unit_assemblies?: { economic_number: string | null; trailer2_id: string | null; employees?: { full_name: string | null } | null } | null
-  walmart_trip_data?: { coordinator_name: string | null; route: string | null; carta_porte_walmart: string | null; num_stores: number | null } | null
+  walmart_trip_data?: { 
+    coordinator_name: string | null
+    route: string | null
+    carta_porte_walmart: string | null
+    num_stores: number | null
+    status_walmart?: string | null
+    str_num_load?: string | null
+    str_complement_carta_porte?: string | null
+    str_preinvoice_km?: number | null
+    str_km_traveled?: number | null
+    str_diesel?: number | null
+    str_casetas?: number | null
+    str_total_invoice?: number | null
+    dhd_num_load?: string | null
+    dhd_complement_carta_porte?: string | null
+    dhd_preinvoice_km?: number | null
+    dhd_km_traveled?: number | null
+    dhd_diesel?: number | null
+    dhd_casetas?: number | null
+    dhd_total_invoice?: number | null
+    dettes_log?: unknown
+    departure_temperature?: string | null
+    departure_time?: string | null
+    incidencias?: string | null
+  } | null
 }
 
 const TRIP_STATUS: Record<string, TripStatus> = {
@@ -84,10 +108,29 @@ export class TripsMapper {
       isFullAssembly,
       walmartData: row.walmart_trip_data
         ? {
-            coordinatorName: row.walmart_trip_data.coordinator_name,
-            route: row.walmart_trip_data.route,
-            cartaPorteWalmart: row.walmart_trip_data.carta_porte_walmart,
-            numStores: row.walmart_trip_data.num_stores,
+            coordinatorName: row.walmart_trip_data.coordinator_name ?? null,
+            route: row.walmart_trip_data.route ?? null,
+            cartaPorteWalmart: row.walmart_trip_data.carta_porte_walmart ?? null,
+            numStores: row.walmart_trip_data.num_stores ?? null,
+            statusWalmart: row.walmart_trip_data.status_walmart ?? null,
+            strNumLoad: row.walmart_trip_data.str_num_load ?? null,
+            strComplementCartaPorte: row.walmart_trip_data.str_complement_carta_porte ?? null,
+            strPreinvoiceKm: row.walmart_trip_data.str_preinvoice_km ?? null,
+            strKmTraveled: row.walmart_trip_data.str_km_traveled ?? null,
+            strDiesel: row.walmart_trip_data.str_diesel ?? null,
+            strCasetas: row.walmart_trip_data.str_casetas ?? null,
+            strTotalInvoice: row.walmart_trip_data.str_total_invoice ?? null,
+            dhdNumLoad: row.walmart_trip_data.dhd_num_load ?? null,
+            dhdComplementCartaPorte: row.walmart_trip_data.dhd_complement_carta_porte ?? null,
+            dhdPreinvoiceKm: row.walmart_trip_data.dhd_preinvoice_km ?? null,
+            dhdKmTraveled: row.walmart_trip_data.dhd_km_traveled ?? null,
+            dhdDiesel: row.walmart_trip_data.dhd_diesel ?? null,
+            dhdCasetas: row.walmart_trip_data.dhd_casetas ?? null,
+            dhdTotalInvoice: row.walmart_trip_data.dhd_total_invoice ?? null,
+            dettesLog: row.walmart_trip_data.dettes_log ?? null,
+            departureTemperature: row.walmart_trip_data.departure_temperature ?? null,
+            departureTime: row.walmart_trip_data.departure_time ?? null,
+            incidencias: row.walmart_trip_data.incidencias ?? null,
           }
         : null,
     }

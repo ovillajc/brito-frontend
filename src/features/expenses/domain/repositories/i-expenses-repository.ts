@@ -38,6 +38,7 @@ export interface ExpensesListFilters {
   from?: Date
   to?: Date
   limit?: number
+  expenseType?: 'operativo' | 'general' | 'all'
 }
 
 // ---------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/core/presentation/components/ui/card'
 import { 
   Fuel, TrendingDown, TrendingUp, AlertCircle, 
@@ -12,11 +12,23 @@ import {
   ChevronDown, Map
 } from 'lucide-react'
 import { cn } from '@/src/core/infrastructure/utils/cn'
+import type { FuelTankSummaryEntity } from '@/src/features/fuel/domain/entities/fuel-tank-entity'
 
 type DateRange = 'today' | 'week' | 'month'
 
-export default function TripsDashboardPage() {
+interface TripsDashboardPageProps {
+  fuelTankSummary?: FuelTankSummaryEntity | null
+}
+
+export default function TripsDashboardPage({ fuelTankSummary }: TripsDashboardPageProps) {
   const [dateRange, setDateRange] = useState<DateRange>('week')
+
+  const capacity = fuelTankSummary?.tank.capacityLiters ?? null
+  const litersInTank = fuelTankSummary?.litersInTank ?? null
+  const pct = useMemo(() => {
+    if (capacity == null || litersInTank == null || capacity <= 0) return null
+    return Math.max(0, Math.min(100, (litersInTank / capacity) * 100))
+  }, [capacity, litersInTank])
 
   return (
     <div className="flex flex-col gap-8 pb-10">
@@ -127,8 +139,14 @@ export default function TripsDashboardPage() {
           <Card className="border-stone-200 shadow-sm">
             <CardContent className="p-5 flex gap-4 h-full">
                <div className="w-12 bg-stone-100 rounded-full overflow-hidden flex flex-col justify-end relative shadow-inner border border-stone-200/50">
-                 {/* Porcentaje de Llenado: 35% */}
-                 <div className="bg-linear-to-t from-orange-500 to-yellow-400 w-full h-[35%] transition-all duration-1000" />
+                 {/* Porcentaje de Llenado */}
+                 <div 
+                   className={cn(
+                     "w-full transition-all duration-1000",
+                     pct != null && pct <= 15 ? "bg-red-500" : "bg-linear-to-t from-emerald-600 to-[#1a5c3a]"
+                   )}
+                   style={{ height: `${pct ?? 0}%` }} 
+                 />
                  {/* Marcas */}
                  <div className="absolute inset-0 flex flex-col justify-between py-2">
                    <div className="w-full border-b border-black/10" />
@@ -137,12 +155,18 @@ export default function TripsDashboardPage() {
                  </div>
                </div>
                <div className="flex flex-col justify-center flex-1">
-                 <p className="text-sm font-medium text-stone-500">Tanque Base</p>
-                 <p className="text-xl font-bold text-stone-900 mt-1">7,000 L</p>
-                 <p className="text-xs text-stone-500 mt-1">Capacidad: 20k L</p>
-                 <span className="inline-flex mt-2 items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-700 self-start">
-                   Alerta de recarga
-                 </span>
+                 <p className="text-sm font-medium text-stone-500">{fuelTankSummary?.tank.name || 'Tanque Base'}</p>
+                 <p className="text-xl font-bold text-stone-900 mt-1">
+                   {litersInTank != null ? litersInTank.toLocaleString('es-MX', { maximumFractionDigits: 0 }) : '0'} L
+                 </p>
+                 <p className="text-xs text-stone-500 mt-1">
+                   Capacidad: {capacity != null ? (capacity / 1000).toLocaleString('es-MX') + 'k' : '—'} L
+                 </p>
+                 {pct != null && pct <= 15 && (
+                   <span className="inline-flex mt-2 items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700 self-start">
+                     Alerta de recarga
+                   </span>
+                 )}
                </div>
             </CardContent>
           </Card>
