@@ -43,3 +43,11 @@ next-env.d.ts
 # context
 context.txt
 docs/context/
+
+# PWA (next-pwa genera estos archivos en /public al hacer build)
+/public/sw.js
+/public/sw.js.map
+/public/workbox-*.js
+/public/workbox-*.js.map
+/public/worker-*.js
+/public/fallback-*.js

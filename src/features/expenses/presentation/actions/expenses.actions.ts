@@ -14,6 +14,7 @@ import { DeleteExpense } from '@/src/features/expenses/application/DeleteExpense
 import type { CreateExpenseInput } from '@/src/features/expenses/domain/schemas/create-expense.schema'
 import type { ExpenseEntity } from '@/src/features/expenses/domain/entities/expense-entity'
 import { hasPermission } from '@/src/features/auth/infrastructure/dal'
+import { deleteR2ObjectByPublicUrl } from '@/src/core/infrastructure/storage/r2-client'
 
 async function getCurrentProfileId(): Promise<string | null> {
   const supabase = await createClient()
@@ -55,9 +56,20 @@ export async function updateExpenseAction(
   if (!canManage) {
     return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
   }
+  const supabase = await createClient()
+  const prev = await supabase.from('expenses').select('receipt_url').eq('id', expenseId).maybeSingle()
+  const previousReceiptUrl =
+    prev.data && typeof (prev.data as Record<string, unknown>).receipt_url === 'string'
+      ? ((prev.data as Record<string, unknown>).receipt_url as string)
+      : null
+
   const repo = new SupabaseExpensesServerRepository()
   const result = await UpdateExpense(repo, expenseId, input)
   if (result.ok) {
+    const nextReceiptUrl = result.data.receiptUrl ?? null
+    if (previousReceiptUrl && previousReceiptUrl !== nextReceiptUrl) {
+      await deleteR2ObjectByPublicUrl(previousReceiptUrl)
+    }
     revalidatePath('/expenses')
     revalidatePath('/expenses/list')
   }
@@ -74,9 +86,19 @@ export async function deleteExpenseAction(
   if (!canManage) {
     return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
   }
+  const supabase = await createClient()
+  const prev = await supabase.from('expenses').select('receipt_url').eq('id', expenseId).maybeSingle()
+  const previousReceiptUrl =
+    prev.data && typeof (prev.data as Record<string, unknown>).receipt_url === 'string'
+      ? ((prev.data as Record<string, unknown>).receipt_url as string)
+      : null
+
   const repo = new SupabaseExpensesServerRepository()
   const result = await DeleteExpense(repo, expenseId)
   if (result.ok) {
+    if (previousReceiptUrl) {
+      await deleteR2ObjectByPublicUrl(previousReceiptUrl)
+    }
     revalidatePath('/expenses')
     revalidatePath('/expenses/list')
   }

@@ -99,6 +99,25 @@ export function UserForm({ initialData, onSubmit, onCancel }: UserFormProps) {
             />
           )}
 
+          {initialData && (
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nueva contraseña (opcional)</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="Dejar vacío para no cambiar" {...field} />
+                  </FormControl>
+                  <p className="text-xs text-stone-500 dark:text-zinc-500">
+                    Si el usuario perdió el acceso, escribe una nueva contraseña y se actualizará directamente en Supabase.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
           <div className="space-y-3">
             <FormLabel>Roles Asignados</FormLabel>
             <div className="grid grid-cols-2 gap-2 border rounded-md p-4 bg-stone-50 dark:bg-zinc-900/50">
