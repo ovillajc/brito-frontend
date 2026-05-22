@@ -11,6 +11,13 @@ import { UserForm } from '../molecules/UserForm'
 
 import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
 
+type UserFormValues = {
+  email: string
+  fullName: string
+  password?: string
+  roleIds: string[]
+}
+
 export function UsersTable() {
   const users = useUsersStore((state) => state.users)
   const isLoading = useUsersStore((state) => state.isLoading)
@@ -18,6 +25,7 @@ export function UsersTable() {
   const fetchRoles = useUsersStore((state) => state.fetchRoles)
   const createUser = useUsersStore((state) => state.createUser)
   const updateUser = useUsersStore((state) => state.updateUser)
+  const updateUserPassword = useUsersStore((state) => state.updateUserPassword)
   const deleteUser = useUsersStore((state) => state.deleteUser)
   
   const canManage = useAuthStore((state) => state.hasPermission('all_access'))
@@ -40,10 +48,15 @@ export function UsersTable() {
     setIsModalOpen(true)
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: UserFormValues) => {
     let success = false
     if (selectedUser) {
+      const newPassword = typeof values.password === 'string' ? values.password.trim() : ''
+      if (newPassword.length > 0) {
+        const passwordOk = await updateUserPassword({ userId: selectedUser.id, password: newPassword })
+        if (!passwordOk) return
+      }
+
       success = await updateUser({
         id: selectedUser.id,
         fullName: values.fullName,
@@ -53,7 +66,7 @@ export function UsersTable() {
       success = await createUser({
         email: values.email,
         fullName: values.fullName,
-        password: values.password,
+        password: typeof values.password === 'string' ? values.password : undefined,
         roleIds: values.roleIds
       })
     }

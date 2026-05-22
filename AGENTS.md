@@ -1,5 +1,9 @@
 # Standard Development Guide: agents.md
 
+## 0. Seguridad: Archivos .env (Regla Estricta)
+
+Queda **estrictamente prohibido** abrir, leer o analizar cualquier archivo cuyo nombre comience con `.env` (por ejemplo: `.env`, `.env.local`, `.env.production`, etc.) **sin permiso explícito del usuario** en el mensaje actual. Si se requiere información de variables de entorno, el usuario debe pegar únicamente los valores no sensibles o confirmar explícitamente el archivo a revisar.
+
 Este documento define las reglas de oro para la construcción de código en este proyecto. Todo agente de IA o desarrollador debe adherirse a estas normas para garantizar la escalabilidad, mantenibilidad y reusabilidad del software.
 
 ---

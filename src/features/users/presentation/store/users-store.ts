@@ -2,12 +2,18 @@ import { create } from 'zustand'
 import { UserAccountEntity, CreateUserAccountInput, UpdateUserAccountInput } from '../../domain/entities/user-account.entity'
 import { SupabaseUserAccountRepository } from '../../infrastructure/repositories/supabase-user-account.repository'
 import { GetUserAccounts } from '../../application/use-cases/GetUserAccounts'
-import { createUserAdminAction } from '../../application/actions/create-user.action'
+import { createUserAdminAction, updateUserPasswordAdminAction } from '../../application/actions/create-user.action'
 import { toast } from 'sonner'
+
+type RoleListItem = {
+  id: string
+  name: string
+  description: string | null
+}
 
 interface UsersState {
   users: UserAccountEntity[]
-  roles: any[]
+  roles: RoleListItem[]
   isLoading: boolean
   error: string | null
   
@@ -16,6 +22,7 @@ interface UsersState {
   fetchRoles: () => Promise<void>
   createUser: (input: CreateUserAccountInput) => Promise<boolean>
   updateUser: (input: UpdateUserAccountInput) => Promise<boolean>
+  updateUserPassword: (input: { userId: string; password: string }) => Promise<boolean>
   deleteUser: (id: string) => Promise<boolean>
 }
 
@@ -79,6 +86,21 @@ export const useUsersStore = create<UsersState>((set, get) => ({
       toast.error(`Error: ${result.error.message}`)
       return false
     }
+  },
+
+  updateUserPassword: async (input) => {
+    set({ isLoading: true })
+    const result = await updateUserPasswordAdminAction(input)
+
+    if (result.ok) {
+      toast.success('Contraseña actualizada')
+      set({ isLoading: false })
+      return true
+    }
+
+    set({ isLoading: false })
+    toast.error(`Error: ${result.error.message}`)
+    return false
   },
 
   deleteUser: async (id) => {

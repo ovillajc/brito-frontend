@@ -71,7 +71,7 @@ export function TripSettlementDialog({ isOpen, onClose, trip, children }: TripSe
   }
 
   // Debug: capturamos errores si la validación falla
-  const onError = (errs: any) => {
+  const onError = (errs: unknown) => {
     console.error('Errores de validación:', JSON.stringify(errs, null, 2))
     toast.error('Por favor, verifica los campos e inténtalo de nuevo')
   }

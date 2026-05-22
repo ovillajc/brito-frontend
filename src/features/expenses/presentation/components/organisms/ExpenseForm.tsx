@@ -25,6 +25,9 @@ import { createExpenseSchema, type CreateExpenseInput } from '../../../domain/sc
 import { useExpenseCatalogs, useExpenseSubcategories } from '../../hooks/use-expense-catalogs'
 import { useCreateExpense, useUpdateExpense } from '../../hooks/use-expenses'
 import { useTripsList } from '@/src/features/trips/presentation/hooks/use-trips'
+import { useOfflineForm } from '@/src/core/presentation/hooks/use-offline-form'
+import { createExpenseAction } from '@/src/features/expenses/presentation/actions/expenses.actions'
+import { useConnectivityStore } from '@/src/core/presentation/stores/use-connectivity-store'
 
 // ── ReceiptPreview ───────────────────────────────────────────────────────────
 
@@ -103,6 +106,15 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
   const createExpense = useCreateExpense()
   const updateExpense = useUpdateExpense()
   const tripsQuery = useTripsList({ limit: 50 })
+  const isOffline = useConnectivityStore((s) => s.status === 'offline')
+  const isSubmitBlocked = useConnectivityStore((s) => s.isSubmitBlocked)
+
+  const { execute: executeOffline, isLoading: offlineLoading } = useOfflineForm<CreateExpenseInput, ExpenseEntity>({
+    module: 'expenses',
+    actionName: 'createExpenseAction',
+    displayLabel: 'Gasto',
+    onlineAction: createExpenseAction,
+  })
 
   const {
     register,
@@ -236,12 +248,33 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
         return
       }
       if (isEdit && expenseRow) {
+        // Edición siempre requiere red
+        if (isOffline) {
+          setSubmissionError('Editar registros requiere conexión a internet. Conéctate e inténtalo de nuevo.')
+          setSubmissionStatus('error')
+          return
+        }
         await updateExpense.mutateAsync({ expenseId: expenseRow.id, input: data })
+        setSubmissionError(null)
+        setSubmissionStatus('success')
       } else {
-        await createExpense.mutateAsync(data)
+        // Creación: soporta modo offline
+        const displayData: Record<string, unknown> = {
+          description: data.description,
+          amount: data.amount,
+          expenseDate: data.expenseDate,
+          categoryId: data.categoryId,
+          subcategoryId: data.subcategoryId,
+        }
+        const result = await executeOffline(data, displayData)
+        if (result.ok) {
+          setSubmissionError(null)
+          setSubmissionStatus('success')
+        } else if (result.offline) {
+          // Guardado localmente — cerrar el wizard
+          handleClose()
+        }
       }
-      setSubmissionError(null)
-      setSubmissionStatus('success')
     } catch (e: unknown) {
       setSubmissionError(e instanceof Error ? e.message : 'Error inesperado al guardar el gasto')
       setSubmissionStatus('error')
@@ -399,13 +432,25 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
             <ReceiptPreview url={watch('receiptUrl') ?? null} />
           ) : (
             // ── Modo Edición/Creación: Botón de carga ───────────────────────
-            <FileUploadButton
-              folder="expenses/receipts"
-              label="Adjuntar Ticket o Factura (PDF / Imagen)"
-              currentUrl={watch('receiptUrl')}
-              onUploadComplete={(url) => setValue('receiptUrl', url)}
-              disabled={isReadOnly}
-            />
+            <div className="flex flex-col gap-2">
+              <FileUploadButton
+                folder="expenses/receipts"
+                label="Adjuntar Ticket o Factura (PDF / Imagen)"
+                currentUrl={watch('receiptUrl')}
+                onUploadComplete={(url) => setValue('receiptUrl', url)}
+                disabled={isReadOnly}
+              />
+
+              {watch('receiptUrl') ? (
+                <button
+                  type="button"
+                  onClick={() => setValue('receiptUrl', null)}
+                  className="text-xs text-red-600 hover:underline self-start"
+                >
+                  Eliminar comprobante
+                </button>
+              ) : null}
+            </div>
           )}
         </div>
 

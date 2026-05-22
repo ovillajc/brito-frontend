@@ -143,14 +143,14 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
 
   const filteredMainModules = MAIN_MODULES.filter(item => {
     if (isRestrictedQhseSupervisor && !['/trips', '/qhse'].includes(item.href)) return false
-    if (isRestrictedLogisticsBoss && item.href !== '/trips') return false
+    if (isRestrictedLogisticsBoss && !['/trips', '/fleet'].includes(item.href)) return false
     if (isRestrictedExpenseController && !['/expenses', '/trips'].includes(item.href)) return false
     if (isRestrictedMonitoring && !item.href.startsWith('/trips')) return false
     if (isRestrictedWalmartCoordinator && !item.href.startsWith('/trips')) return false
     if (isRestrictedWalmartOpsManager && ['/inventory', '/fuel'].includes(item.href)) return false
     if (isFinanceSupportRole && item.href === '/trips') return true
     if (isRestrictedExpenseController && item.href === '/trips') return true
-    if (isRestrictedLogisticsBoss && item.href === '/trips') return true
+    if (isRestrictedLogisticsBoss && ['/trips', '/fleet'].includes(item.href)) return true
     if (item.requiredPermissions?.length) return item.requiredPermissions.some(hasPermission)
     return !item.requiredPermission || hasPermission(item.requiredPermission)
   })
@@ -203,6 +203,7 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
     if (
       isRestrictedLogisticsBoss &&
       !pathname.startsWith('/trips/list') &&
+      !pathname.startsWith('/fleet') &&
       !pathname.startsWith('/profile')
     ) {
       window.location.href = '/trips/list'
