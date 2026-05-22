@@ -4,6 +4,7 @@ import { createAdminClient } from '@/src/core/lib/supabase/admin'
 import { Either, Failure } from '@/src/core/domain/either'
 import { UserAccountEntity } from '../../domain/entities/user-account.entity'
 import { revalidatePath } from 'next/cache'
+import { hasPermission } from '@/src/features/auth/infrastructure/dal'
 
 interface CreateUserInput {
   email: string
@@ -79,6 +80,42 @@ export async function createUserAdminAction(input: CreateUserInput): Promise<Eit
         createdAt: new Date(),
       },
     }
+  } catch (error) {
+    return {
+      ok: false,
+      error: { code: 'UNEXPECTED_ERROR', message: error instanceof Error ? error.message : 'Error inesperado' },
+    }
+  }
+}
+
+interface UpdateUserPasswordInput {
+  userId: string
+  password: string
+}
+
+export async function updateUserPasswordAdminAction(
+  input: UpdateUserPasswordInput
+): Promise<Either<Failure, true>> {
+  try {
+    const canManage = await hasPermission('all_access')
+    if (!canManage) {
+      return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+    }
+
+    const password = input.password.trim()
+    if (password.length < 6) {
+      return { ok: false, error: { code: 'VALIDATION', message: 'La contraseña debe tener al menos 6 caracteres.' } }
+    }
+
+    const supabaseAdmin = createAdminClient()
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(input.userId, { password })
+
+    if (error) {
+      return { ok: false, error: { code: 'AUTH_ERROR', message: error.message } }
+    }
+
+    revalidatePath('/users')
+    return { ok: true, data: true }
   } catch (error) {
     return {
       ok: false,

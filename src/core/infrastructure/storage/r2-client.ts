@@ -5,7 +5,9 @@
  * Las credenciales se leen exclusivamente desde variables de entorno del servidor.
  */
 
-import { S3Client } from '@aws-sdk/client-s3'
+import 'server-only'
+import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import type { Either, Failure } from '@/src/core/domain/either'
 
 /**
  * Instancia compartida del cliente S3 configurada para Cloudflare R2.
@@ -24,4 +26,43 @@ export const r2Client = new S3Client({
 export const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME ?? ''
 
 /** URL pública base para acceder a los archivos subidos (dominio público de R2). */
-export const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
+export const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL ?? ''
+
+export function getR2KeyFromPublicUrl(url: string): string | null {
+  const baseRaw = R2_PUBLIC_URL.replace(/\/+$/, '')
+  if (!baseRaw) return null
+
+  try {
+    const base = new URL(baseRaw)
+    const target = new URL(url)
+
+    if (target.origin !== base.origin) return null
+
+    const key = target.pathname.replace(/^\/+/, '')
+    return key ? key : null
+  } catch {
+    return null
+  }
+}
+
+export async function deleteR2ObjectByPublicUrl(url: string): Promise<Either<Failure, true>> {
+  try {
+    const key = getR2KeyFromPublicUrl(url)
+    if (!key) return { ok: false, error: { code: 'INVALID_URL', message: 'URL inválida para eliminar archivo.' } }
+    if (!R2_BUCKET_NAME) return { ok: false, error: { code: 'MISCONFIGURED', message: 'Bucket R2 no configurado.' } }
+
+    await r2Client.send(
+      new DeleteObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: key,
+      })
+    )
+
+    return { ok: true, data: true }
+  } catch (err) {
+    return {
+      ok: false,
+      error: { code: 'DELETE_FAILED', message: err instanceof Error ? err.message : 'Error al eliminar archivo.' },
+    }
+  }
+}
