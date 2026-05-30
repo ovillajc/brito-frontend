@@ -74,7 +74,6 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
       engine: '',
       tireSize: '',
       tankCapacity: undefined,
-      theoreticalYield: undefined,
     },
   })
 
@@ -94,7 +93,6 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
         engine: truck.engine ?? '',
         tireSize: truck.tireSize ?? '',
         tankCapacity: truck.tankCapacity ?? undefined,
-        theoreticalYield: truck.theoreticalYield ?? undefined,
       })
     } else if (isOpen && !truck) {
       reset({
@@ -110,7 +108,6 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
         engine: '',
         tireSize: '',
         tankCapacity: undefined,
-        theoreticalYield: undefined,
       })
     }
   }, [isOpen, truck, reset])
@@ -265,8 +262,7 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
             <Input id="tireSize" placeholder="11R22.5" {...register('tireSize')} />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="grid gap-2">
+        <div className="grid gap-2">
             <Label htmlFor="tankCapacity">Capacidad de Tanque (L)</Label>
             <Input
               id="tankCapacity"
@@ -275,17 +271,6 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
               {...register('tankCapacity', { valueAsNumber: true })}
             />
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="theoreticalYield">Rendimiento Teórico (km/L)</Label>
-            <Input
-              id="theoreticalYield"
-              type="number"
-              step="0.1"
-              placeholder="2.5"
-              {...register('theoreticalYield', { valueAsNumber: true })}
-            />
-          </div>
-        </div>
       </div>
       <WizardFooter
         isFirstStep={false}

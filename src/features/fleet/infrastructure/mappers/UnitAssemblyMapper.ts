@@ -71,6 +71,7 @@ export class UnitAssemblyMapper {
       companyProfileLegalName: raw.company_profile
         ? (raw.company_profile as Record<string, unknown>).legal_name as string
         : undefined,
+      theoreticalYield: raw.theoretical_yield != null ? (raw.theoretical_yield as number) : undefined,
     }
   }
 
@@ -87,6 +88,7 @@ export class UnitAssemblyMapper {
       company_profile_id: input.companyProfileId || null,
       is_active: input.isActive ?? true,
       status: input.status ?? UNIT_STATUS.AtBase,
+      theoretical_yield: input.theoreticalYield ?? null,
     }
   }
 
@@ -104,6 +106,7 @@ export class UnitAssemblyMapper {
     if (input.companyProfileId !== undefined) data.company_profile_id = input.companyProfileId || null
     if (input.isActive !== undefined) data.is_active = input.isActive
     if (input.status !== undefined) data.status = input.status
+    if (input.theoreticalYield !== undefined) data.theoretical_yield = input.theoreticalYield ?? null
 
     return data
   }

@@ -39,7 +39,6 @@ export interface TruckEntity {
   engine?: string
   tireSize?: string
   tankCapacity?: number
-  theoreticalYield?: number
 }
 
 /**
@@ -148,6 +147,7 @@ export interface UnitAssemblyEntity {
 
   isActive: boolean
   status: UnitStatus
+  theoreticalYield?: number
   createdAt: Date
   updatedAt: Date
 

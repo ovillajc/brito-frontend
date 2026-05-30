@@ -95,6 +95,7 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
       companyProfileId: '',
       isActive: true,
       status: 'at_base',
+      theoreticalYield: undefined,
     },
 
   })
@@ -113,6 +114,7 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
         companyProfileId: assembly.companyProfileId || '',
         isActive: assembly.isActive,
         status: assembly.status || 'at_base',
+        theoreticalYield: assembly.theoreticalYield ?? undefined,
       })
 
     } else if (isOpen && !assembly) {
@@ -127,6 +129,7 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
         clientId: '',
         companyProfileId: '',
         isActive: true,
+        theoreticalYield: undefined,
       })
     }
   }, [isOpen, assembly, reset])
@@ -263,6 +266,24 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+        <div className="grid gap-2 mt-2">
+          <p className="text-xs text-stone-500 dark:text-zinc-400">
+            El rendimiento teórico representa los km/L esperados con esta combinación de tracto y remolque.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="theoreticalYield">Rendimiento Teórico (km/L)</Label>
+              <Input
+                id="theoreticalYield"
+                type="number"
+                step="0.1"
+                placeholder="2.5"
+                {...register('theoreticalYield', { valueAsNumber: true })}
+              />
+              {errors.theoreticalYield && <p className="text-xs text-red-500">{errors.theoreticalYield.message}</p>}
+            </div>
           </div>
         </div>
       </div>

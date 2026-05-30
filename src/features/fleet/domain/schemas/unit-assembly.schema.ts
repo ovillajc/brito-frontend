@@ -16,6 +16,7 @@ export const createUnitAssemblySchema = z.object({
   companyProfileId: z.union([z.string().uuid('ID de compañía inválido'), z.literal('')]).optional(),
   status: z.enum(['returning', 'at_base', 'at_client', 'in_trip', 'in_workshop']).optional(),
   isActive: z.boolean().optional(),
+  theoreticalYield: z.number().nonnegative('El rendimiento no puede ser negativo').optional(),
 
 })
 
