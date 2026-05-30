@@ -13,6 +13,7 @@ export type FuelLoadSourceType = typeof FUEL_LOAD_SOURCE_TYPE[keyof typeof FUEL_
 export const fuelLoadSchema = z.object({
   tripId: z.string().optional().nullable(),
   vehicleType: z.enum(['TRUCK', 'TRAILER']).default('TRUCK'),
+  truckId: z.string().optional().nullable(),
   trailerId: z.string().optional().nullable(),
   odometerAtLoad: z.number().optional().nullable(),
   ticketFolio: z.string().min(1, 'El folio del ticket es obligatorio'),
@@ -24,6 +25,14 @@ export const fuelLoadSchema = z.object({
 }).superRefine((value, ctx) => {
   if (value.sourceType === FUEL_LOAD_SOURCE_TYPE.External && value.pricePerLiter == null) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['pricePerLiter'], message: 'El precio por litro es obligatorio' })
+  }
+  if (!value.tripId) {
+    if (value.vehicleType === 'TRUCK' && !value.truckId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['truckId'], message: 'Selecciona un tractocamión' })
+    }
+    if (value.vehicleType === 'TRAILER' && !value.trailerId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['trailerId'], message: 'Selecciona un remolque' })
+    }
   }
 })
 
