@@ -78,6 +78,44 @@ export class SupabaseExpenseAssignmentsServerRepository implements IExpenseAssig
     }
   }
 
+  async updateAdvance(id: string, input: CreateExpenseAdvanceInput): Promise<Either<Failure, ExpenseAdvanceEntity>> {
+    try {
+      const supabase = await createClient()
+      const { data, error } = await supabase
+        .from('expense_advances')
+        .update({
+          trip_id: input.tripId,
+          unit_assembly_id: input.unitAssemblyId,
+          operator_id: input.operatorId,
+          truck_id: input.truckId,
+          trailer_id: input.trailerId,
+          amount: input.amount,
+          method: input.method,
+          assigned_at: new Date(input.assignedAt).toISOString(),
+          notes: input.notes,
+        })
+        .eq('id', id)
+        .select(SELECT_ADVANCE)
+        .single()
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: ExpenseAssignmentMapper.advanceToDomain(data as unknown as ExpenseAdvanceRow) }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al actualizar asignación' } }
+    }
+  }
+
+  async deleteAdvance(id: string): Promise<Either<Failure, void>> {
+    try {
+      const supabase = await createClient()
+      const { error } = await supabase.from('expense_advances').delete().eq('id', id)
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: undefined }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al eliminar asignación' } }
+    }
+  }
+
   async createSettlement(input: CreateTripSettlementInput, settledBy: string | null): Promise<Either<Failure, TripExpenseSettlementEntity>> {
     try {
       const supabase = await createClient()

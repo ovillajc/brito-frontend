@@ -106,10 +106,14 @@ interface CrudDataTableProps<T extends { id: string }> {
   canEdit?: (item: T) => boolean
   /**
    * Callback de eliminación. Recibe el `id` del item a eliminar.
-
    * Debe devolver una promesa con `{ ok: boolean, error?: { message: string } }`.
    */
   onDelete?: (id: string) => Promise<{ ok: boolean; error?: { message: string } }>
+
+  /** Título del diálogo de confirmación de eliminación (opcional, por fila). */
+  deleteConfirmTitle?: string | ((item: T) => string)
+  /** Descripción del diálogo de confirmación de eliminación (opcional, por fila). */
+  deleteConfirmDescription?: string | ((item: T) => string)
 
   /** Configuración del estado vacío. */
   emptyState: EmptyStateConfig
@@ -148,6 +152,8 @@ export function CrudDataTable<T extends { id: string }>({
   onEdit,
   canEdit,
   onDelete,
+  deleteConfirmTitle,
+  deleteConfirmDescription,
   emptyState,
   skeletonRows = 3,
   className,
@@ -206,6 +212,14 @@ export function CrudDataTable<T extends { id: string }>({
       setPendingDeleteId(null)
     }
   }
+
+  const pendingDeleteItem = pendingDeleteId ? filteredData.find((d) => d.id === pendingDeleteId) : null
+  const computedDeleteTitle = pendingDeleteItem && deleteConfirmTitle 
+    ? (typeof deleteConfirmTitle === 'function' ? deleteConfirmTitle(pendingDeleteItem) : deleteConfirmTitle)
+    : "¿Eliminar registro?"
+  const computedDeleteDescription = pendingDeleteItem && deleteConfirmDescription
+    ? (typeof deleteConfirmDescription === 'function' ? deleteConfirmDescription(pendingDeleteItem) : deleteConfirmDescription)
+    : "Esta acción es irreversible. El registro y toda su información asociada serán eliminados permanentemente."
 
   const EmptyIcon = emptyState.icon
 
@@ -384,8 +398,8 @@ export function CrudDataTable<T extends { id: string }>({
           onClose={handleCancelDelete}
           onConfirm={handleConfirmDelete}
           isLoading={isDeleting}
-          title="¿Eliminar registro?"
-          description="Esta acción es irreversible. El registro y toda su información asociada serán eliminados permanentemente."
+          title={computedDeleteTitle}
+          description={computedDeleteDescription}
           confirmLabel="Sí, eliminar"
           cancelLabel="No, cancelar"
         />

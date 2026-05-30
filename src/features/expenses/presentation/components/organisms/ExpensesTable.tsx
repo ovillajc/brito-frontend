@@ -11,7 +11,7 @@ import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { ExpenseWizard } from './ExpenseForm'
 import { ExpenseDetailsDialog } from './ExpenseDetailsDialog'
 import type { ExpenseEntity } from '../../../domain/entities/expense-entity'
-import { useExpenses } from '../../hooks/use-expenses'
+import { useExpenses, useDeleteExpense } from '../../hooks/use-expenses'
 import { EXPENSE_FREQUENCY } from '../../../domain/entities/expense-entity'
 
 // ── Entidades de vista ────────────────────────────────────────────────────────
@@ -136,10 +136,21 @@ export function ExpensesTable({ tripIdFilter, expenseType }: ExpensesTableProps)
   // Estado del dialog de detalles
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [detailExpense, setDetailExpense] = useState<ExpensesTableRowEntity | null>(null)
+  
+  const deleteExpense = useDeleteExpense()
 
   const handleView = (row: ExpensesTableRowEntity) => {
     setDetailExpense(row)
     setIsDetailsOpen(true)
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteExpense.mutateAsync(id)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: { message: e instanceof Error ? e.message : 'Error desconocido al eliminar el gasto' } }
+    }
   }
 
   const handleEdit = (row: ExpensesTableRowEntity) => {
@@ -169,6 +180,9 @@ export function ExpensesTable({ tripIdFilter, expenseType }: ExpensesTableProps)
         onAction={canCreate ? (() => { setWizardMode('create'); setSelectedRow(null); setIsWizardOpen(true) }) : undefined}
         onView={handleView}
         onEdit={canManage ? handleEdit : undefined}
+        onDelete={canManage ? handleDelete : undefined}
+        deleteConfirmTitle="¿Eliminar gasto operativo?"
+        deleteConfirmDescription="Esta acción es irreversible. Se eliminará el registro del gasto y sus comprobantes vinculados (si los hubiera) permanentemente de la base de datos."
         emptyState={{
           icon: Receipt,
           title: 'Sin gastos registrados',

@@ -31,13 +31,13 @@
   --color-inverse-on-surface:      #1a1f2b;
 
   /* Brand core — green preserved, slightly lighter */
-  --color-primary:                 #2ecc71;
+  --color-primary:                 #008001;
   --color-on-primary:              #003d1d;
   --color-primary-container:       #005228;
   --color-on-primary-container:    #6bfe9c;
-  --color-surface-tint:            #2ecc71;
+  --color-surface-tint:            #008001;
   --color-primary-fixed:           #4ae183;
-  --color-primary-fixed-dim:       #2ecc71;
+  --color-primary-fixed-dim:       #008001;
   --color-on-primary-fixed:        #00210c;
   --color-on-primary-fixed-variant:#005228;
   --color-inverse-primary:         #006d37;
@@ -90,7 +90,7 @@
   --color-inverse-on-surface: #ecf1ff;
   --color-error-container: #ffdad6;
   --color-on-error: #ffffff;
-  --color-surface-tint: #006d37;
+  --color-surface-tint: #008001;
   --color-tertiary-fixed-dim: #ffb59d;
   --color-on-primary-fixed: #00210c;
   --color-surface-bright: #f9f9ff;
@@ -98,7 +98,7 @@
   --color-tertiary-container: #ff9875;
   --color-on-surface: #111c2d;
   --color-inverse-surface: #263143;
-  --color-primary: #006d37;
+  --color-primary: #008001;
   --color-on-background: #111c2d;
   --color-surface: #f9f9ff;
   --color-secondary: #944a00;

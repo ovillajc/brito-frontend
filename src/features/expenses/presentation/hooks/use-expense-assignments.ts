@@ -4,7 +4,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SupabaseExpenseAssignmentsRepository } from '../../infrastructure/repositories/SupabaseExpenseAssignmentsRepository'
 import { GetExpenseAdvances } from '../../application/GetExpenseAdvances'
 import { GetTripExpenseAssignmentKpis } from '../../application/GetTripExpenseAssignmentKpis'
-import { createExpenseAdvanceAction, createTripSettlementAction, linkExpenseAdvanceToTripAction } from '../actions/expense-assignments.actions'
+import {
+  createExpenseAdvanceAction,
+  createTripSettlementAction,
+  linkExpenseAdvanceToTripAction,
+  updateExpenseAdvanceAction,
+  deleteExpenseAdvanceAction,
+} from '../actions/expense-assignments.actions'
 import type { CreateExpenseAdvanceInput } from '../../domain/schemas/create-expense-advance.schema'
 import type { CreateTripSettlementInput } from '../../domain/schemas/create-trip-settlement.schema'
 
@@ -37,6 +43,36 @@ export function useCreateExpenseAdvance() {
   return useMutation({
     mutationFn: async (input: CreateExpenseAdvanceInput) => {
       const result = await createExpenseAdvanceAction(input)
+      if (!result.ok) throw new Error(result.error.message)
+      return result.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses', 'advances'] })
+      qc.invalidateQueries({ queryKey: ['expenses', 'trip-assignment-kpis'] })
+    },
+  })
+}
+
+export function useUpdateExpenseAdvance() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { id: string; data: CreateExpenseAdvanceInput }) => {
+      const result = await updateExpenseAdvanceAction(input.id, input.data)
+      if (!result.ok) throw new Error(result.error.message)
+      return result.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses', 'advances'] })
+      qc.invalidateQueries({ queryKey: ['expenses', 'trip-assignment-kpis'] })
+    },
+  })
+}
+
+export function useDeleteExpenseAdvance() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const result = await deleteExpenseAdvanceAction(id)
       if (!result.ok) throw new Error(result.error.message)
       return result.data
     },

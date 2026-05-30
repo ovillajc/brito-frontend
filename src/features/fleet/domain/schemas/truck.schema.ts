@@ -29,7 +29,6 @@ export const createTruckSchema = z.object({
 
   tireSize: z.string().optional().or(z.literal('')),
   tankCapacity: z.number().nonnegative().optional(),
-  theoreticalYield: z.number().nonnegative().optional(),
 })
 
 export type CreateTruckInput = z.infer<typeof createTruckSchema>

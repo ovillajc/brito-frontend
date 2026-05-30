@@ -17,8 +17,8 @@ import { useUnitAssemblies } from '@/src/features/fleet/presentation/hooks/use-f
 import { useTripsList } from '@/src/features/trips/presentation/hooks/use-trips'
 import type { TripWithRelations } from '@/src/features/trips/domain/entities/trip-entity'
 import { createExpenseAdvanceSchema, type CreateExpenseAdvanceInput } from '@/src/features/expenses/domain/schemas/create-expense-advance.schema'
-import { ADVANCE_METHOD } from '@/src/features/expenses/domain/entities/expense-assignment-entity'
-import { useCreateExpenseAdvance } from '@/src/features/expenses/presentation/hooks/use-expense-assignments'
+import { ADVANCE_METHOD, type ExpenseAdvanceEntity } from '@/src/features/expenses/domain/entities/expense-assignment-entity'
+import { useCreateExpenseAdvance, useUpdateExpenseAdvance } from '@/src/features/expenses/presentation/hooks/use-expense-assignments'
 import type { z } from 'zod'
 
 type AdvanceFormValues = z.input<typeof createExpenseAdvanceSchema>
@@ -26,11 +26,17 @@ type AdvanceFormValues = z.input<typeof createExpenseAdvanceSchema>
 interface ExpenseAdvanceWizardProps {
   isOpen: boolean
   onClose: () => void
+  advanceRow?: ExpenseAdvanceEntity
+  mode?: 'create' | 'edit' | 'view'
 }
 
-export function ExpenseAdvanceWizard({ isOpen, onClose }: ExpenseAdvanceWizardProps) {
+export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'create' }: ExpenseAdvanceWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
   const createAdvance = useCreateExpenseAdvance()
+  const updateAdvance = useUpdateExpenseAdvance()
+  
+  const isView = mode === 'view'
+  const isEdit = mode === 'edit'
 
   const assembliesQuery = useUnitAssemblies()
   const tripsQuery = useTripsList({ limit: 200 })
@@ -78,18 +84,32 @@ export function ExpenseAdvanceWizard({ isOpen, onClose }: ExpenseAdvanceWizardPr
 
   useEffect(() => {
     if (!isOpen) return
-    reset({
-      tripId: null,
-      unitAssemblyId: null,
-      operatorId: '',
-      truckId: null,
-      trailerId: null,
-      amount: 0,
-      method: ADVANCE_METHOD.Cash,
-      assignedAt: new Date().toISOString().slice(0, 10),
-      notes: null,
-    })
-  }, [isOpen, reset])
+    if (advanceRow) {
+      reset({
+        tripId: advanceRow.tripId ?? null,
+        unitAssemblyId: advanceRow.unitAssemblyId ?? null,
+        operatorId: advanceRow.operatorId,
+        truckId: advanceRow.truckId ?? null,
+        trailerId: advanceRow.trailerId ?? null,
+        amount: advanceRow.amount,
+        method: advanceRow.method,
+        assignedAt: advanceRow.assignedAt ? new Date(advanceRow.assignedAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+        notes: advanceRow.notes ?? null,
+      })
+    } else {
+      reset({
+        tripId: null,
+        unitAssemblyId: null,
+        operatorId: '',
+        truckId: null,
+        trailerId: null,
+        amount: 0,
+        method: ADVANCE_METHOD.Cash,
+        assignedAt: new Date().toISOString().slice(0, 10),
+        notes: null,
+      })
+    }
+  }, [isOpen, reset, advanceRow])
 
   const selectedAssembly = useMemo(() => {
     if (!selectedAssemblyId) return null
@@ -117,6 +137,11 @@ export function ExpenseAdvanceWizard({ isOpen, onClose }: ExpenseAdvanceWizardPr
 
   const onFinish = handleSubmit(async (vals) => {
     try {
+      if (isView) {
+        handleClose()
+        return
+      }
+      
       const patched = selectedAssembly
         ? {
             ...vals,
@@ -127,8 +152,15 @@ export function ExpenseAdvanceWizard({ isOpen, onClose }: ExpenseAdvanceWizardPr
         : vals
 
       const parsed: CreateExpenseAdvanceInput = createExpenseAdvanceSchema.parse(patched)
-      await createAdvance.mutateAsync(parsed)
-      toast.success('Asignación registrada')
+      
+      if (isEdit && advanceRow) {
+        await updateAdvance.mutateAsync({ id: advanceRow.id, data: parsed })
+        toast.success('Asignación actualizada')
+      } else {
+        await createAdvance.mutateAsync(parsed)
+        toast.success('Asignación registrada')
+      }
+      
       handleClose()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al registrar asignación')
@@ -140,7 +172,7 @@ export function ExpenseAdvanceWizard({ isOpen, onClose }: ExpenseAdvanceWizardPr
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="operatorId">Operador</Label>
-          <select id="operatorId" className={inputClass} disabled={employeesQuery.isLoading} {...register('operatorId')}>
+          <select id="operatorId" className={inputClass} disabled={employeesQuery.isLoading || isView} {...register('operatorId')}>
             <option value="">{employeesQuery.isLoading ? 'Cargando...' : 'Selecciona...'}</option>
             {operators.map((o) => (
               <option key={o.id} value={o.id}>{o.fullName}</option>
@@ -154,7 +186,7 @@ export function ExpenseAdvanceWizard({ isOpen, onClose }: ExpenseAdvanceWizardPr
           <select
             id="unitAssemblyId"
             className={inputClass}
-            disabled={assembliesQuery.isLoading}
+            disabled={assembliesQuery.isLoading || isView}
             {...register('unitAssemblyId', { setValueAs: (v) => v || null })}
           >
             <option value="">{assembliesQuery.isLoading ? 'Cargando...' : 'Selecciona...'}</option>
@@ -170,13 +202,13 @@ export function ExpenseAdvanceWizard({ isOpen, onClose }: ExpenseAdvanceWizardPr
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="amount">Monto</Label>
-          <Input id="amount" type="number" step="0.01" className={inputClass} {...register('amount', { setValueAs: (v) => Number(v) })} />
+          <Input id="amount" type="number" step="0.01" className={inputClass} disabled={isView} {...register('amount', { setValueAs: (v) => Number(v) })} />
           {errors.amount && <p className={errorClass}>{errors.amount.message}</p>}
         </div>
 
         <div className="grid gap-2">
           <Label htmlFor="method">Método</Label>
-          <select id="method" className={inputClass} {...register('method')}>
+          <select id="method" className={inputClass} disabled={isView} {...register('method')}>
             <option value={ADVANCE_METHOD.Cash}>Efectivo</option>
             <option value={ADVANCE_METHOD.Transfer}>Transferencia</option>
           </select>
@@ -185,7 +217,7 @@ export function ExpenseAdvanceWizard({ isOpen, onClose }: ExpenseAdvanceWizardPr
 
         <div className="grid gap-2">
           <Label htmlFor="assignedAt">Fecha</Label>
-          <Input id="assignedAt" type="date" className={inputClass} {...register('assignedAt')} />
+          <Input id="assignedAt" type="date" className={inputClass} disabled={isView} {...register('assignedAt')} />
           {errors.assignedAt && <p className={errorClass}>{errors.assignedAt.message}</p>}
         </div>
       </div>
@@ -201,7 +233,7 @@ export function ExpenseAdvanceWizard({ isOpen, onClose }: ExpenseAdvanceWizardPr
         <select
           id="tripId"
           className={inputClass}
-          disabled={tripsQuery.isLoading}
+          disabled={tripsQuery.isLoading || isView}
           {...register('tripId', { setValueAs: (v) => v || null })}
         >
           <option value="">{tripsQuery.isLoading ? 'Cargando...' : 'Selecciona...'}</option>
@@ -218,6 +250,7 @@ export function ExpenseAdvanceWizard({ isOpen, onClose }: ExpenseAdvanceWizardPr
         <textarea
           id="notes"
           rows={4}
+          disabled={isView}
           className={cn(inputClass, 'h-auto py-3 resize-none')}
           {...register('notes', { setValueAs: (v) => (typeof v === 'string' ? (v.trim() === '' ? null : v.trim()) : null) })}
         />
@@ -228,8 +261,9 @@ export function ExpenseAdvanceWizard({ isOpen, onClose }: ExpenseAdvanceWizardPr
         isLastStep
         onCancel={handleClose}
         onBack={() => setActiveStep(0)}
-        onNext={onFinish}
-        isSubmitting={createAdvance.isPending}
+        onNext={isView ? handleClose : onFinish}
+        nextLabel={isView ? 'Cerrar' : undefined}
+        isSubmitting={createAdvance.isPending || updateAdvance.isPending}
       />
     </div>
   )
@@ -243,8 +277,8 @@ export function ExpenseAdvanceWizard({ isOpen, onClose }: ExpenseAdvanceWizardPr
     <Wizard
       isOpen={isOpen}
       onClose={handleClose}
-      title="Nueva Asignación"
-      description="Registra una salida de dinero para gastos de operación."
+      title={isView ? 'Detalles de Asignación' : isEdit ? 'Editar Asignación' : 'Nueva Asignación'}
+      description={isView ? 'Consulta los detalles de esta salida de dinero.' : isEdit ? 'Modifica los datos de esta asignación.' : 'Registra una salida de dinero para gastos de operación.'}
       icon={<HandCoins className="size-5" />}
       steps={steps}
       activeStep={activeStep}

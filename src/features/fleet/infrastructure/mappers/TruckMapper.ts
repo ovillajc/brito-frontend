@@ -19,7 +19,6 @@ export class TruckMapper {
             engine: raw.engine as string,
             tireSize: raw.tire_size as string,
             tankCapacity: raw.tank_capacity as number,
-            theoreticalYield: raw.theoretical_yield as number,
         }
     }
 
@@ -37,7 +36,6 @@ export class TruckMapper {
             engine: input.engine || null,
             tire_size: input.tireSize || null,
             tank_capacity: input.tankCapacity || null,
-            theoretical_yield: input.theoreticalYield || null,
         }
     }
 
@@ -56,7 +54,6 @@ export class TruckMapper {
         if (input.engine !== undefined) data.engine = input.engine || null
         if (input.tireSize !== undefined) data.tire_size = input.tireSize || null
         if (input.tankCapacity !== undefined) data.tank_capacity = input.tankCapacity || null
-        if (input.theoreticalYield !== undefined) data.theoretical_yield = input.theoreticalYield || null
 
         return data
     }

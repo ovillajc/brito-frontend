@@ -10,6 +10,8 @@ import { cn } from '@/src/core/infrastructure/utils/cn'
 import { useExpenseAdvances, useTripExpenseAssignmentKpis } from '../../hooks/use-expense-assignments'
 import type { ExpenseAdvanceEntity, TripExpenseAssignmentKpiEntity } from '../../../domain/entities/expense-assignment-entity'
 import { ExpenseAdvanceWizard } from '../organisms/ExpenseAdvanceWizard'
+import { ExpenseAdvanceDetailsDialog } from '../organisms/ExpenseAdvanceDetailsDialog'
+import { useDeleteExpenseAdvance } from '../../hooks/use-expense-assignments'
 import { TripSettlementDialog } from '../organisms/TripSettlementDialog'
 import { ExpensesTable } from '@/src/features/expenses/presentation/components/organisms/ExpensesTable'
 
@@ -24,6 +26,11 @@ export default function ExpenseAssignmentsPage() {
   const canManage = useAuthStore((state) => state.hasPermission('expenses:manage'))
 
   const [isAdvanceWizardOpen, setIsAdvanceWizardOpen] = useState(false)
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
+  const [wizardMode, setWizardMode] = useState<'create' | 'edit'>('create')
+  const [selectedAdvance, setSelectedAdvance] = useState<ExpenseAdvanceEntity | undefined>(undefined)
+  
+  const deleteAdvance = useDeleteExpenseAdvance()
   const [selectedTrip, setSelectedTrip] = useState<TripExpenseAssignmentKpiEntity | null>(null)
   const [isSettlementOpen, setIsSettlementOpen] = useState(false)
 
@@ -87,6 +94,26 @@ export default function ExpenseAssignmentsPage() {
       className: 'w-[120px]',
     },
   ]
+
+  const openAdvanceWizard = (mode: 'create' | 'edit', advance?: ExpenseAdvanceEntity) => {
+    setWizardMode(mode)
+    setSelectedAdvance(advance)
+    setIsAdvanceWizardOpen(true)
+  }
+
+  const openAdvanceDetails = (advance: ExpenseAdvanceEntity) => {
+    setSelectedAdvance(advance)
+    setIsDetailsDialogOpen(true)
+  }
+
+  const handleDeleteAdvance = async (id: string) => {
+    try {
+      await deleteAdvance.mutateAsync(id)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: { message: e instanceof Error ? e.message : 'Error desconocido' } }
+    }
+  }
 
   const openSettlement = (trip: TripExpenseAssignmentKpiEntity) => {
     setSelectedTrip(trip)
@@ -232,7 +259,16 @@ export default function ExpenseAssignmentsPage() {
               [row.operatorName, row.tripFolio, row.unitLabel, row.notes].some((v) => v?.toLowerCase().includes(term))
             }
             actionLabel="Nueva Asignación"
-            onAction={() => setIsAdvanceWizardOpen(true)}
+            onAction={() => openAdvanceWizard('create')}
+            onView={openAdvanceDetails}
+            onEdit={(a) => openAdvanceWizard('edit', a)}
+            onDelete={handleDeleteAdvance}
+            deleteConfirmTitle={(a) => a.tripId ? '¿Eliminar asignación vinculada?' : '¿Eliminar asignación?'}
+            deleteConfirmDescription={(a) => 
+              a.tripId 
+                ? 'Esta asignación está vinculada a un viaje. Eliminarla afectará las cuentas del viaje. ¿Estás seguro de que deseas eliminarla permanentemente?' 
+                : 'Esta acción es irreversible. El registro será eliminado permanentemente.'
+            }
             emptyState={{
               icon: Link2,
               title: 'Sin asignaciones',
@@ -250,10 +286,24 @@ export default function ExpenseAssignmentsPage() {
         {selectedTrip?.tripId ? <ExpensesTable tripIdFilter={selectedTrip.tripId} /> : null}
       </TripSettlementDialog>
 
-      <ExpenseAdvanceWizard
-        key={isAdvanceWizardOpen ? 'open' : 'closed'}
-        isOpen={isAdvanceWizardOpen}
-        onClose={() => setIsAdvanceWizardOpen(false)}
+      <ExpenseAdvanceWizard 
+        isOpen={isAdvanceWizardOpen} 
+        onClose={() => {
+          setIsAdvanceWizardOpen(false)
+          setSelectedAdvance(undefined)
+          setWizardMode('create')
+        }} 
+        advanceRow={selectedAdvance}
+        mode={wizardMode}
+      />
+
+      <ExpenseAdvanceDetailsDialog
+        isOpen={isDetailsDialogOpen}
+        onClose={() => {
+          setIsDetailsDialogOpen(false)
+          setSelectedAdvance(undefined)
+        }}
+        advance={selectedAdvance || null}
       />
     </div>
   )
