@@ -30,7 +30,7 @@ export interface RegisterFuelLoadInput {
   truckId: string | null
   /** Requerido cuando vehicleType = 'TRAILER' */
   trailerId: string | null
-  operatorId: string
+  operatorId: string | null
   ticketFolio: string
   loadDate: Date
   litersLoaded: number

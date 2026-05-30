@@ -135,6 +135,8 @@ export interface FuelLoadHistoryRow {
   odometer_at_load: number | null
   truck_id: string | null
   trailer_id: string | null
+  trucks?: null | { economic_number: string | null }
+  trailers?: null | { economic_number: string | null }
   trips: null | {
     trip_number: number | null
     folio: string | null
@@ -387,7 +389,7 @@ export class FuelMetricsMapper {
       folio,
       tripNumber,
       clientName,
-      unitEconomicNumber: row.trips?.unit_assemblies?.economic_number ?? null,
+      unitEconomicNumber: row.trips?.unit_assemblies?.economic_number ?? row.trucks?.economic_number ?? row.trailers?.economic_number ?? null,
       operatorName: row.trips?.unit_assemblies?.employees?.full_name ?? null,
       loadDate: row.load_date,
       ticketFolio: row.ticket_folio,

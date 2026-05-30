@@ -162,6 +162,8 @@ export async function getFuelLoadHistoryAction(
         'odometer_at_load',
         'truck_id',
         'trailer_id',
+        'trucks(economic_number)',
+        'trailers(economic_number)',
         'trips(trip_number, folio, clients(trade_name, company_name), unit_assemblies(economic_number, employees(full_name)))',
       ].join(', '))
       .order('load_date', { ascending: false })

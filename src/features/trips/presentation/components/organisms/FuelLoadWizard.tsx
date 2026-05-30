@@ -16,6 +16,7 @@ import { Label } from '@/src/core/presentation/components/ui/label'
 import { Checkbox } from '@/src/core/presentation/components/ui/checkbox'
 import { FUEL_LOAD_SOURCE_TYPE, fuelLoadSchema, type FuelLoadFormValues } from '@/src/features/trips/domain/schemas/fuel-load.schema'
 import { useRegisterFuelLoad, useUpdateFuelLoad } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
+import { useTractors, useTrailers } from '@/src/features/fleet/presentation/hooks/use-fleet'
 import type { FuelLoadHistoryRowEntity } from '@/src/features/trips/domain/entities/fuel-metrics-entity'
 
 type SubmissionStatus = 'idle' | 'success' | 'error'
@@ -40,6 +41,8 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
 
   const registerFuelLoad = useRegisterFuelLoad()
   const updateFuelLoad = useUpdateFuelLoad()
+  const { data: trucks } = useTractors()
+  const { data: allTrailers } = useTrailers()
 
   const {
     register,
@@ -55,6 +58,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
         return {
           tripId: editRow.tripId ?? '',
           vehicleType: editRow.vehicleType,
+          truckId: editRow.truckId ?? '',
           trailerId: editRow.trailerId ?? '',
           ticketFolio: editRow.ticketFolio ?? '',
           loadDate: editRow.loadDate ? new Date(editRow.loadDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
@@ -68,6 +72,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
       return {
         tripId: '',
         vehicleType: 'TRUCK',
+        truckId: '',
         trailerId: '',
         ticketFolio: '',
         loadDate: new Date().toISOString().slice(0, 16),
@@ -104,7 +109,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
 
   const goNext = async () => {
     const map: Record<number, (keyof FuelLoadFormValues)[]> = {
-      0: ['tripId', 'vehicleType', 'trailerId'],
+      0: ['tripId', 'vehicleType', 'truckId', 'trailerId'],
       1: ['ticketFolio', 'loadDate', 'sourceType', 'odometerAtLoad'],
       2: ['litersLoaded', 'pricePerLiter', 'isFullTankFill'],
     }
@@ -118,16 +123,6 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
 
   const handleFinish = handleSubmit(async (values) => {
     setErrorMessage(null)
-    if (!selectedTrip) {
-      setSubmissionStatus('error')
-      setErrorMessage('Selecciona un viaje válido')
-      return
-    }
-    if (!selectedUnit) {
-      setSubmissionStatus('error')
-      setErrorMessage('El viaje no tiene una unidad asignada')
-      return
-    }
 
     const loadDate = new Date(values.loadDate)
     if (Number.isNaN(loadDate.getTime())) {
@@ -138,12 +133,12 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
 
     const payload = {
       tripId: values.tripId || null,
-      truckId: selectedUnit.truckId,
-      operatorId: selectedUnit.employeeId,
+      truckId: selectedUnit ? selectedUnit.truckId : (values.vehicleType === 'TRUCK' ? (values.truckId || null) : null),
+      operatorId: selectedUnit?.employeeId ?? null,
       ticketFolio: values.ticketFolio,
       loadDate,
       vehicleType: values.vehicleType ?? 'TRUCK',
-      trailerId: values.trailerId || null,
+      trailerId: selectedUnit ? (values.trailerId || null) : (values.vehicleType === 'TRAILER' ? (values.trailerId || null) : null),
       litersLoaded: values.litersLoaded,
       pricePerLiter: values.pricePerLiter ?? 0,
       totalCost: (values.litersLoaded ?? 0) * (values.pricePerLiter ?? 0),
@@ -179,6 +174,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
     reset({
       tripId: '',
       vehicleType: 'TRUCK',
+      truckId: '',
       trailerId: '',
       ticketFolio: '',
       loadDate: new Date().toISOString().slice(0, 16),
@@ -220,11 +216,37 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
 
       {vehicleType === 'TRAILER' && selectedUnit && (
         <div className="grid gap-2">
-          <Label htmlFor="trailerId">Seleccionar Remolque</Label>
+          <Label htmlFor="trailerId">Seleccionar Remolque del Viaje</Label>
           <select id="trailerId" className={inputClass} {...register('trailerId')}>
             <option value="" disabled>Selecciona el termo</option>
             {selectedUnit.trailerId && <option value={selectedUnit.trailerId}>Termo 1 (Activo)</option>}
             {selectedUnit.trailer2Id && <option value={selectedUnit.trailer2Id}>Termo 2 (Activo)</option>}
+          </select>
+          {err(errors.trailerId?.message)}
+        </div>
+      )}
+
+      {!selectedTrip && vehicleType === 'TRUCK' && (
+        <div className="grid gap-2">
+          <Label htmlFor="truckId">Seleccionar Tractocamión</Label>
+          <select id="truckId" className={inputClass} {...register('truckId')}>
+            <option value="" disabled>Selecciona la unidad</option>
+            {trucks?.map(t => (
+              <option key={t.id} value={t.id}>{t.economicNumber}</option>
+            ))}
+          </select>
+          {err(errors.truckId?.message)}
+        </div>
+      )}
+
+      {!selectedTrip && vehicleType === 'TRAILER' && (
+        <div className="grid gap-2">
+          <Label htmlFor="trailerId">Seleccionar Remolque</Label>
+          <select id="trailerId" className={inputClass} {...register('trailerId')}>
+            <option value="" disabled>Selecciona el remolque</option>
+            {allTrailers?.map(t => (
+              <option key={t.id} value={t.id}>{t.economicNumber}</option>
+            ))}
           </select>
           {err(errors.trailerId?.message)}
         </div>
