@@ -8,6 +8,8 @@ export interface IExpenseAssignmentsRepository {
   listTripKpis(limit: number): Promise<Either<Failure, TripExpenseAssignmentKpiEntity[]>>
   createAdvance(input: CreateExpenseAdvanceInput, assignedBy: string | null): Promise<Either<Failure, ExpenseAdvanceEntity>>
   linkAdvanceToTrip(advanceId: string, tripId: string): Promise<Either<Failure, void>>
+  updateAdvance(id: string, input: CreateExpenseAdvanceInput): Promise<Either<Failure, ExpenseAdvanceEntity>>
+  deleteAdvance(id: string): Promise<Either<Failure, void>>
   createSettlement(input: CreateTripSettlementInput, settledBy: string | null): Promise<Either<Failure, TripExpenseSettlementEntity>>
 }
 

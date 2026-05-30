@@ -1,11 +1,9 @@
 'use client'
 
 import React, { useMemo } from 'react'
-import { FileUploadButton } from '@/src/core/presentation/components/molecules/FileUploadButton'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { Button } from '@/src/core/presentation/components/ui/button'
-import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 import { CheckCircle2, AlertTriangle } from 'lucide-react'
@@ -48,7 +46,6 @@ export function TripSettlementDialog({ isOpen, onClose, trip, children }: TripSe
     defaultValues: {
       tripId: '',
       operatorId: null,
-      receiptUrl: null,
       notes: null,
     },
   })
@@ -59,7 +56,6 @@ export function TripSettlementDialog({ isOpen, onClose, trip, children }: TripSe
       reset({
         tripId: trip.tripId,
         operatorId: trip.operatorId ?? null,
-        receiptUrl: null,
         notes: null,
       })
     }
@@ -182,22 +178,10 @@ export function TripSettlementDialog({ isOpen, onClose, trip, children }: TripSe
 
           <div className="rounded-2xl border border-stone-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-900">
             <div className="p-4 border-b border-stone-100 dark:border-zinc-800">
-              <p className="text-sm font-semibold text-stone-900 dark:text-zinc-100">Ticket de cuenta</p>
-              <p className="text-xs text-stone-500 dark:text-zinc-500 mt-1">Adjunta la foto o PDF del ticket de cuentas del operador.</p>
+              <p className="text-sm font-semibold text-stone-900 dark:text-zinc-100">Cierre de Liquidación</p>
+              <p className="text-xs text-stone-500 dark:text-zinc-500 mt-1">Revisa que los gastos cuadren antes de liquidar el viaje.</p>
             </div>
-
             <form className="p-4 space-y-4" onSubmit={onSubmit}>
-              <div className="grid gap-2">
-                <Label htmlFor="receiptUrl">Comprobante (PDF / Imagen)</Label>
-                <FileUploadButton
-                  folder="settlements/receipts"
-                  label="Adjuntar comprobante de cuentas"
-                  currentUrl={watch('receiptUrl') as string | null}
-                  onUploadComplete={(url) => setValue('receiptUrl', url)}
-                  disabled={trip.isSettled}
-                />
-                {errors.receiptUrl && <p className={errorClass}>{errors.receiptUrl.message}</p>}
-              </div>
 
               <div className="grid gap-2">
                 <Label htmlFor="notes">Notas (Opcional)</Label>
