@@ -39,6 +39,7 @@ export interface TruckEntity {
   engine?: string
   tireSize?: string
   tankCapacity?: number
+  theoreticalYield?: number
 }
 
 /**
