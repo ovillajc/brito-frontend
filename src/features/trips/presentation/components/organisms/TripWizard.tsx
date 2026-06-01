@@ -399,53 +399,12 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
 
     const values = getValues()
 
-    const dateValue = values.departureDate?.trim() ?? ''
-    if (dateValue.length === 0) {
-      setError('departureDate', { type: 'validate', message: 'La fecha es obligatoria' })
-      hasErrors = true
-    }
-
     const tripNum = typeof values.tripNumberClient === 'number'
       ? values.tripNumberClient
       : Number(values.tripNumberClient)
-    if (!Number.isFinite(tripNum) || tripNum <= 0) {
-      setError('tripNumberClient', { type: 'validate', message: 'El número de viaje es obligatorio' })
-      hasErrors = true
-    }
-
-    const ticket = values.barichonTicket?.trim() ?? ''
-    if (ticket.length === 0) {
-      setError('barichonTicket', { type: 'validate', message: 'El ticket es obligatorio' })
-      hasErrors = true
-    }
-
-    const unloading = values.barichonUnloading?.trim() ?? ''
-    if (unloading.length === 0) {
-      setError('barichonUnloading', { type: 'validate', message: 'La descarga es obligatoria' })
-      hasErrors = true
-    }
-
-    const remision = values.barichonRemision?.trim() ?? ''
-    if (remision.length === 0) {
-      setError('barichonRemision', { type: 'validate', message: 'La remisión es obligatoria' })
-      hasErrors = true
-    }
-
-    const material = values.barichonMaterial?.trim() ?? ''
-    if (material.length === 0) {
-      setError('barichonMaterial', { type: 'validate', message: 'El material es obligatorio' })
-      hasErrors = true
-    }
-
-    const factura = values.barichonFactura?.trim() ?? ''
-    if (factura.length === 0) {
-      setError('barichonFactura', { type: 'validate', message: 'La factura es obligatoria' })
-      hasErrors = true
-    }
-
-    const po = values.barichonPo?.trim() ?? ''
-    if (po.length === 0) {
-      setError('barichonPo', { type: 'validate', message: 'El PO es obligatorio' })
+    
+    if (values.tripNumberClient !== '' && values.tripNumberClient != null && (!Number.isFinite(tripNum) || tripNum <= 0)) {
+      setError('tripNumberClient', { type: 'validate', message: 'Ingresa un número válido' })
       hasErrors = true
     }
 
@@ -453,22 +412,28 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
     const tareRaw = values.barichonTareWeight?.trim() ?? ''
     const totalRaw = values.barichonTotal?.trim() ?? ''
 
-    const gross = Number(grossRaw.replace(/,/g, ''))
-    if (grossRaw.length === 0 || !Number.isFinite(gross) || gross < 0) {
-      setError('barichonGrossWeight', { type: 'validate', message: 'Ingresa un peso bruto válido' })
-      hasErrors = true
+    if (grossRaw.length > 0) {
+      const gross = Number(grossRaw.replace(/,/g, ''))
+      if (!Number.isFinite(gross) || gross < 0) {
+        setError('barichonGrossWeight', { type: 'validate', message: 'Ingresa un peso bruto válido' })
+        hasErrors = true
+      }
     }
 
-    const tare = Number(tareRaw.replace(/,/g, ''))
-    if (tareRaw.length === 0 || !Number.isFinite(tare) || tare < 0) {
-      setError('barichonTareWeight', { type: 'validate', message: 'Ingresa un peso tara válido' })
-      hasErrors = true
+    if (tareRaw.length > 0) {
+      const tare = Number(tareRaw.replace(/,/g, ''))
+      if (!Number.isFinite(tare) || tare < 0) {
+        setError('barichonTareWeight', { type: 'validate', message: 'Ingresa un peso tara válido' })
+        hasErrors = true
+      }
     }
 
-    const total = Number(totalRaw.replace(/,/g, ''))
-    if (totalRaw.length === 0 || !Number.isFinite(total) || total < 0) {
-      setError('barichonTotal', { type: 'validate', message: 'Ingresa un total válido' })
-      hasErrors = true
+    if (totalRaw.length > 0) {
+      const total = Number(totalRaw.replace(/,/g, ''))
+      if (!Number.isFinite(total) || total < 0) {
+        setError('barichonTotal', { type: 'validate', message: 'Ingresa un total válido' })
+        hasErrors = true
+      }
     }
 
     return !hasErrors
@@ -542,27 +507,14 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
 
       if (isHolcim) {
         const tripNum = typeof data.tripNumberClient === 'number' ? data.tripNumberClient : Number(data.tripNumberClient)
-
-        const rem = data.holcimRemision?.trim() ?? ''
-        const fac = data.holcimFactura?.trim() ?? ''
-
         let hasHolcimErrors = false
 
-        if (!Number.isFinite(tripNum) || tripNum <= 0) {
-          toast.error('No se pudo generar el número de viaje. Intenta cambiar la fecha o reabrir el formulario.')
-          hasHolcimErrors = true
-        }
-        if (rem.length === 0) {
-          setError('holcimRemision', { type: 'validate', message: 'La remisión es obligatoria' })
-          hasHolcimErrors = true
-        }
-        if (fac.length === 0) {
-          setError('holcimFactura', { type: 'validate', message: 'La factura es obligatoria' })
+        if (data.tripNumberClient !== '' && data.tripNumberClient != null && (!Number.isFinite(tripNum) || tripNum <= 0)) {
+          toast.error('Número de viaje inválido.')
           hasHolcimErrors = true
         }
 
         if (hasHolcimErrors) {
-          toast.error('Faltan campos obligatorios para Holcim')
           return
         }
       }

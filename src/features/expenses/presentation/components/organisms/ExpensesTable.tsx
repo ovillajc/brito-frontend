@@ -24,11 +24,7 @@ const money = new Intl.NumberFormat('es-MX', {
   maximumFractionDigits: 2,
 })
 
-const shortDate = new Intl.DateTimeFormat('es-MX', {
-  year: 'numeric',
-  month: 'short',
-  day: '2-digit',
-})
+const shortDate = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeZone: 'UTC' })
 
 // ── Definición de columnas ───────────────────────────────────────────────────
 

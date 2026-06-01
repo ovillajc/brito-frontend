@@ -155,7 +155,7 @@ export function TripSettlementDialog({ isOpen, onClose, trip, children }: TripSe
                 tripAdvances.slice(0, 6).map((a) => (
                   <div key={a.id} className="flex items-center justify-between text-sm">
                     <span className="text-stone-700 dark:text-zinc-300">
-                      {new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' }).format(a.assignedAt)} · {a.method === 'cash' ? 'Efectivo' : 'Transferencia'}
+                      {new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(a.assignedAt))} · {a.method === 'cash' ? 'Efectivo' : 'Transferencia'}
                     </span>
                     <span className="font-semibold">{money.format(a.amount)}</span>
                   </div>

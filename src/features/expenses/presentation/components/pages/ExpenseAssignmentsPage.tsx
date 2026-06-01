@@ -76,7 +76,7 @@ export default function ExpenseAssignmentsPage() {
     },
     {
       header: 'Fecha',
-      cell: (a) => new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' }).format(a.assignedAt),
+      cell: (a) => new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(a.assignedAt)),
       className: 'text-sm text-stone-600 dark:text-zinc-400',
     },
     {

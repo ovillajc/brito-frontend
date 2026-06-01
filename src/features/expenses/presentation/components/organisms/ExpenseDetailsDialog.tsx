@@ -68,7 +68,7 @@ function SectionTitle({ title, icon: Icon }: { title: string; icon: React.Elemen
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 2 })
-const shortDate = new Intl.DateTimeFormat('es-MX', { dateStyle: 'long' })
+const shortDate = new Intl.DateTimeFormat('es-MX', { dateStyle: 'long', timeZone: 'UTC' })
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
