@@ -92,7 +92,7 @@ export class SupabaseWalmartRepository implements IWalmartTripRepository {
       const { data: result, error } = await supabase
         .from('walmart_trip_data')
         .update({
-          dettes_log: JSON.stringify(updatedLog),
+          dettes_log: updatedLog,
           updated_at: new Date().toISOString(),
         })
         .eq('trip_id', tripId)

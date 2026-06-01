@@ -1,11 +1,13 @@
-import React from 'react'
+import { useState } from 'react'
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 
+type WizardFooterHandler = () => void | Promise<void>
+
 export interface WizardFooterProps {
-  onBack?: () => void
-  onNext?: () => void
-  onCancel?: () => void
+  onBack?: WizardFooterHandler
+  onNext?: WizardFooterHandler
+  onCancel?: WizardFooterHandler
   isFirstStep: boolean
   isLastStep: boolean
   isNextDisabled?: boolean
@@ -27,11 +29,49 @@ export function WizardFooter({
   backLabel = 'Regresar',
   cancelLabel = 'Cancelar'
 }: WizardFooterProps) {
+  const [isLocalSubmitting, setIsLocalSubmitting] = useState(false)
+
+  const isBusy = isSubmitting || isLocalSubmitting
+  const isNextBlocked = isNextDisabled || isBusy
+
+  const handleNext = async () => {
+    if (!onNext) return
+    if (isNextBlocked) return
+    setIsLocalSubmitting(true)
+    try {
+      await onNext()
+    } finally {
+      setIsLocalSubmitting(false)
+    }
+  }
+
+  const handleBack = async () => {
+    if (!onBack) return
+    if (isBusy) return
+    setIsLocalSubmitting(true)
+    try {
+      await onBack()
+    } finally {
+      setIsLocalSubmitting(false)
+    }
+  }
+
+  const handleCancel = async () => {
+    if (!onCancel) return
+    if (isBusy) return
+    setIsLocalSubmitting(true)
+    try {
+      await onCancel()
+    } finally {
+      setIsLocalSubmitting(false)
+    }
+  }
+
   return (
     <div className="flex items-center justify-between pt-6 mt-6 border-t border-outline-variant/30">
       <div>
         {onCancel && (
-          <Button variant="ghost" onClick={onCancel} disabled={isSubmitting}>
+          <Button variant="ghost" onClick={handleCancel} disabled={isBusy}>
             {cancelLabel}
           </Button>
         )}
@@ -39,7 +79,7 @@ export function WizardFooter({
       
       <div className="flex items-center gap-3">
         {!isFirstStep && onBack && (
-          <Button variant="outline" onClick={onBack} disabled={isSubmitting}>
+          <Button variant="outline" onClick={handleBack} disabled={isBusy}>
             <ArrowLeft className="size-4 mr-2" />
             {backLabel}
           </Button>
@@ -48,11 +88,11 @@ export function WizardFooter({
         {isLastStep ? (
           <Button 
             variant="green" 
-            onClick={onNext} 
-            disabled={isNextDisabled || isSubmitting}
+            onClick={handleNext} 
+            disabled={isNextBlocked}
             className="min-w-[120px]"
           >
-            {isSubmitting ? (
+            {isBusy ? (
               <span className="flex items-center justify-center size-4 rounded-full border-2 border-white/30 border-t-white animate-spin mr-2" />
             ) : (
               <Check className="size-4 mr-2" />
@@ -62,8 +102,8 @@ export function WizardFooter({
         ) : (
           <Button 
             variant="orange" 
-            onClick={onNext} 
-            disabled={isNextDisabled || isSubmitting}
+            onClick={handleNext} 
+            disabled={isNextBlocked}
             className="min-w-[120px]"
           >
             {nextLabel}

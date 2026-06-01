@@ -21,6 +21,30 @@ interface TripDetailsDialogProps {
   tripRow: TripsTableRowEntity | null
 }
 
+function formatTripStatus(status: TripsTableRowEntity['status']): string {
+  const map: Record<TripsTableRowEntity['status'], string> = {
+    scheduled: 'Programado',
+    in_progress: 'En Ruta',
+    in_delivery: 'En Reparto',
+    completed: 'Completado',
+    cancelled: 'Cancelado',
+  }
+  return map[status] ?? status
+}
+
+function formatTripNumberClient(tripNumberClient: number | null, departureDate: string | null): string | null {
+  if (tripNumberClient == null) return null
+  if (!departureDate) return String(tripNumberClient)
+  const dt = new Date(departureDate)
+  if (Number.isNaN(dt.getTime())) return String(tripNumberClient)
+
+  const monthRaw = new Intl.DateTimeFormat('es-MX', { month: 'long' }).format(dt)
+  const month = monthRaw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+  const year = String(dt.getUTCFullYear())
+  const counter = String(tripNumberClient).padStart(3, '0')
+  return `${month}${year}-${counter}`
+}
+
 function DetailItem({ icon: Icon, label, value, className = '' }: { icon: React.ElementType, label: string, value: React.ReactNode, className?: string }) {
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
@@ -210,7 +234,11 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
               <section>
                 <SectionTitle title="Control" icon={Hash} />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <DetailItem icon={Hash} label="Núm. Viaje Cliente" value={tripRow.tripNumberClient} />
+                  <DetailItem
+                    icon={Hash}
+                    label="Núm. Viaje Cliente"
+                    value={formatTripNumberClient(tripRow.tripNumberClient, tripRow.departureDate)}
+                  />
                   <DetailItem icon={FileText} label="Observaciones" value={tripRow.observations} className="md:col-span-2" />
                 </div>
               </section>
@@ -224,8 +252,9 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <DetailItem icon={User} label="Coordinador" value={tripRow.walmartData?.coordinatorName} />
                     <DetailItem icon={MapPin} label="Ruta Walmart" value={tripRow.walmartData?.route} />
+                    <DetailItem icon={Factory} label="Tipo de carga" value={tripRow.walmartData?.cargoType} />
                     <DetailItem icon={FileText} label="Carta Porte" value={tripRow.walmartData?.cartaPorteWalmart} />
-                    <DetailItem icon={Hash} label="Estatus" value={tripRow.walmartData?.statusWalmart} />
+                    <DetailItem icon={Hash} label="Estatus del viaje" value={formatTripStatus(tripRow.status)} />
                     <DetailItem icon={Hash} label="Núm. Tiendas" value={tripRow.walmartData?.numStores} />
                     <DetailItem icon={MapPin} label="Temp. Salida" value={tripRow.walmartData?.departureTemperature} />
                     <DetailItem icon={Calendar} label="Hora Salida" value={tripRow.walmartData?.departureTime ? new Date(tripRow.walmartData.departureTime).toLocaleString('es-MX') : null} />
@@ -275,11 +304,38 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
                 
                 <section>
                   <SectionTitle title="Bitácora DETTES" icon={FileText} />
-                  <div className="flex flex-col items-center justify-center py-8 bg-stone-50 dark:bg-zinc-800/50 rounded-xl border border-stone-100 dark:border-zinc-800 text-center">
-                    <ShoppingCart className="size-8 text-stone-300 dark:text-zinc-600 mb-3" />
-                    <p className="text-sm font-semibold text-stone-700 dark:text-zinc-300">Log de tiendas visitadas</p>
-                    <p className="text-xs text-stone-500 mt-1">Esta tabla mostrará las citas y llegadas a cada tienda del recorrido.</p>
-                  </div>
+                  {tripRow.walmartData?.dettesLog && Array.isArray(tripRow.walmartData.dettesLog) && tripRow.walmartData.dettesLog.length > 0 ? (
+                    <div className="grid gap-3">
+                      {tripRow.walmartData.dettesLog.map((log, index) => {
+                        const row = log && typeof log === 'object' ? (log as Record<string, unknown>) : {}
+                        const stopNumber = typeof row.stopNumber === 'number' ? row.stopNumber : null
+                        const storeName = typeof row.storeName === 'string' ? row.storeName : null
+                        const storeId = typeof row.storeId === 'string' ? row.storeId : null
+                        const appointmentAt = typeof row.appointmentAt === 'string' ? row.appointmentAt : null
+
+                        return (
+                          <div key={index} className="p-4 bg-stone-50 dark:bg-zinc-800/50 rounded-xl border border-stone-100 dark:border-zinc-800 flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 text-stone-600 dark:text-zinc-400">
+                              Parada {stopNumber ?? index + 1}
+                            </Badge>
+                            <span className="text-sm font-bold text-stone-900 dark:text-zinc-100">{storeName ?? storeId ?? 'Tienda sin nombre'}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-stone-500">
+                            <Calendar className="size-3.5 text-stone-400" />
+                            <span>Cita: {appointmentAt ? new Date(appointmentAt).toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' }) : 'Sin cita asignada'}</span>
+                          </div>
+                        </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 bg-stone-50 dark:bg-zinc-800/50 rounded-xl border border-stone-100 dark:border-zinc-800 text-center">
+                      <ShoppingCart className="size-8 text-stone-300 dark:text-zinc-600 mb-3" />
+                      <p className="text-sm font-semibold text-stone-700 dark:text-zinc-300">Log de tiendas visitadas</p>
+                      <p className="text-xs text-stone-500 mt-1">No hay tiendas registradas en el DETTES para este viaje.</p>
+                    </div>
+                  )}
                 </section>
               </TabsContent>
             )}

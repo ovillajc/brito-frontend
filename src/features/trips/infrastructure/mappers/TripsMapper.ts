@@ -34,6 +34,7 @@ export interface TripListRow extends TripRow {
   walmart_trip_data?: { 
     coordinator_name: string | null
     route: string | null
+    cargo_type?: string | null
     carta_porte_walmart: string | null
     num_stores: number | null
     status_walmart?: string | null
@@ -110,6 +111,7 @@ export class TripsMapper {
         ? {
             coordinatorName: row.walmart_trip_data.coordinator_name ?? null,
             route: row.walmart_trip_data.route ?? null,
+            cargoType: row.walmart_trip_data.cargo_type ?? null,
             cartaPorteWalmart: row.walmart_trip_data.carta_porte_walmart ?? null,
             numStores: row.walmart_trip_data.num_stores ?? null,
             statusWalmart: row.walmart_trip_data.status_walmart ?? null,
@@ -127,7 +129,9 @@ export class TripsMapper {
             dhdDiesel: row.walmart_trip_data.dhd_diesel ?? null,
             dhdCasetas: row.walmart_trip_data.dhd_casetas ?? null,
             dhdTotalInvoice: row.walmart_trip_data.dhd_total_invoice ?? null,
-            dettesLog: row.walmart_trip_data.dettes_log ?? null,
+            dettesLog: typeof row.walmart_trip_data.dettes_log === 'string' 
+              ? (function() { try { return JSON.parse(row.walmart_trip_data.dettes_log as string) } catch { return [] } })() 
+              : (row.walmart_trip_data.dettes_log ?? null),
             departureTemperature: row.walmart_trip_data.departure_temperature ?? null,
             departureTime: row.walmart_trip_data.departure_time ?? null,
             incidencias: row.walmart_trip_data.incidencias ?? null,

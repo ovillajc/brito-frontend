@@ -403,9 +403,12 @@ export interface UpsertTripWithClientDataInput {
   walmart?: {
     coordinatorName: string | null
     route: string | null
+    cargoType: string | null
     cartaPorteWalmart: string | null
     numStores: number | null
+    departureTemperature: string | null
     departureTime: string | null
+    incidencias: string | null
     str: {
       numLoad: string | null
       complementCartaPorte: string | null
@@ -505,7 +508,7 @@ export async function upsertTripWithClientDataAction(
       tripNumberWalmart: pick(null, existing?.tripNumberWalmart),
       coordinatorName: pick(input.walmart.coordinatorName, existing?.coordinatorName),
       route: pick(input.walmart.route, existing?.route),
-      cargoType: pick(null, existing?.cargoType),
+      cargoType: pick(input.walmart.cargoType, existing?.cargoType),
       cartaPorteWalmart: pick(input.walmart.cartaPorteWalmart, existing?.cartaPorteWalmart),
       statusWalmart: pick(null, existing?.statusWalmart),
       str: {
@@ -537,13 +540,13 @@ export async function upsertTripWithClientDataAction(
               stopNumber: idx + 1,
             }))
           : (existing?.dettesLog ?? []),
-      departureTemperature: pick(null, existing?.departureTemperature),
+      departureTemperature: pick(input.walmart.departureTemperature, existing?.departureTemperature),
       departureTime: pick(
         input.walmart.departureTime ? new Date(input.walmart.departureTime) : null,
         existing?.departureTime
       ),
       numStores: pick(input.walmart.numStores, existing?.numStores),
-      incidencias: pick(null, existing?.incidencias),
+      incidencias: pick(input.walmart.incidencias, existing?.incidencias),
     }
 
     const walmartResult = await SaveWalmartTripData(walmartRepo, walmartInput)

@@ -7,7 +7,7 @@
  * @organism
  */
 
-import React, { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { AnimatePresence } from 'framer-motion'
@@ -273,6 +273,9 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
         } else if (result.offline) {
           // Guardado localmente — cerrar el wizard
           handleClose()
+        } else {
+          setSubmissionError(result.error ?? 'No pudimos completar la operación en este momento.')
+          setSubmissionStatus('error')
         }
       }
     } catch (e: unknown) {
@@ -479,7 +482,8 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
         onCancel={handleClose}
         onBack={goBack}
         onNext={isReadOnly ? handleClose : handleFinish}
-        isSubmitting={createExpense.isPending || updateExpense.isPending}
+        isSubmitting={createExpense.isPending || updateExpense.isPending || offlineLoading}
+        isNextDisabled={isSubmitBlocked}
       />
     </div>
   )
