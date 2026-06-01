@@ -57,6 +57,11 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
   const trips = useMemo(() => tripsQuery.data ?? [], [tripsQuery.data])
   const assemblies = useMemo(() => assembliesQuery.data ?? [], [assembliesQuery.data])
 
+  const getLocalDatetime = (d: Date = new Date()) => {
+    const tzOffset = d.getTimezoneOffset() * 60000
+    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16)
+  }
+
   const {
     register,
     handleSubmit,
@@ -74,7 +79,7 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
       trailerId: null,
       amount: 0,
       method: ADVANCE_METHOD.Cash,
-      assignedAt: new Date().toISOString().slice(0, 10),
+      assignedAt: getLocalDatetime(),
       notes: null,
     },
   })
@@ -93,7 +98,7 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
         trailerId: advanceRow.trailerId ?? null,
         amount: advanceRow.amount,
         method: advanceRow.method,
-        assignedAt: advanceRow.assignedAt ? new Date(advanceRow.assignedAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+        assignedAt: advanceRow.assignedAt ? getLocalDatetime(new Date(advanceRow.assignedAt)) : getLocalDatetime(),
         notes: advanceRow.notes ?? null,
       })
     } else {
@@ -105,7 +110,7 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
         trailerId: null,
         amount: 0,
         method: ADVANCE_METHOD.Cash,
-        assignedAt: new Date().toISOString().slice(0, 10),
+        assignedAt: getLocalDatetime(),
         notes: null,
       })
     }
@@ -152,6 +157,7 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
         : vals
 
       const parsed: CreateExpenseAdvanceInput = createExpenseAdvanceSchema.parse(patched)
+      parsed.assignedAt = new Date(parsed.assignedAt).toISOString()
       
       if (isEdit && advanceRow) {
         await updateAdvance.mutateAsync({ id: advanceRow.id, data: parsed })
@@ -199,7 +205,7 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="amount">Monto</Label>
           <Input id="amount" type="number" step="0.01" className={inputClass} disabled={isView} {...register('amount', { setValueAs: (v) => Number(v) })} />
@@ -215,9 +221,9 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
           {errors.method && <p className={errorClass}>{errors.method.message}</p>}
         </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="assignedAt">Fecha</Label>
-          <Input id="assignedAt" type="date" className={inputClass} disabled={isView} {...register('assignedAt')} />
+        <div className="grid gap-2 sm:col-span-2">
+          <Label htmlFor="assignedAt">Fecha y Hora</Label>
+          <Input id="assignedAt" type="datetime-local" className={inputClass} disabled={isView} {...register('assignedAt')} />
           {errors.assignedAt && <p className={errorClass}>{errors.assignedAt.message}</p>}
         </div>
       </div>

@@ -314,21 +314,64 @@ export async function getTripsForFuelLoadAction(
 }
 
 export async function deleteTripAction(id: string): Promise<Either<Failure, void>> {
-  const allowed = await hasPermission('trips:manage_all')
-  if (!allowed) {
+  const profileId = await getCurrentProfileId()
+  if (!profileId) {
+    return { ok: false, error: { code: 'UNAUTHORIZED', message: 'Usuario no autenticado', statusCode: 401 } }
+  }
+
+  const canManageAll = await hasPermission('trips:manage_all')
+  const canManageWalmart = await hasPermission('trips:manage_walmart')
+  const canManageLogistica = await hasPermission('trips:manage_logistica')
+
+  if (!canManageAll && !canManageWalmart && !canManageLogistica) {
     return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
   }
 
   try {
     const supabase = await createClient()
+
+    // 1. Verificar si el viaje existe y si el usuario tiene permiso para este cliente
+    const { data: tripRow, error: tripError } = await supabase
+      .from('trips')
+      .select('id, clients(trade_name, company_name)')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (tripError) return { ok: false, error: { code: 'DB_ERROR', message: tripError.message } }
+    if (!tripRow?.id) return { ok: false, error: { code: 'NOT_FOUND', message: 'Viaje no encontrado', statusCode: 404 } }
+
+    const clientObj = (tripRow as unknown as { clients?: { trade_name?: string | null; company_name?: string | null } | null }).clients
+    const clientName = ((clientObj?.trade_name ?? clientObj?.company_name ?? '') as string).trim()
+
+    const canManageForClient = canManageTripsForClient({
+      clientName,
+      canManageAll,
+      canManageWalmart,
+      canManageLogistics: canManageLogistica,
+    })
+
+    if (!canManageForClient) {
+      return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado para eliminar viajes de este cliente', statusCode: 403 } }
+    }
+
+    // 2. Limpiar referencias foráneas que no tienen ON DELETE CASCADE ni ON DELETE SET NULL
+    await supabase.from('expense_advances').delete().eq('trip_id', id)
+    await supabase.from('mobile_chat_logs').delete().eq('trip_id', id)
+    await supabase.from('fuel_loads').update({ trip_id: null }).eq('trip_id', id)
+    await supabase.from('fuel_tank_movements').update({ trip_id: null }).eq('trip_id', id)
+    await supabase.from('workshop_stays').update({ last_trip_id: null }).eq('last_trip_id', id)
+    await supabase.from('trips').update({ linked_trip_id: null }).eq('linked_trip_id', id)
+
+    // 3. Eliminar el viaje finalmente
     const { error } = await supabase.from('trips').delete().eq('id', id)
     if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
 
     revalidatePath('/trips/list')
     revalidatePath('/trips')
     return { ok: true, data: undefined }
-  } catch {
-    return { ok: false, error: { code: 'UNEXPECTED', message: 'Error inesperado al eliminar el viaje' } }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Error inesperado al eliminar el viaje'
+    return { ok: false, error: { code: 'UNEXPECTED', message } }
   }
 }
 
