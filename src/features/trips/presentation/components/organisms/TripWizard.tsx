@@ -860,7 +860,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
               min="1"
               placeholder="1"
               className={inputClass}
-              {...register('tripNumberClient', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+              {...register('tripNumberClient', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
             />
           )}
           {errors.tripNumberClient && <p className={errorClass}>{errors.tripNumberClient.message as string}</p>}
@@ -986,7 +986,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
               {holcimTripLabel || '—'}
             </span>
           </div>
-          <input type="hidden" {...register('tripNumberClient', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })} />
+          <input type="hidden" {...register('tripNumberClient', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })} />
         </div>
 
         <div className="grid gap-2">
@@ -1057,7 +1057,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
             min="1" 
             placeholder="0" 
             className={inputClass}
-            {...register('numStores', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })} 
+            {...register('numStores', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })} 
           />
         </div>
 
@@ -1107,7 +1107,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('strPreinvoiceKm', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('strPreinvoiceKm', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
             <div className="px-4 py-2">
@@ -1116,7 +1116,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('dhdPreinvoiceKm', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('dhdPreinvoiceKm', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
           </div>
@@ -1129,7 +1129,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('strKmTraveled', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('strKmTraveled', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
             <div className="px-4 py-2">
@@ -1138,7 +1138,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('dhdKmTraveled', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('dhdKmTraveled', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
           </div>
@@ -1151,7 +1151,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('strDiesel', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('strDiesel', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
             <div className="px-4 py-2">
@@ -1160,7 +1160,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('dhdDiesel', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('dhdDiesel', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
           </div>
@@ -1173,7 +1173,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('strCasetas', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('strCasetas', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
             <div className="px-4 py-2">
@@ -1182,7 +1182,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('dhdCasetas', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('dhdCasetas', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
           </div>
@@ -1195,7 +1195,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('strTotalInvoice', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('strTotalInvoice', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
             <div className="px-4 py-2">
@@ -1204,7 +1204,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('dhdTotalInvoice', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('dhdTotalInvoice', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
           </div>
