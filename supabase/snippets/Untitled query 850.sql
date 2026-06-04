@@ -1,5 +1,2 @@
-select setval(
-  'public.trips_trip_number_seq',
-  coalesce((select max(trip_number) from public.trips), 0) + 1,
-  false
-);
+alter table public.fuel_loads
+add column if not exists ticket_url text;

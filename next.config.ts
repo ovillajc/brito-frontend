@@ -5,6 +5,13 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  experimental: {
+    serverActions: {
+      // Límite ampliado para soportar subida de archivos de hasta 10 MB
+      // (debe ser mayor que el MAX_SIZE_BYTES definido en r2-upload.action.ts)
+      bodySizeLimit: '11mb',
+    },
+  },
 }
 
 const pwaConfig = withPWA({

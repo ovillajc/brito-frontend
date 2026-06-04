@@ -11,7 +11,7 @@ import React from 'react'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { Separator } from '@/src/core/presentation/components/ui/separator'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
-import { X, Fuel, Truck, Calendar, User, FileText, Hash, MapPin, BarChart2 } from 'lucide-react'
+import { X, Fuel, Truck, Calendar, User, FileText, Hash, MapPin, BarChart2, ExternalLink } from 'lucide-react'
 import type { FuelLoadHistoryRowEntity } from '@/src/features/trips/domain/entities/fuel-metrics-entity'
 
 interface FuelLoadDetailsDialogProps {
@@ -48,6 +48,16 @@ function SectionTitle({ title, icon: Icon }: { title: string; icon: React.Elemen
 function formatMoney(value: number | null) {
   if (value == null || !Number.isFinite(value)) return '—'
   return value.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+}
+
+function isPdfFile(url: string | null): boolean {
+  if (!url) return false
+  try {
+    const urlWithoutQuery = url.split('?')[0]
+    return urlWithoutQuery.toLowerCase().endsWith('.pdf')
+  } catch {
+    return false
+  }
 }
 
 export function FuelLoadDetailsDialog({ isOpen, onClose, loadRow }: FuelLoadDetailsDialogProps) {
@@ -97,6 +107,20 @@ export function FuelLoadDetailsDialog({ isOpen, onClose, loadRow }: FuelLoadDeta
             <DetailItem icon={Hash} label="Precio por Litro" value={formatMoney(loadRow.pricePerLiter)} />
             <DetailItem icon={FileText} label="Costo Total" value={formatMoney(loadRow.totalCost)} />
             <DetailItem icon={MapPin} label="Origen de Combustible" value={loadRow.sourceType === 'INTERNAL_TANK' ? 'Tanque Base' : 'Externo'} />
+            <DetailItem
+              icon={ExternalLink}
+              label="Ticket (archivo)"
+              value={loadRow.ticketUrl ? (
+                <a
+                  href={loadRow.ticketUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#1a5c3a] dark:text-emerald-400 hover:underline"
+                >
+                  Ver archivo
+                </a>
+              ) : null}
+            />
           </div>
         </section>
 
@@ -112,6 +136,54 @@ export function FuelLoadDetailsDialog({ isOpen, onClose, loadRow }: FuelLoadDeta
           </div>
         </section>
 
+        {loadRow.ticketUrl && (
+          <>
+            <Separator className="bg-stone-100 dark:bg-zinc-800" />
+            <section>
+              <SectionTitle title="Ticket Adjunto" icon={FileText} />
+              <div className="mt-4 rounded-xl overflow-hidden border border-stone-200 dark:border-zinc-850 bg-stone-50 dark:bg-zinc-950/40 p-4 flex flex-col items-center justify-center">
+                {isPdfFile(loadRow.ticketUrl) ? (
+                  <div className="w-full flex flex-col gap-3">
+                    <div className="w-full h-[500px] rounded-lg overflow-hidden border border-stone-200 dark:border-zinc-850 bg-white dark:bg-zinc-900">
+                      <iframe
+                        src={loadRow.ticketUrl}
+                        className="w-full h-full border-none"
+                        title="Visor de Ticket PDF"
+                      />
+                    </div>
+                    <a
+                      href={loadRow.ticketUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-[#006d37] hover:bg-[#005c2e] text-white text-sm font-semibold transition-colors shadow-sm cursor-pointer"
+                    >
+                      <ExternalLink className="size-4" /> Abrir PDF en nueva pestaña
+                    </a>
+                  </div>
+                ) : (
+                  <div className="w-full flex flex-col gap-3 items-center">
+                    <div className="max-w-full rounded-lg overflow-hidden border border-stone-200 dark:border-zinc-850 bg-white dark:bg-zinc-900 p-2">
+                      <img
+                        src={loadRow.ticketUrl}
+                        alt="Ticket de carga"
+                        className="max-h-[500px] w-auto object-contain mx-auto rounded-md shadow-xs"
+                      />
+                    </div>
+                    <a
+                      href={loadRow.ticketUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-[#006d37] hover:bg-[#005c2e] text-white text-sm font-semibold transition-colors shadow-sm cursor-pointer"
+                    >
+                      <ExternalLink className="size-4" /> Ver imagen completa
+                    </a>
+                  </div>
+                )}
+              </div>
+            </section>
+          </>
+        )}
+
         {loadRow.isFullTankFill && (
           <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-100 dark:border-emerald-900/30 flex items-center gap-3">
             <div className="size-8 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
@@ -119,7 +191,7 @@ export function FuelLoadDetailsDialog({ isOpen, onClose, loadRow }: FuelLoadDeta
             </div>
             <div>
               <p className="text-sm font-bold text-emerald-900 dark:text-emerald-100">Tanque Lleno</p>
-              <p className="text-xs text-emerald-700 dark:text-emerald-300">Esta carga fue marcada como "tanque lleno", lo que la hace válida para cálculos de rendimiento real.</p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">Esta carga fue marcada como &quot;tanque lleno&quot;, lo que la hace válida para cálculos de rendimiento real.</p>
             </div>
           </div>
         )}

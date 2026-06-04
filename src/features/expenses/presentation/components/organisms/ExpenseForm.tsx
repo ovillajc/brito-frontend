@@ -247,6 +247,15 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
         handleClose()
         return
       }
+
+      const amountFallback =
+        data.unitPrice != null && data.quantity != null
+          ? Number((data.unitPrice * data.quantity).toFixed(2))
+          : data.amount
+      const normalizedData = Number.isFinite(data.amount) && data.amount > 0
+        ? data
+        : { ...data, amount: amountFallback }
+
       if (isEdit && expenseRow) {
         // Edición siempre requiere red
         if (isOffline) {
@@ -254,19 +263,19 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
           setSubmissionStatus('error')
           return
         }
-        await updateExpense.mutateAsync({ expenseId: expenseRow.id, input: data })
+        await updateExpense.mutateAsync({ expenseId: expenseRow.id, input: normalizedData })
         setSubmissionError(null)
         setSubmissionStatus('success')
       } else {
         // Creación: soporta modo offline
         const displayData: Record<string, unknown> = {
-          description: data.description,
-          amount: data.amount,
-          expenseDate: data.expenseDate,
-          categoryId: data.categoryId,
-          subcategoryId: data.subcategoryId,
+          description: normalizedData.description,
+          amount: normalizedData.amount,
+          expenseDate: normalizedData.expenseDate,
+          categoryId: normalizedData.categoryId,
+          subcategoryId: normalizedData.subcategoryId,
         }
-        const result = await executeOffline(data, displayData)
+        const result = await executeOffline(normalizedData, displayData)
         if (result.ok) {
           setSubmissionError(null)
           setSubmissionStatus('success')
@@ -441,7 +450,7 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
                 label="Adjuntar Ticket o Factura (PDF / Imagen)"
                 currentUrl={watch('receiptUrl')}
                 onUploadComplete={(url) => setValue('receiptUrl', url)}
-                disabled={isReadOnly}
+                disabled={isReadOnly || !(Number(unitPrice) > 0 && Number(quantity) > 0 && !!watch('unitId'))}
               />
 
               {watch('receiptUrl') ? (

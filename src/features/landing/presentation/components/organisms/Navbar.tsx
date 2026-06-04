@@ -75,7 +75,7 @@ export const Navbar = () => {
               Solicitar Cotización
             </Button> */}
             <Button
-              variant="orange"
+              variant="green"
               size="sm"
               className="rounded-full px-5 shadow-md"
               onClick={() => router.push(isAuthenticated ? '/dashboard' : '/login')}

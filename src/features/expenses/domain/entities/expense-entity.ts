@@ -53,6 +53,8 @@ export type ExpenseFrequency = typeof EXPENSE_FREQUENCY[keyof typeof EXPENSE_FRE
 export interface ExpenseEntity {
   id: string
   tripId: string | null
+  /** Número de viaje (ej. 12 → "VJE-000012"), denormalizado desde JOIN con trips */
+  tripNumber: number | null
   truckId: string | null
   trailerId: string | null
   /** FK a expense_categories */

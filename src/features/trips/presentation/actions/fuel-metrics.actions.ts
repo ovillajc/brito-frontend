@@ -22,6 +22,7 @@ import type { WalmartTripDataEntity, WalmartTripDataInput } from '@/src/features
 import { createClient } from '@/src/core/lib/supabase/server'
 import { FuelMetricsMapper, type FuelLoadHistoryRow, type FuelMetricsListTripRow } from '@/src/features/trips/infrastructure/mappers/FuelMetricsMapper'
 import { hasPermission } from '@/src/features/auth/infrastructure/dal'
+import { deleteR2ObjectByPublicUrl } from '@/src/core/infrastructure/storage/r2-client'
 
 // ── Helpers de autenticación ─────────────────────────────────────────────────
 
@@ -53,6 +54,32 @@ async function ensureExpenseCategoryId(supabase: Awaited<ReturnType<typeof creat
   const { data: created, error: createError } = await supabase
     .from('expense_categories')
     .insert({ name })
+    .select('id')
+    .single()
+
+  if (createError) {
+    return { ok: false, error: { code: 'DB_ERROR', message: createError.message } }
+  }
+
+  return { ok: true, data: (created as ExpenseCategoryRow).id }
+}
+
+async function ensureMeasurementUnitId(supabase: Awaited<ReturnType<typeof createClient>>, name: string, abbreviation: string): Promise<Either<Failure, string>> {
+  const { data: found, error: findError } = await supabase
+    .from('measurement_units')
+    .select('id,name')
+    .ilike('name', name)
+    .maybeSingle()
+
+  if (findError) {
+    return { ok: false, error: { code: 'DB_ERROR', message: findError.message } }
+  }
+
+  if (found) return { ok: true, data: (found as ExpenseCategoryRow).id }
+
+  const { data: created, error: createError } = await supabase
+    .from('measurement_units')
+    .insert({ name, abbreviation })
     .select('id')
     .single()
 
@@ -110,7 +137,7 @@ export async function getFuelMetricsRowsAction(): Promise<Either<Failure, TripFu
         'clients(trade_name, company_name)',
         'unit_assemblies(economic_number, trailer2_id, trucks(plates, theoretical_yield), employees(full_name))',
         'trip_fuel_metrics(km_initial, km_initial_date, km_final, km_final_date, hours_r1, r1_start_date, r1_end_date, hours_r2, r2_start_date, r2_end_date, total_km_preinvoice)',
-        'fuel_loads(id, vehicle_type, trailer_id, ticket_folio, liters_loaded, price_per_liter, total_cost, odometer_at_load, created_at)',
+        'fuel_loads(id, vehicle_type, trailer_id, ticket_folio, ticket_url, liters_loaded, price_per_liter, total_cost, odometer_at_load, created_at)',
       ].join(', '))
       .order('departure_date', { ascending: false })
       .limit(200)
@@ -153,6 +180,7 @@ export async function getFuelLoadHistoryAction(
         'trip_id',
         'load_date',
         'ticket_folio',
+        'ticket_url',
         'liters_loaded',
         'price_per_liter',
         'total_cost',
@@ -252,11 +280,17 @@ export async function registerFuelLoadAction(
   const canManageFinances = await hasPermission('finances:manage')
   const canCreateFuelLoad = await hasPermission('fuel_load:create')
   if (!(canManageFuel || canManageFinances || canCreateFuelLoad)) {
+    if (data.ticketUrl) {
+      await deleteR2ObjectByPublicUrl(data.ticketUrl)
+    }
     return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
   }
 
   const profileId = await getCurrentProfileId()
   if (!profileId) {
+    if (data.ticketUrl) {
+      await deleteR2ObjectByPublicUrl(data.ticketUrl)
+    }
     return { ok: false, error: { code: 'UNAUTHORIZED', message: 'Usuario no autenticado', statusCode: 401 } }
   }
 
@@ -272,11 +306,17 @@ export async function registerFuelLoadAction(
       .maybeSingle()
 
     if (tankError) {
+      if (data.ticketUrl) {
+        await deleteR2ObjectByPublicUrl(data.ticketUrl)
+      }
       return { ok: false, error: { code: 'DB_ERROR', message: tankError.message } }
     }
 
     const activeTank = (tank as FuelTankRow | null)?.id ?? null
     if (!activeTank) {
+      if (data.ticketUrl) {
+        await deleteR2ObjectByPublicUrl(data.ticketUrl)
+      }
       return { ok: false, error: { code: 'NO_TANK', message: 'No hay un tanque activo configurado' } }
     }
 
@@ -286,6 +326,9 @@ export async function registerFuelLoadAction(
       .eq('tank_id', activeTank)
 
     if (movementsError) {
+      if (data.ticketUrl) {
+        await deleteR2ObjectByPublicUrl(data.ticketUrl)
+      }
       return { ok: false, error: { code: 'DB_ERROR', message: movementsError.message } }
     }
 
@@ -308,15 +351,24 @@ export async function registerFuelLoadAction(
     )
 
     if (litersInTank <= 0 || inventoryValue <= 0) {
+      if (data.ticketUrl) {
+        await deleteR2ObjectByPublicUrl(data.ticketUrl)
+      }
       return { ok: false, error: { code: 'TANK_EMPTY', message: 'El tanque no tiene inventario suficiente para costear la carga' } }
     }
 
     if (data.litersLoaded > litersInTank) {
+      if (data.ticketUrl) {
+        await deleteR2ObjectByPublicUrl(data.ticketUrl)
+      }
       return { ok: false, error: { code: 'TANK_INSUFFICIENT', message: `Inventario insuficiente en tanque. Disponible: ${litersInTank.toFixed(2)} L` } }
     }
 
     const avgCostPerLiter = inventoryValue / litersInTank
     if (!Number.isFinite(avgCostPerLiter) || avgCostPerLiter <= 0) {
+      if (data.ticketUrl) {
+        await deleteR2ObjectByPublicUrl(data.ticketUrl)
+      }
       return { ok: false, error: { code: 'TANK_COST_INVALID', message: 'Costo promedio inválido para el tanque' } }
     }
 
@@ -340,6 +392,9 @@ export async function registerFuelLoadAction(
       .single()
 
     if (movementError) {
+      if (data.ticketUrl) {
+        await deleteR2ObjectByPublicUrl(data.ticketUrl)
+      }
       return { ok: false, error: { code: 'DB_ERROR', message: movementError.message } }
     }
 
@@ -355,6 +410,9 @@ export async function registerFuelLoadAction(
 
     if (!result.ok) {
       await supabase.from('fuel_tank_movements').delete().eq('id', movementId)
+      if (data.ticketUrl) {
+        await deleteR2ObjectByPublicUrl(data.ticketUrl)
+      }
       return result
     }
 
@@ -375,8 +433,33 @@ export async function registerFuelLoadAction(
     const categoryIdResult = await ensureExpenseCategoryId(supabase, 'Combustible')
     if (!categoryIdResult.ok) {
       await supabase.from('fuel_loads').delete().eq('id', result.data.id)
+      if (result.data.ticketUrl) {
+        await deleteR2ObjectByPublicUrl(result.data.ticketUrl)
+      }
       return categoryIdResult
     }
+
+    const unitIdResult = await ensureMeasurementUnitId(supabase, 'Litros', 'L')
+    if (!unitIdResult.ok) {
+      await supabase.from('fuel_loads').delete().eq('id', result.data.id)
+      if (result.data.ticketUrl) {
+        await deleteR2ObjectByPublicUrl(result.data.ticketUrl)
+      }
+      return unitIdResult
+    }
+
+    const rawTotal = result.data.totalCost
+    const expenseAmount = rawTotal != null ? Number(rawTotal) : NaN
+    if (!Number.isFinite(expenseAmount) || expenseAmount <= 0) {
+      await supabase.from('fuel_loads').delete().eq('id', result.data.id)
+      if (result.data.ticketUrl) {
+        await deleteR2ObjectByPublicUrl(result.data.ticketUrl)
+      }
+      return { ok: false, error: { code: 'VALIDATION_ERROR', message: 'Total de la carga inválido. Verifica litros y precio.' } }
+    }
+
+    const pricePerLiter = Number(result.data.pricePerLiter)
+    const litersLoaded = Number(result.data.litersLoaded)
 
     const { data: expense, error: expenseError } = await supabase
       .from('expenses')
@@ -385,10 +468,13 @@ export async function registerFuelLoadAction(
         truck_id: result.data.truckId,
         trailer_id: null,
         category_id: categoryIdResult.data,
-        amount: result.data.totalCost,
+        amount: expenseAmount,
+        unit_price: pricePerLiter,
+        quantity: litersLoaded,
+        unit_id: unitIdResult.data,
         expense_date: result.data.loadDate?.toISOString() ?? new Date().toISOString(),
         description: `Carga diésel (viaje) — Folio: ${result.data.ticketFolio ?? ''}`,
-        receipt_url: null,
+        receipt_url: result.data.ticketUrl ?? null,
         is_ai_classified: false,
         created_by: null,
       })
@@ -397,6 +483,9 @@ export async function registerFuelLoadAction(
 
     if (expenseError) {
       await supabase.from('fuel_loads').delete().eq('id', result.data.id)
+      if (result.data.ticketUrl) {
+        await deleteR2ObjectByPublicUrl(result.data.ticketUrl)
+      }
       return { ok: false, error: { code: 'DB_ERROR', message: expenseError.message } }
     }
 
@@ -405,6 +494,10 @@ export async function registerFuelLoadAction(
 
     revalidatePath(`/trips/fuel/load`)
     revalidatePath(`/trips/fuel`)
+  } else {
+    if (data.ticketUrl) {
+      await deleteR2ObjectByPublicUrl(data.ticketUrl)
+    }
   }
 
   return result
@@ -449,12 +542,28 @@ export async function updateFuelLoadAction(
     return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
   }
 
+  const supabase = await createClient()
+  const prev = await supabase.from('fuel_loads').select('ticket_url').eq('id', id).maybeSingle()
+  const previousTicketUrl =
+    prev.data && typeof (prev.data as Record<string, unknown>).ticket_url === 'string'
+      ? ((prev.data as Record<string, unknown>).ticket_url as string)
+      : null
+
   const repo = new SupabaseFuelMetricsRepository()
   const result = await UpdateFuelLoad(repo, id, data)
 
   if (result.ok) {
+    const nextTicketUrl = result.data.ticketUrl ?? null
+    if (previousTicketUrl && previousTicketUrl !== nextTicketUrl) {
+      await deleteR2ObjectByPublicUrl(previousTicketUrl)
+    }
     revalidatePath(`/trips/fuel`)
     revalidatePath(`/trips/fuel/load`)
+  } else {
+    const nextTicketUrl = data.ticketUrl ?? null
+    if (nextTicketUrl && nextTicketUrl !== previousTicketUrl) {
+      await deleteR2ObjectByPublicUrl(nextTicketUrl)
+    }
   }
 
   return result
@@ -470,10 +579,20 @@ export async function deleteFuelLoadAction(id: string): Promise<Either<Failure, 
     return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
   }
 
+  const supabase = await createClient()
+  const prev = await supabase.from('fuel_loads').select('ticket_url').eq('id', id).maybeSingle()
+  const previousTicketUrl =
+    prev.data && typeof (prev.data as Record<string, unknown>).ticket_url === 'string'
+      ? ((prev.data as Record<string, unknown>).ticket_url as string)
+      : null
+
   const repo = new SupabaseFuelMetricsRepository()
   const result = await DeleteFuelLoad(repo, id)
 
   if (result.ok) {
+    if (previousTicketUrl) {
+      await deleteR2ObjectByPublicUrl(previousTicketUrl)
+    }
     revalidatePath(`/trips/fuel`)
     revalidatePath(`/trips/fuel/load`)
   }
@@ -553,4 +672,25 @@ export async function getFuelMetricsKpisAction(
   } catch {
     return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al calcular KPIs de combustible' } }
   }
+}
+
+/**
+ * Elimina directamente un archivo de ticket desde Cloudflare R2.
+ * Se usa cuando el usuario quiere desvincular y borrar la imagen/PDF
+ * de un ticket sin reemplazarlo por uno nuevo.
+ *
+ * Requiere: fuel:manage, finances:manage o fuel_load:create.
+ */
+export async function deleteFuelLoadTicketAction(
+  url: string
+): Promise<Either<Failure, true>> {
+  const canManageFuel = await hasPermission('fuel:manage')
+  const canManageFinances = await hasPermission('finances:manage')
+  const canCreateFuelLoad = await hasPermission('fuel_load:create')
+
+  if (!(canManageFuel || canManageFinances || canCreateFuelLoad)) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado para eliminar archivos.', statusCode: 403 } }
+  }
+
+  return deleteR2ObjectByPublicUrl(url)
 }

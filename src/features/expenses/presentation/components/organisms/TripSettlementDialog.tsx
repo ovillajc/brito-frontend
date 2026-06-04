@@ -104,11 +104,15 @@ export function TripSettlementDialog({ isOpen, onClose, trip, children }: TripSe
   )
   const errorClass = 'text-xs text-red-600 mt-1'
 
+  const tripLabel = trip.tripNumber != null
+    ? `VJE-${String(trip.tripNumber).padStart(6, '0')}`
+    : (trip.folio ?? `VJE-${trip.tripId.slice(0, 8)}`)
+
   return (
     <Dialog
       isOpen={isOpen}
       onClose={handleClose}
-      title="Comprobación de Viaje"
+      title={`Comprobación de Viaje ${tripLabel}`}
       description="Registra las cuentas hechas y adjunta evidencia del ticket de liquidación."
       size="full"
     >

@@ -17,6 +17,7 @@ const SELECT_WITH_JOINS = [
   'expense_subcategories(name)',
   'measurement_units(name)',
   'cargo_types(name)',
+  'trips(trip_number)',
 ].join(', ')
 
 export class SupabaseExpensesServerRepository implements IExpensesRepository {

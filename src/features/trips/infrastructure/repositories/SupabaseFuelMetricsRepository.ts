@@ -202,6 +202,7 @@ export class SupabaseFuelMetricsRepository implements IFuelMetricsRepository {
       if (data.supervisedBy !== undefined) payload.supervised_by = data.supervisedBy
       if (data.loadDate !== undefined) payload.load_date = data.loadDate?.toISOString() ?? null
       if (data.ticketFolio !== undefined) payload.ticket_folio = data.ticketFolio
+      if (data.ticketUrl !== undefined) payload.ticket_url = data.ticketUrl
       if (data.litersLoaded !== undefined) payload.liters_loaded = data.litersLoaded
       if (data.pricePerLiter !== undefined) payload.price_per_liter = data.pricePerLiter
       if (data.totalCost !== undefined) payload.total_cost = data.totalCost
@@ -229,13 +230,56 @@ export class SupabaseFuelMetricsRepository implements IFuelMetricsRepository {
   async deleteFuelLoad(id: string): Promise<Either<Failure, void>> {
     try {
       const supabase = await createClient()
-      const { error } = await supabase
+      const { data: loadRow, error: loadRowError } = await supabase
+        .from('fuel_loads')
+        .select('fuel_tank_movement_id')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (loadRowError) {
+        return { ok: false, error: { code: 'DB_ERROR', message: loadRowError.message } }
+      }
+
+      const movementId = (loadRow as { fuel_tank_movement_id: string | null } | null)?.fuel_tank_movement_id ?? null
+
+      if (movementId) {
+        const { error: unlinkMovementError } = await supabase
+          .from('fuel_tank_movements')
+          .update({ fuel_load_id: null })
+          .eq('id', movementId)
+
+        if (unlinkMovementError) {
+          return { ok: false, error: { code: 'DB_ERROR', message: unlinkMovementError.message } }
+        }
+
+        const { error: unlinkLoadError } = await supabase
+          .from('fuel_loads')
+          .update({ fuel_tank_movement_id: null })
+          .eq('id', id)
+
+        if (unlinkLoadError) {
+          return { ok: false, error: { code: 'DB_ERROR', message: unlinkLoadError.message } }
+        }
+      }
+
+      const { error: deleteLoadError } = await supabase
         .from('fuel_loads')
         .delete()
         .eq('id', id)
 
-      if (error) {
-        return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      if (deleteLoadError) {
+        return { ok: false, error: { code: 'DB_ERROR', message: deleteLoadError.message } }
+      }
+
+      if (movementId) {
+        const { error: deleteMovementError } = await supabase
+          .from('fuel_tank_movements')
+          .delete()
+          .eq('id', movementId)
+
+        if (deleteMovementError) {
+          return { ok: false, error: { code: 'DB_ERROR', message: deleteMovementError.message } }
+        }
       }
 
       return { ok: true, data: undefined }
