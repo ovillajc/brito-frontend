@@ -2,12 +2,13 @@
 
 import React, { useState } from 'react'
 import { Check, Info, Truck, Plus, ChevronRight } from 'lucide-react'
-import { useClients } from '../../hooks/use-fleet'
+import { useClients, useUnitAssemblies } from '../../hooks/use-fleet'
 import { useClientPools, useAvailableUnitsForClient, usePoolMutations } from '../../hooks/use-pools'
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 import { ClientPoolWizard } from './ClientPoolWizard'
+import { PoolDeliveryFormatTable } from './PoolDeliveryFormatTable'
 
 /**
  * Interfaz de matriz para asignar unidades armadas a pools de clientes.
@@ -16,9 +17,11 @@ export function PoolAssignmentMatrix() {
   const { data: clients } = useClients()
   const [selectedClientId, setSelectedClientId] = useState<string>('')
   const [isPoolWizardOpen, setIsPoolWizardOpen] = useState(false)
+  const [selectedPoolForFormat, setSelectedPoolForFormat] = useState<string | null>(null)
   
   const { data: pools, isLoading: isLoadingPools } = useClientPools(selectedClientId)
-  const { data: units, isLoading: isLoadingUnits } = useAvailableUnitsForClient(selectedClientId)
+  const { data: availableUnits, isLoading: isLoadingUnits } = useAvailableUnitsForClient(selectedClientId)
+  const { data: allAssemblies } = useUnitAssemblies()
   const { assignUnits } = usePoolMutations()
 
   const [pendingAssignments, setPendingAssignments] = useState<Record<string, string>>({})
@@ -59,31 +62,36 @@ export function PoolAssignmentMatrix() {
           clientLabel={currentClientLabel}
         />
       )}
-      {/* Client Selector */}
-      <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-stone-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm">
-        <label className="text-xs font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-widest mb-3 block">
-          Seleccionar Cliente para Gestión de Pools
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {clients?.map((client) => (
-            <button
-              key={client.id}
-              onClick={() => setSelectedClientId(client.id)}
-              className={cn(
-                "px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 flex items-center gap-2",
-                selectedClientId === client.id 
-                  ? "bg-[#1a5c3a] text-white shadow-lg shadow-[#1a5c3a]/20 scale-105" 
-                  : "bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-400 hover:bg-stone-200"
-              )}
-            >
-              {client.tradeName ?? client.companyName ?? 'Cliente'}
-              {selectedClientId === client.id && <Check className="size-3" />}
-            </button>
-          ))}
+      {/* Client Selector (hide if showing format) */}
+      {!selectedPoolForFormat && (
+        <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-stone-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm">
+          <label className="text-xs font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-widest mb-3 block">
+            Seleccionar Cliente para Gestión de Pools
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {clients?.map((client) => (
+              <button
+                key={client.id}
+                onClick={() => {
+                  setSelectedClientId(client.id)
+                  setSelectedPoolForFormat(null)
+                }}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 flex items-center gap-2",
+                  selectedClientId === client.id 
+                    ? "bg-[#1a5c3a] text-white shadow-lg shadow-[#1a5c3a]/20 scale-105" 
+                    : "bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-400 hover:bg-stone-200"
+                )}
+              >
+                {client.tradeName ?? client.companyName ?? 'Cliente'}
+                {selectedClientId === client.id && <Check className="size-3" />}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {!selectedClientId && (
+      {!selectedClientId && !selectedPoolForFormat && (
         <div className="flex flex-col items-center justify-center py-20 text-stone-400">
           <Info className="size-12 mb-4 opacity-20" />
           <p className="text-sm">Selecciona un cliente para ver y gestionar su flota dedicada.</p>
@@ -117,7 +125,17 @@ export function PoolAssignmentMatrix() {
                       {pool.unitsCount || 0} Unidades
                     </Badge>
                   </div>
-                  <p className="text-[11px] text-stone-500 dark:text-zinc-500 line-clamp-1">{pool.description || 'Sin descripción'}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-[11px] text-stone-500 dark:text-zinc-500 line-clamp-1">{pool.description || 'Sin descripción'}</p>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setSelectedPoolForFormat(pool.id)}
+                      className="h-6 text-[10px] text-[#1a5c3a] hover:bg-[#1a5c3a]/10 px-2"
+                    >
+                      Ver Formato
+                    </Button>
+                  </div>
                 </div>
               ))}
               {pools?.length === 0 && (
@@ -128,9 +146,19 @@ export function PoolAssignmentMatrix() {
             </div>
           </div>
 
-          {/* Assignment Matrix Area */}
-          <div className="xl:col-span-3 bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm flex flex-col">
-            <div className="p-4 border-b border-stone-100 dark:border-zinc-800 flex items-center justify-between bg-stone-50/50 dark:bg-zinc-800/30">
+          {/* Main Area: Matrix or Format Table */}
+          {selectedPoolForFormat ? (
+            <div className="xl:col-span-3">
+              <PoolDeliveryFormatTable
+                poolName={pools?.find(p => p.id === selectedPoolForFormat)?.name || ''}
+                clientName={currentClientLabel}
+                units={allAssemblies?.filter(u => u.clientPoolId === selectedPoolForFormat) || []}
+                onBack={() => setSelectedPoolForFormat(null)}
+              />
+            </div>
+          ) : (
+            <div className="xl:col-span-3 bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+              <div className="p-4 border-b border-stone-100 dark:border-zinc-800 flex items-center justify-between bg-stone-50/50 dark:bg-zinc-800/30">
               <h3 className="text-sm font-bold text-stone-900 dark:text-zinc-100 flex items-center gap-2">
                 <Truck className="size-4 text-[#1a5c3a]" />
                 Asignación de Unidades a Pools
@@ -159,7 +187,7 @@ export function PoolAssignmentMatrix() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-50 dark:divide-zinc-800/50">
-                  {units?.map((unit) => (
+                  {availableUnits?.map((unit) => (
                     <tr key={unit.id} className="hover:bg-stone-50/50 dark:hover:bg-zinc-800/30 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
@@ -190,7 +218,7 @@ export function PoolAssignmentMatrix() {
                       })}
                     </tr>
                   ))}
-                  {(!units || units.length === 0) && (
+                  {(!availableUnits || availableUnits.length === 0) && (
                     <tr>
                       <td colSpan={(pools?.length || 0) + 1} className="px-6 py-20 text-center text-stone-400">
                          No hay unidades asignadas directamente a este cliente para gestionar.
@@ -201,6 +229,7 @@ export function PoolAssignmentMatrix() {
               </table>
             </div>
           </div>
+          )}
         </div>
       )}
     </div>

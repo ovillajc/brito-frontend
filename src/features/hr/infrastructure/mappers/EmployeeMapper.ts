@@ -7,6 +7,15 @@ export class EmployeeMapper {
    */
   static toDomain(raw: Record<string, unknown>): EmployeeEntity {
     const departments = raw.departments as { name?: string } | null
+    
+    // Handle array or object from Supabase (typically array from 1:1 if not configured properly, but usually array of 1 or object)
+    let driverDetails: Record<string, unknown> | null = null
+    if (Array.isArray(raw.driver_details) && raw.driver_details.length > 0) {
+      driverDetails = raw.driver_details[0] as Record<string, unknown>
+    } else if (raw.driver_details && !Array.isArray(raw.driver_details)) {
+      driverDetails = raw.driver_details as Record<string, unknown>
+    }
+
     return {
       id: raw.id as string,
       fullName: raw.full_name as string,
@@ -27,6 +36,18 @@ export class EmployeeMapper {
       bloodType: raw.blood_type as string | null,
       medicalNotes: raw.medical_notes as string | null,
       profileId: raw.profile_id as string | null,
+
+      // Driver details
+      licenseNumber: driverDetails?.license_number as string | null,
+      licenseType: driverDetails?.license_type as string | null,
+      licenseExpiration: driverDetails?.license_expiration ? new Date(driverDetails.license_expiration as string) : null,
+      opaloId: driverDetails?.opalo_id as string | null,
+      opaloExpiration: driverDetails?.opalo_expiration ? new Date(driverDetails.opalo_expiration as string) : null,
+      rcontrolId: driverDetails?.rcontrol_id as string | null,
+      rcontrolExpiration: driverDetails?.rcontrol_expiration ? new Date(driverDetails.rcontrol_expiration as string) : null,
+      fasttrackId: driverDetails?.fasttrack_id as string | null,
+      fasttrackExpiration: driverDetails?.fasttrack_expiration ? new Date(driverDetails.fasttrack_expiration as string) : null,
+
       createdAt: new Date(raw.created_at as string),
       updatedAt: new Date(raw.updated_at as string),
     }
@@ -52,6 +73,27 @@ export class EmployeeMapper {
       emergency_contact_phone: input.emergencyContactPhone || null,
       blood_type: input.bloodType || null,
       medical_notes: input.medicalNotes || null,
+    }
+  }
+
+  /**
+   * Mapea credenciales de operador para la tabla driver_details
+   */
+  static toPersistDriverDetails(input: CreateEmployeeInput | UpdateEmployeeInput, employeeId: string) {
+    if (!input.isOperator) return null
+
+    return {
+      employee_id: employeeId,
+      license_number: input.licenseNumber || null,
+      license_type: input.licenseType || null,
+      license_expiration: input.licenseExpiration || null,
+      opalo_id: input.opaloId || null,
+      opalo_expiration: input.opaloExpiration || null,
+      rcontrol_id: input.rcontrolId || null,
+      rcontrol_expiration: input.rcontrolExpiration || null,
+      fasttrack_id: input.fasttrackId || null,
+      fasttrack_expiration: input.fasttrackExpiration || null,
+      updated_at: new Date().toISOString()
     }
   }
 

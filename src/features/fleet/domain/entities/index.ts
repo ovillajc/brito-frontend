@@ -39,7 +39,9 @@ export interface TruckEntity {
   engine?: string
   tireSize?: string
   tankCapacity?: number
-  theoreticalYield?: number
+  vehicleType: 'TRUCK' | 'TORTON'
+  sizeFt?: number
+  capacityKg?: number
 }
 
 /**
@@ -149,6 +151,8 @@ export interface UnitAssemblyEntity {
   isActive: boolean
   status: UnitStatus
   theoreticalYield?: number
+  poolRole?: 'titular' | 'sustituta'
+  substitutesUnitId?: string | null
   createdAt: Date
   updatedAt: Date
 
@@ -163,6 +167,8 @@ export interface UnitAssemblyEntity {
   trailer2Plates?: string
   clientName?: string
   companyProfileLegalName?: string
+  substituteEconomicNumber?: string
+  substitutePlates?: string
 }
 
 export type UnitAssemblyLogAction = 'CREATED' | 'UPDATED' | 'TRAILER_DETACHED'

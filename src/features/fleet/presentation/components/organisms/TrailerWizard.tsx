@@ -48,6 +48,7 @@ export function TrailerWizard({ isOpen, onClose, trailer }: TrailerWizardProps) 
   const [activeStep, setActiveStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('idle')
+  const [serverError, setServerError] = useState<string | null>(null)
 
   const { data: companies, isLoading: isLoadingCompanies } = useCompanyProfiles()
   const { data: trailerModels, isLoading: isLoadingModels } = useTrailerModels()
@@ -125,6 +126,7 @@ export function TrailerWizard({ isOpen, onClose, trailer }: TrailerWizardProps) 
 
   const handleFinish = handleSubmit(async (data) => {
     setIsSubmitting(true)
+    setServerError(null)
     try {
       const result = isEdit
         ? await updateTrailerAction({ ...data, id: trailer!.id })
@@ -134,10 +136,14 @@ export function TrailerWizard({ isOpen, onClose, trailer }: TrailerWizardProps) 
         queryClient.invalidateQueries({ queryKey: ['fleet', 'trailers'] })
         setSubmissionStatus('success')
       } else {
+        console.error("🔥 Error desde el servidor (Create/Update Trailer):", result.error)
+        setServerError(result.error?.message || 'Error desconocido')
         setSubmissionStatus('error')
         toast.error(result.error?.message ?? `Error al ${isEdit ? 'actualizar' : 'crear'} remolque`)
       }
-    } catch {
+    } catch (err) {
+      console.error("💥 Excepción capturada en handleFinish:", err)
+      setServerError('Error inesperado al procesar la solicitud.')
       setSubmissionStatus('error')
       toast.error('Error inesperado al procesar la solicitud')
     } finally {
@@ -148,13 +154,15 @@ export function TrailerWizard({ isOpen, onClose, trailer }: TrailerWizardProps) 
   const handleClose = () => {
     setActiveStep(0)
     setSubmissionStatus('idle')
+    setServerError(null)
     onClose()
   }
 
   const handleReset = () => {
     setSubmissionStatus('idle')
+    setServerError(null)
     setActiveStep(0)
-    if (!isEdit) reset()
+    reset()
   }
 
   // ── Step 1: Datos Generales ──
@@ -310,7 +318,7 @@ export function TrailerWizard({ isOpen, onClose, trailer }: TrailerWizardProps) 
             title={submissionStatus === 'success' ? (isEdit ? '¡Actualización Exitosa!' : '¡Remolque Registrado!') : 'Error en la operación'}
             message={submissionStatus === 'success'
               ? `El remolque ha sido ${isEdit ? 'actualizado' : 'registrado'} correctamente en la plataforma.`
-              : 'No pudimos completar la operación en este momento.'}
+              : (serverError || 'No pudimos completar la operación en este momento.')}
             primaryActionLabel="Finalizar"
             onPrimaryAction={handleClose}
             secondaryActionLabel={submissionStatus === 'success' && !isEdit ? 'Registrar otro' : undefined}

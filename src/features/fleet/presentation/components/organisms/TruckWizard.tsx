@@ -48,6 +48,7 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('idle')
+  const [serverError, setServerError] = useState<string | null>(null)
 
   const { data: companies, isLoading: isLoadingCompanies } = useCompanyProfiles()
 
@@ -58,6 +59,7 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
     handleSubmit,
     trigger,
     reset,
+    watch,
     formState: { errors },
   } = useForm<CreateTruckInput>({
     resolver: zodResolver(createTruckSchema),
@@ -74,6 +76,7 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
       engine: '',
       tireSize: '',
       tankCapacity: undefined,
+      vehicleType: 'TRUCK',
     },
   })
 
@@ -93,6 +96,9 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
         engine: truck.engine ?? '',
         tireSize: truck.tireSize ?? '',
         tankCapacity: truck.tankCapacity ?? undefined,
+        vehicleType: truck.vehicleType ?? 'TRUCK',
+        sizeFt: truck.sizeFt ?? undefined,
+        capacityKg: truck.capacityKg ?? undefined,
       })
     } else if (isOpen && !truck) {
       reset({
@@ -108,6 +114,9 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
         engine: '',
         tireSize: '',
         tankCapacity: undefined,
+        vehicleType: 'TRUCK',
+        sizeFt: undefined,
+        capacityKg: undefined,
       })
     }
   }, [isOpen, truck, reset])
@@ -124,6 +133,7 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
 
   const handleFinish = handleSubmit(async (data) => {
     setIsSubmitting(true)
+    setServerError(null)
     try {
       const result = isEdit
         ? await updateTruckAction({ ...data, id: truck!.id })
@@ -133,10 +143,14 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
         queryClient.invalidateQueries({ queryKey: ['fleet', 'tractors'] })
         setSubmissionStatus('success')
       } else {
+        console.error("🔥 Error desde el servidor (Create/Update Truck):", result.error)
+        setServerError(result.error?.message || 'Error desconocido')
         setSubmissionStatus('error')
-        toast.error(result.error.message ?? `Error al ${isEdit ? 'actualizar' : 'crear'} tracto`)
+        toast.error(result.error?.message ?? `Error al ${isEdit ? 'actualizar' : 'crear'} tracto`)
       }
-    } catch {
+    } catch (err) {
+      console.error("💥 Excepción capturada en handleFinish:", err)
+      setServerError('Error inesperado al procesar la solicitud.')
       setSubmissionStatus('error')
       toast.error('Error inesperado al procesar la solicitud')
     } finally {
@@ -147,19 +161,35 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
   const handleClose = () => {
     setActiveStep(0)
     setSubmissionStatus('idle')
+    setServerError(null)
+    if (!isEdit) reset()
     onClose()
   }
 
   const handleReset = () => {
-    setSubmissionStatus('idle')
     setActiveStep(0)
-    if (!isEdit) reset()
+    setSubmissionStatus('idle')
+    setServerError(null)
+    reset()
   }
 
   // ── Step 1: Datos Generales ──
   const step1Content = (
     <div className="flex flex-col gap-6 pt-2">
       <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="vehicleType">Tipo de Vehículo</Label>
+            <select
+              id="vehicleType"
+              className="flex h-12 w-full rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/20 transition-colors"
+              {...register('vehicleType')}
+            >
+              <option value="TRUCK">Tractocamión</option>
+              <option value="TORTON">Torton (Unidad unificada)</option>
+            </select>
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
             <Label htmlFor="economicNumber">Número Económico</Label>
@@ -271,6 +301,28 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
               {...register('tankCapacity', { valueAsNumber: true })}
             />
           </div>
+          {watch('vehicleType') === 'TORTON' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="capacityKg">Capacidad de Carga (kg)</Label>
+                <Input
+                  id="capacityKg"
+                  type="number"
+                  placeholder="25000"
+                  {...register('capacityKg', { valueAsNumber: true })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="sizeFt">Tamaño (Pies)</Label>
+                <Input
+                  id="sizeFt"
+                  type="number"
+                  placeholder="53"
+                  {...register('sizeFt', { valueAsNumber: true })}
+                />
+              </div>
+            </div>
+          )}
       </div>
       <WizardFooter
         isFirstStep={false}
@@ -298,7 +350,7 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
             title={submissionStatus === 'success' ? (isEdit ? '¡Actualización Exitosa!' : '¡Tracto Registrado!') : 'Error en la operación'}
             message={submissionStatus === 'success'
               ? `El tracto ha sido ${isEdit ? 'actualizado' : 'registrado'} correctamente en la plataforma.`
-              : 'No pudimos completar la operación en este momento.'}
+              : (serverError || 'No pudimos completar la operación en este momento.')}
             primaryActionLabel="Finalizar"
             onPrimaryAction={handleClose}
             secondaryActionLabel={submissionStatus === 'success' && !isEdit ? 'Registrar otro' : undefined}

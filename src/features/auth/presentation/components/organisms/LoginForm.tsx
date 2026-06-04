@@ -106,6 +106,13 @@ export function LoginForm() {
           )}
         />
 
+        {/* Global Error Message */}
+        {form.formState.errors.root && (
+          <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-xl text-sm font-medium text-red-600 dark:text-red-400">
+            {form.formState.errors.root.message}
+          </div>
+        )}
+
         {/* Submit */}
         <button
           type="submit"

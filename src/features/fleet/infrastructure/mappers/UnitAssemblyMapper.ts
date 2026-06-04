@@ -36,11 +36,14 @@ export class UnitAssemblyMapper {
       trailerId: raw.trailer_id as string | null,
       trailer2Id: raw.trailer2_id as string | null,
       clientId: raw.client_id as string | null,
+      clientPoolId: raw.client_pool_id as string | null,
       companyProfileId: raw.company_profile_id as string | null,
       isActive: raw.is_active as boolean,
       status: toUnitStatus(raw.status),
       createdAt: new Date(raw.created_at as string),
       updatedAt: new Date(raw.updated_at as string),
+      poolRole: (raw.pool_role as 'titular' | 'sustituta') ?? 'titular',
+      substitutesUnitId: raw.substitutes_unit_id as string | null,
 
       // Join fields
       employeeName: raw.employees
@@ -72,6 +75,12 @@ export class UnitAssemblyMapper {
         ? (raw.company_profile as Record<string, unknown>).legal_name as string
         : undefined,
       theoreticalYield: raw.theoretical_yield != null ? (raw.theoretical_yield as number) : undefined,
+      substituteEconomicNumber: raw.substitute
+        ? (raw.substitute as Record<string, unknown>).economic_number as string
+        : undefined,
+      substitutePlates: raw.substitute
+        ? ((raw.substitute as Record<string, unknown>).plates as string | null) ?? undefined
+        : undefined,
     }
   }
 
@@ -85,10 +94,13 @@ export class UnitAssemblyMapper {
       trailer_id: input.trailerId || null,
       trailer2_id: input.trailer2Id || null,
       client_id: input.clientId || null,
+      client_pool_id: input.clientPoolId || null,
       company_profile_id: input.companyProfileId || null,
       is_active: input.isActive ?? true,
       status: input.status ?? UNIT_STATUS.AtBase,
       theoretical_yield: input.theoreticalYield ?? null,
+      pool_role: input.poolRole ?? 'titular',
+      substitutes_unit_id: input.substitutesUnitId || null,
     }
   }
 
@@ -103,10 +115,13 @@ export class UnitAssemblyMapper {
     if (input.trailerId !== undefined) data.trailer_id = input.trailerId || null
     if (input.trailer2Id !== undefined) data.trailer2_id = input.trailer2Id || null
     if (input.clientId !== undefined) data.client_id = input.clientId || null
+    if (input.clientPoolId !== undefined) data.client_pool_id = input.clientPoolId || null
     if (input.companyProfileId !== undefined) data.company_profile_id = input.companyProfileId || null
     if (input.isActive !== undefined) data.is_active = input.isActive
     if (input.status !== undefined) data.status = input.status
     if (input.theoreticalYield !== undefined) data.theoretical_yield = input.theoreticalYield ?? null
+    if (input.poolRole !== undefined) data.pool_role = input.poolRole
+    if (input.substitutesUnitId !== undefined) data.substitutes_unit_id = input.substitutesUnitId || null
 
     return data
   }

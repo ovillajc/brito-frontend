@@ -11,7 +11,7 @@ export class SupabaseEmployeeRepository implements IEmployeeRepository {
       const supabase = await createClient()
       const { data, error } = await supabase
         .from('employees')
-        .select('*, departments(name)')
+        .select('*, departments(name), driver_details(*)')
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -38,7 +38,7 @@ export class SupabaseEmployeeRepository implements IEmployeeRepository {
       const supabase = await createClient()
       const { data, error } = await supabase
         .from('employees')
-        .select('*, departments(name)')
+        .select('*, departments(name), driver_details(*)')
         .eq('id', id)
         .single()
 
@@ -79,9 +79,28 @@ export class SupabaseEmployeeRepository implements IEmployeeRepository {
         }
       }
 
+      // If it's an operator, save driver details
+      if (data.isOperator) {
+        const driverDetails = EmployeeMapper.toPersistDriverDetails(data, created.id)
+        if (driverDetails) {
+          const { error: ddError } = await supabase
+            .from('driver_details')
+            .upsert(driverDetails)
+          
+          if (ddError) console.error('Error saving driver_details:', ddError.message)
+        }
+      }
+
+      // Refetch with driver details
+      const { data: finalCreated } = await supabase
+        .from('employees')
+        .select('*, departments(name), driver_details(*)')
+        .eq('id', created.id)
+        .single()
+
       return {
         ok: true,
-        data: EmployeeMapper.toDomain(created),
+        data: EmployeeMapper.toDomain(finalCreated || created),
       }
     } catch (err) {
       return {
@@ -111,9 +130,31 @@ export class SupabaseEmployeeRepository implements IEmployeeRepository {
         }
       }
 
+      // If it's an operator, save driver details
+      if (data.isOperator) {
+        const driverDetails = EmployeeMapper.toPersistDriverDetails(data, id)
+        if (driverDetails) {
+          const { error: ddError } = await supabase
+            .from('driver_details')
+            .upsert(driverDetails, { onConflict: 'employee_id' })
+          
+          if (ddError) console.error('Error updating driver_details:', ddError.message)
+        }
+      } else {
+        // Si ya no es operador, eliminamos los detalles por seguridad/limpieza
+        await supabase.from('driver_details').delete().eq('employee_id', id)
+      }
+
+      // Refetch with driver details
+      const { data: finalUpdated } = await supabase
+        .from('employees')
+        .select('*, departments(name), driver_details(*)')
+        .eq('id', id)
+        .single()
+
       return {
         ok: true,
-        data: EmployeeMapper.toDomain(updated),
+        data: EmployeeMapper.toDomain(finalUpdated || updated),
       }
     } catch (err) {
       return {
