@@ -1,21 +1,25 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useEffect, useMemo, useState } from 'react'
+import { useForm, type DefaultValues } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Fuel } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
+import { toast } from 'sonner'
 import type { UnitAssemblyEntity } from '@/src/features/fleet/domain/entities'
 import type { TripWithRelations } from '@/src/features/trips/domain/entities/trip-entity'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { ActionFeedback } from '@/src/core/presentation/components/molecules/ActionFeedback'
+import { ConfirmDialog } from '@/src/core/presentation/components/molecules/confirm-dialog'
 import { Wizard, type WizardStep } from '@/src/core/presentation/components/organisms/wizard'
 import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { Checkbox } from '@/src/core/presentation/components/ui/checkbox'
-import { FUEL_LOAD_SOURCE_TYPE, fuelLoadSchema, type FuelLoadFormValues } from '@/src/features/trips/domain/schemas/fuel-load.schema'
+import { FileUploadButton } from '@/src/core/presentation/components/molecules/FileUploadButton'
+import { FUEL_LOAD_SOURCE_TYPE, fuelLoadSchema, type FuelLoadFormValues, type FuelLoadSourceType } from '@/src/features/trips/domain/schemas/fuel-load.schema'
 import { useRegisterFuelLoad, useUpdateFuelLoad } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
+import { deleteFuelLoadTicketAction } from '@/src/features/trips/presentation/actions/fuel-metrics.actions'
 import { useTractors, useTrailers } from '@/src/features/fleet/presentation/hooks/use-fleet'
 import type { FuelLoadHistoryRowEntity } from '@/src/features/trips/domain/entities/fuel-metrics-entity'
 
@@ -34,15 +38,55 @@ function formatMoney(value: number | null) {
   return value.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
 }
 
+function getFuelLoadSourceType(value: string | null | undefined): FuelLoadSourceType {
+  if (value === FUEL_LOAD_SOURCE_TYPE.InternalTank) return FUEL_LOAD_SOURCE_TYPE.InternalTank
+  return FUEL_LOAD_SOURCE_TYPE.External
+}
+
+function getFuelLoadDefaultValues(editRow?: FuelLoadHistoryRowEntity | null): DefaultValues<FuelLoadFormValues> {
+  if (editRow) {
+    return {
+      tripId: editRow.tripId ?? '',
+      vehicleType: editRow.vehicleType,
+      truckId: editRow.truckId ?? '',
+      trailerId: editRow.trailerId ?? '',
+      ticketFolio: editRow.ticketFolio ?? '',
+      ticketUrl: editRow.ticketUrl ?? null,
+      loadDate: editRow.loadDate ? new Date(editRow.loadDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
+      litersLoaded: editRow.litersLoaded,
+      pricePerLiter: editRow.pricePerLiter,
+      isFullTankFill: editRow.isFullTankFill,
+      sourceType: getFuelLoadSourceType(editRow.sourceType),
+      odometerAtLoad: editRow.odometerAtLoad,
+    }
+  }
+
+  return {
+    tripId: '',
+    vehicleType: 'TRUCK',
+    truckId: '',
+    trailerId: '',
+    ticketFolio: '',
+    ticketUrl: null,
+    loadDate: new Date().toISOString().slice(0, 16),
+    isFullTankFill: false,
+    sourceType: FUEL_LOAD_SOURCE_TYPE.External,
+  }
+}
+
 export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelLoadWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isDeleteTicketConfirmOpen, setIsDeleteTicketConfirmOpen] = useState(false)
+  const [isDeletingTicket, setIsDeletingTicket] = useState(false)
 
   const registerFuelLoad = useRegisterFuelLoad()
   const updateFuelLoad = useUpdateFuelLoad()
   const { data: trucks } = useTractors()
   const { data: allTrailers } = useTrailers()
+
+  const defaultValues = useMemo(() => getFuelLoadDefaultValues(editRow), [editRow])
 
   const {
     register,
@@ -50,45 +94,28 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
     trigger,
     watch,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<FuelLoadFormValues>({
     resolver: zodResolver(fuelLoadSchema),
-    defaultValues: useMemo(() => {
-      if (editRow) {
-        return {
-          tripId: editRow.tripId ?? '',
-          vehicleType: editRow.vehicleType,
-          truckId: editRow.truckId ?? '',
-          trailerId: editRow.trailerId ?? '',
-          ticketFolio: editRow.ticketFolio ?? '',
-          loadDate: editRow.loadDate ? new Date(editRow.loadDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
-          litersLoaded: editRow.litersLoaded,
-          pricePerLiter: editRow.pricePerLiter,
-          isFullTankFill: editRow.isFullTankFill,
-          sourceType: editRow.sourceType as any,
-          odometerAtLoad: editRow.odometerAtLoad,
-        }
-      }
-      return {
-        tripId: '',
-        vehicleType: 'TRUCK',
-        truckId: '',
-        trailerId: '',
-        ticketFolio: '',
-        loadDate: new Date().toISOString().slice(0, 16),
-        litersLoaded: undefined,
-        pricePerLiter: undefined,
-        isFullTankFill: false,
-        sourceType: FUEL_LOAD_SOURCE_TYPE.External,
-      }
-    }, [editRow]),
+    defaultValues,
+    values: defaultValues as FuelLoadFormValues,
   })
+
+  useEffect(() => {
+    if (!isOpen) return
+    setActiveStep(0)
+    setSubmissionStatus('idle')
+    setErrorMessage(null)
+    reset(defaultValues)
+  }, [defaultValues, isOpen, reset])
 
   const tripId = watch('tripId')
   const vehicleType = watch('vehicleType')
   const liters = watch('litersLoaded')
   const price = watch('pricePerLiter')
   const sourceType = watch('sourceType')
+  const ticketUrl = watch('ticketUrl')
 
   const selectedTrip = useMemo(() => trips.find((t) => t.trip.id === tripId) ?? null, [trips, tripId])
   const selectedUnit = useMemo(() => {
@@ -136,12 +163,15 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
       truckId: selectedUnit ? selectedUnit.truckId : (values.vehicleType === 'TRUCK' ? (values.truckId || null) : null),
       operatorId: selectedUnit?.employeeId ?? null,
       ticketFolio: values.ticketFolio,
+      ticketUrl: values.ticketUrl ?? null,
       loadDate,
       vehicleType: values.vehicleType ?? 'TRUCK',
       trailerId: selectedUnit ? (values.trailerId || null) : (values.vehicleType === 'TRAILER' ? (values.trailerId || null) : null),
-      litersLoaded: values.litersLoaded,
-      pricePerLiter: values.pricePerLiter ?? 0,
-      totalCost: (values.litersLoaded ?? 0) * (values.pricePerLiter ?? 0),
+      litersLoaded: Number.isFinite(values.litersLoaded) ? values.litersLoaded : 0,
+      pricePerLiter: values.pricePerLiter != null && Number.isFinite(values.pricePerLiter) ? values.pricePerLiter : undefined,
+      totalCost: Number.isFinite(values.litersLoaded) && values.pricePerLiter != null && Number.isFinite(values.pricePerLiter)
+        ? values.litersLoaded * values.pricePerLiter
+        : 0,
       isFullTankFill: values.isFullTankFill,
       sourceType: values.sourceType,
       odometerAtLoad: values.odometerAtLoad ?? null,
@@ -149,7 +179,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
 
     const result = editRow
       ? await updateFuelLoad.mutateAsync({ id: editRow.id, data: payload })
-      : await registerFuelLoad.mutateAsync(payload)
+      : await registerFuelLoad.mutateAsync({ ...payload, pricePerLiter: payload.pricePerLiter ?? null })
 
     if (!result.ok) {
       setSubmissionStatus('error')
@@ -167,6 +197,39 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
     onClose()
   }
 
+  const handleDeleteTicketConfirmed = async () => {
+    const urlToDelete = ticketUrl
+    if (!urlToDelete) return
+
+    setIsDeletingTicket(true)
+    try {
+      // Case 1: existing saved record — update the DB row to null (backend handles R2 deletion)
+      if (editRow && editRow.ticketUrl === urlToDelete) {
+        const result = await updateFuelLoad.mutateAsync({
+          id: editRow.id,
+          data: { ticketUrl: null },
+        })
+        if (!result.ok) {
+          toast.error(result.error.message)
+          return
+        }
+        toast.success('Ticket eliminado del registro correctamente.')
+      } else {
+        // Case 2: freshly-uploaded file not yet saved — delete orphan file from R2 directly
+        const result = await deleteFuelLoadTicketAction(urlToDelete)
+        if (!result.ok) {
+          toast.error(result.error.message)
+          return
+        }
+        toast.success('Archivo eliminado de la nube correctamente.')
+      }
+      setValue('ticketUrl', null)
+      setIsDeleteTicketConfirmOpen(false)
+    } finally {
+      setIsDeletingTicket(false)
+    }
+  }
+
   const handleReset = () => {
     setSubmissionStatus('idle')
     setErrorMessage(null)
@@ -177,6 +240,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
       truckId: '',
       trailerId: '',
       ticketFolio: '',
+      ticketUrl: null,
       loadDate: new Date().toISOString().slice(0, 16),
       litersLoaded: undefined,
       pricePerLiter: undefined,
@@ -291,6 +355,28 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
         </div>
 
         <div className="grid gap-2">
+          <Label>Ticket / Factura (opcional)</Label>
+          <div className="flex flex-col gap-2">
+            <FileUploadButton
+              folder="fuel/loads/tickets"
+              label="Adjuntar Ticket (PDF / Imagen)"
+              currentUrl={ticketUrl}
+              onUploadComplete={(url) => setValue('ticketUrl', url)}
+            />
+            {ticketUrl ? (
+              <button
+                type="button"
+                onClick={() => setIsDeleteTicketConfirmOpen(true)}
+                className="text-xs text-red-600 hover:underline self-start inline-flex items-center gap-1 font-medium"
+              >
+                🗑 Eliminar ticket
+              </button>
+            ) : null}
+          </div>
+          {err(errors.ticketUrl?.message)}
+        </div>
+
+        <div className="grid gap-2">
           <Label htmlFor="loadDate">Fecha y hora de carga</Label>
           <input id="loadDate" type="datetime-local" className={inputClass} {...register('loadDate')} />
           {err(errors.loadDate?.message)}
@@ -399,7 +485,19 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
   ]
 
   return (
-    <AnimatePresence mode="wait">
+    <>
+      <ConfirmDialog
+        isOpen={isDeleteTicketConfirmOpen}
+        onClose={() => setIsDeleteTicketConfirmOpen(false)}
+        onConfirm={handleDeleteTicketConfirmed}
+        isLoading={isDeletingTicket}
+        variant="danger"
+        title="¿Eliminar ticket?"
+        description="Esta acción borrará el archivo permanentemente de la nube (Cloudflare R2). No podrás recuperarlo. El registro de la carga se conservará sin imagen adjunta."
+        confirmLabel="Sí, eliminar archivo"
+        cancelLabel="Cancelar"
+      />
+      <AnimatePresence mode="wait">
       {submissionStatus !== 'idle' ? (
         <Dialog key="feedback" isOpen={isOpen} onClose={handleClose} size="md">
           <ActionFeedback
@@ -428,7 +526,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
           size="lg"
         />
       )}
-    </AnimatePresence>
+      </AnimatePresence>
+    </>
   )
 }
-

@@ -38,6 +38,8 @@ export function EmployeeWizard({ isOpen, onClose, employee }: EmployeeWizardProp
     handleSubmit,
     trigger,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<CreateEmployeeInput>({
     resolver: zodResolver(createEmployeeSchema),
@@ -57,6 +59,15 @@ export function EmployeeWizard({ isOpen, onClose, employee }: EmployeeWizardProp
       emergencyContactPhone: '',
       bloodType: '',
       medicalNotes: '',
+      licenseNumber: '',
+      licenseType: '',
+      licenseExpiration: '',
+      opaloId: '',
+      opaloExpiration: '',
+      rcontrolId: '',
+      rcontrolExpiration: '',
+      fasttrackId: '',
+      fasttrackExpiration: '',
     },
   })
 
@@ -79,6 +90,15 @@ export function EmployeeWizard({ isOpen, onClose, employee }: EmployeeWizardProp
         emergencyContactPhone: employee.emergencyContactPhone || '',
         bloodType: employee.bloodType || '',
         medicalNotes: employee.medicalNotes || '',
+        licenseNumber: employee.licenseNumber || '',
+        licenseType: employee.licenseType || '',
+        licenseExpiration: employee.licenseExpiration ? employee.licenseExpiration.toISOString().split('T')[0] : '',
+        opaloId: employee.opaloId || '',
+        opaloExpiration: employee.opaloExpiration ? employee.opaloExpiration.toISOString().split('T')[0] : '',
+        rcontrolId: employee.rcontrolId || '',
+        rcontrolExpiration: employee.rcontrolExpiration ? employee.rcontrolExpiration.toISOString().split('T')[0] : '',
+        fasttrackId: employee.fasttrackId || '',
+        fasttrackExpiration: employee.fasttrackExpiration ? employee.fasttrackExpiration.toISOString().split('T')[0] : '',
       })
     } else if (isOpen && !employee) {
       reset({
@@ -97,9 +117,27 @@ export function EmployeeWizard({ isOpen, onClose, employee }: EmployeeWizardProp
         emergencyContactPhone: '',
         bloodType: '',
         medicalNotes: '',
+        licenseNumber: '',
+        licenseType: '',
+        licenseExpiration: '',
+        opaloId: '',
+        opaloExpiration: '',
+        rcontrolId: '',
+        rcontrolExpiration: '',
+        fasttrackId: '',
+        fasttrackExpiration: '',
       })
     }
   }, [isOpen, employee, reset])
+
+  const jobTitle = watch('jobTitle')
+  const isSelectedOperator = jobTitle === 'Operador'
+
+  useEffect(() => {
+    if (isSelectedOperator) {
+      setValue('isOperator', true)
+    }
+  }, [isSelectedOperator, setValue])
 
   // Handlers
   const goNext = async () => {
@@ -111,7 +149,9 @@ export function EmployeeWizard({ isOpen, onClose, employee }: EmployeeWizardProp
     } else if (activeStep === 1) {
       fieldsToValidate = ['rfc', 'curp', 'nss']
     } else if (activeStep === 2) {
-      fieldsToValidate = ['departmentId']
+      fieldsToValidate = ['departmentId', 'jobTitle', 'hireDate']
+    } else if (activeStep === 3 && isSelectedOperator) {
+      fieldsToValidate = ['licenseNumber', 'licenseType', 'licenseExpiration'] // Validate minimum required credentials if needed
     }
 
     const isValid = await trigger(fieldsToValidate)
@@ -259,7 +299,8 @@ export function EmployeeWizard({ isOpen, onClose, employee }: EmployeeWizardProp
           <select 
             id="isOperator" 
             className="flex h-12 w-full items-center justify-between rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-stone-900 dark:text-zinc-100 placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/20 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-            {...register('isOperator', { setValueAs: (v) => v === 'true' })}
+            value={watch('isOperator') ? 'true' : 'false'}
+            onChange={(e) => setValue('isOperator', e.target.value === 'true', { shouldValidate: true })}
           >
             <option value="false">Administrativo</option>
             <option value="true">Operativo (Conductor, Mecánico)</option>
@@ -284,11 +325,19 @@ export function EmployeeWizard({ isOpen, onClose, employee }: EmployeeWizardProp
         </div>
         <div className="grid gap-2">
           <Label htmlFor="jobTitle">Puesto / Cargo</Label>
-          <Input 
+          <select 
             id="jobTitle" 
-            placeholder="P. ej. Jefe de Logística" 
+            className="flex h-12 w-full items-center justify-between rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-stone-900 dark:text-zinc-100 placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/20 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
             {...register('jobTitle')}
-          />
+          >
+            <option value="">Selecciona un puesto</option>
+            <option value="Operador">Operador</option>
+            <option value="Despachador">Despachador</option>
+            <option value="Mecánico">Mecánico</option>
+            <option value="Jefe de Flotilla">Jefe de Flotilla</option>
+            <option value="Ejecutivo">Ejecutivo</option>
+            <option value="Administrativo">Administrativo</option>
+          </select>
           {errors.jobTitle && <p className="text-xs text-red-500">{errors.jobTitle.message}</p>}
         </div>
         <div className="grid gap-2">
@@ -312,8 +361,75 @@ export function EmployeeWizard({ isOpen, onClose, employee }: EmployeeWizardProp
     </div>
   )
 
-  // Step 4: Emergencias & Salud
-  const step4Content = (
+  // Step 4: Credenciales de Operador (Only if Operador)
+  const step4OperatorContent = (
+    <div className="flex flex-col gap-6 pt-2">
+      <div className="space-y-4">
+        {/* Licencia */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="licenseNumber">Número de Licencia</Label>
+            <Input id="licenseNumber" placeholder="No. Licencia" {...register('licenseNumber')} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="licenseType">Tipo de Licencia</Label>
+            <Input id="licenseType" placeholder="P. ej. Federal B" {...register('licenseType')} />
+          </div>
+          <div className="grid gap-2 col-span-2">
+            <Label htmlFor="licenseExpiration">Vigencia Licencia</Label>
+            <Input id="licenseExpiration" type="date" {...register('licenseExpiration')} />
+          </div>
+        </div>
+        
+        {/* RControl */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="rcontrolId">ID RControl</Label>
+            <Input id="rcontrolId" placeholder="No. RControl" {...register('rcontrolId')} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="rcontrolExpiration">Vigencia RControl</Label>
+            <Input id="rcontrolExpiration" type="date" {...register('rcontrolExpiration')} />
+          </div>
+        </div>
+
+        {/* Opalo */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="opaloId">ID Opalo</Label>
+            <Input id="opaloId" placeholder="No. Opalo" {...register('opaloId')} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="opaloExpiration">Vigencia Opalo</Label>
+            <Input id="opaloExpiration" type="date" {...register('opaloExpiration')} />
+          </div>
+        </div>
+
+        {/* Fasttrack */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="fasttrackId">ID Fasttrack</Label>
+            <Input id="fasttrackId" placeholder="No. Fasttrack" {...register('fasttrackId')} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="fasttrackExpiration">Vigencia Fasttrack</Label>
+            <Input id="fasttrackExpiration" type="date" {...register('fasttrackExpiration')} />
+          </div>
+        </div>
+      </div>
+
+      <WizardFooter
+        isFirstStep={false}
+        isLastStep={false}
+        onCancel={handleClose}
+        onBack={goBack}
+        onNext={goNext}
+      />
+    </div>
+  )
+
+  // Step Last: Emergencias & Salud
+  const stepHealthContent = (
     <div className="flex flex-col gap-6 pt-2">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
@@ -363,12 +479,19 @@ export function EmployeeWizard({ isOpen, onClose, employee }: EmployeeWizardProp
     </div>
   )
 
-  const steps: WizardStep[] = [
+  const baseSteps: WizardStep[] = [
     { id: '1', title: 'Generales', content: step1Content },
     { id: '2', title: 'Identificación', content: step2Content },
     { id: '3', title: 'Asignación', content: step3Content },
-    { id: '4', title: 'Salud / Emergencias', content: step4Content },
   ]
+
+  if (isSelectedOperator) {
+    baseSteps.push({ id: '4', title: 'Credenciales', content: step4OperatorContent })
+  }
+
+  baseSteps.push({ id: '5', title: 'Salud / Emerg.', content: stepHealthContent })
+
+  const steps = baseSteps
 
   return (
     <AnimatePresence mode="wait">

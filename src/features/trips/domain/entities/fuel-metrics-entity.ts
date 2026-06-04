@@ -91,6 +91,7 @@ export interface FuelLoadEntity {
 
   loadDate: Date | null
   ticketFolio: string | null
+  ticketUrl: string | null
 
   /** Litros cargados al vehículo correspondiente. */
   litersLoaded: number
@@ -293,6 +294,7 @@ export interface FuelLoadHistoryRowEntity {
   operatorName: string | null
   loadDate: string | null
   ticketFolio: string | null
+  ticketUrl: string | null
   litersLoaded: number
   pricePerLiter: number
   totalCost: number

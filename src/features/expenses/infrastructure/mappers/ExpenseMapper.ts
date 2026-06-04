@@ -68,6 +68,7 @@ export interface ExpenseRow {
   expense_subcategories?: { name: string } | null
   measurement_units?: { name: string } | null
   cargo_types?: { name: string } | null
+  trips?: { trip_number: number | null } | null
 }
 
 // ---------------------------------------------------------------------------
@@ -114,6 +115,7 @@ export class ExpenseMapper {
     return {
       id: row.id,
       tripId: row.trip_id,
+      tripNumber: row.trips?.trip_number ?? null,
       truckId: row.truck_id,
       trailerId: row.trailer_id,
       categoryId: row.category_id,

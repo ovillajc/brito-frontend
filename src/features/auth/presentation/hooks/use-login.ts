@@ -20,6 +20,7 @@ export function useLogin(): {
 } {
   const setUser = useAuthStore((state) => state.setUser)
   const setLoading = useAuthStore((state) => state.setLoading)
+  const isGlobalLoading = useAuthStore((state) => state.isLoading)
   const router = useRouter()
 
   const form = useForm<LoginFormInput>({
@@ -36,6 +37,8 @@ export function useLogin(): {
    * Manejador del envío del formulario.
    */
   const handleLogin: SubmitHandler<LoginFormInput> = async (values) => {
+    if (isGlobalLoading) return // Evita múltiples ejecuciones
+
     setLoading(true)
     const repository = new SupabaseAuthRepository()
     
@@ -46,12 +49,16 @@ export function useLogin(): {
         setUser(result.data)
         router.push('/dashboard')
         toast.success(`Bienvenido de nuevo, ${result.data.name}`)
+        // Nota: NO seteamos setLoading(false) aquí para que el botón se mantenga bloqueado
+        // mientras Next.js realiza la navegación a /dashboard.
       } else {
+        form.setError('root', { message: 'Credenciales inválidas. Por favor verifica tu correo y contraseña.' })
         toast.error(result.error.message)
+        setLoading(false)
       }
     } catch {
+      form.setError('root', { message: 'Ocurrió un error inesperado. Inténtalo más tarde.' })
       toast.error('Ocurrió un error inesperado al intentar iniciar sesión')
-    } finally {
       setLoading(false)
     }
   }
@@ -74,6 +81,6 @@ export function useLogin(): {
     form: form,
     handleLogin,
     onProviderLogin,
-    isLoading: form.formState.isSubmitting,
+    isLoading: form.formState.isSubmitting || isGlobalLoading,
   }
 }

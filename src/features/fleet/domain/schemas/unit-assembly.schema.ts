@@ -17,7 +17,8 @@ export const createUnitAssemblySchema = z.object({
   status: z.enum(['returning', 'at_base', 'at_client', 'in_trip', 'in_workshop']).optional(),
   isActive: z.boolean().optional(),
   theoreticalYield: z.number().nonnegative('El rendimiento no puede ser negativo').optional(),
-
+  poolRole: z.enum(['titular', 'sustituta']),
+  substitutesUnitId: z.union([z.string().uuid(), z.literal('')]).optional().nullable(),
 })
 
 export type CreateUnitAssemblyInput = z.infer<typeof createUnitAssemblySchema>

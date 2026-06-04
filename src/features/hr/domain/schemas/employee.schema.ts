@@ -24,6 +24,17 @@ export const createEmployeeSchema = z.object({
   emergencyContactPhone: z.string().optional().or(z.literal('')),
   bloodType: z.string().optional().or(z.literal('')),
   medicalNotes: z.string().optional().or(z.literal('')),
+
+  // Operator credentials
+  licenseNumber: z.string().optional().or(z.literal('')),
+  licenseType: z.string().optional().or(z.literal('')),
+  licenseExpiration: z.string().optional().or(z.literal('')),
+  opaloId: z.string().optional().or(z.literal('')),
+  opaloExpiration: z.string().optional().or(z.literal('')),
+  rcontrolId: z.string().optional().or(z.literal('')),
+  rcontrolExpiration: z.string().optional().or(z.literal('')),
+  fasttrackId: z.string().optional().or(z.literal('')),
+  fasttrackExpiration: z.string().optional().or(z.literal('')),
 })
 
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>

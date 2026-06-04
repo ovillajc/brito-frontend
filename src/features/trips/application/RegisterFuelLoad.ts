@@ -32,6 +32,7 @@ export interface RegisterFuelLoadInput {
   trailerId: string | null
   operatorId: string | null
   ticketFolio: string
+  ticketUrl?: string | null
   loadDate: Date
   litersLoaded: number
   pricePerLiter: number | null
@@ -87,6 +88,7 @@ export async function RegisterFuelLoad(
       supervisorName: null,
       loadDate: data.loadDate,
       ticketFolio: data.ticketFolio.trim(),
+      ticketUrl: data.ticketUrl ?? null,
       litersLoaded: data.litersLoaded,
       pricePerLiter,
       totalCost,

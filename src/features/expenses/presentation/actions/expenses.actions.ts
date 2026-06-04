@@ -35,8 +35,20 @@ export async function createExpenseAction(
     return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
   }
 
+  const amountRaw = (input as unknown as Record<string, unknown>)['amount']
+  const amount = typeof amountRaw === 'number' ? amountRaw : Number(amountRaw)
+  if (!Number.isFinite(amount) || amount <= 0) {
+    if (input.receiptUrl) {
+      await deleteR2ObjectByPublicUrl(input.receiptUrl)
+    }
+    return { ok: false, error: { code: 'VALIDATION_ERROR', message: 'Monto total inválido. Captura precio unitario y cantidad.' } }
+  }
+
   const profileId = await getCurrentProfileId()
   if (!profileId) {
+    if (input.receiptUrl) {
+      await deleteR2ObjectByPublicUrl(input.receiptUrl)
+    }
     return { ok: false, error: { code: 'UNAUTHORIZED', message: 'Usuario no autenticado', statusCode: 401 } }
   }
   const repo = new SupabaseExpensesServerRepository()
@@ -44,6 +56,10 @@ export async function createExpenseAction(
   if (result.ok) {
     revalidatePath('/expenses')
     revalidatePath('/expenses/list')
+  } else {
+    if (input.receiptUrl) {
+      await deleteR2ObjectByPublicUrl(input.receiptUrl)
+    }
   }
   return result
 }
@@ -72,6 +88,11 @@ export async function updateExpenseAction(
     }
     revalidatePath('/expenses')
     revalidatePath('/expenses/list')
+  } else {
+    const nextReceiptUrl = input.receiptUrl ?? null
+    if (nextReceiptUrl && nextReceiptUrl !== previousReceiptUrl) {
+      await deleteR2ObjectByPublicUrl(nextReceiptUrl)
+    }
   }
   return result
 }

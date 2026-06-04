@@ -17,13 +17,14 @@ export const fuelLoadSchema = z.object({
   trailerId: z.string().optional().nullable(),
   odometerAtLoad: z.number().optional().nullable(),
   ticketFolio: z.string().min(1, 'El folio del ticket es obligatorio'),
+  ticketUrl: z.string().optional().nullable(),
   loadDate: z.string().min(1, 'La fecha de carga es obligatoria'),
   litersLoaded: z.number({ error: 'Ingresa los litros' }).min(0.01, 'Los litros deben ser > 0'),
   pricePerLiter: z.number({ error: 'Ingresa el precio por litro' }).min(0.01, 'El precio debe ser > 0').optional(),
   isFullTankFill: z.boolean(),
   sourceType: z.enum([FUEL_LOAD_SOURCE_TYPE.External, FUEL_LOAD_SOURCE_TYPE.InternalTank]).default(FUEL_LOAD_SOURCE_TYPE.External),
 }).superRefine((value, ctx) => {
-  if (value.sourceType === FUEL_LOAD_SOURCE_TYPE.External && value.pricePerLiter == null) {
+  if (value.sourceType === FUEL_LOAD_SOURCE_TYPE.External && (value.pricePerLiter == null || Number.isNaN(value.pricePerLiter) || value.pricePerLiter <= 0)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['pricePerLiter'], message: 'El precio por litro es obligatorio' })
   }
   if (!value.tripId) {

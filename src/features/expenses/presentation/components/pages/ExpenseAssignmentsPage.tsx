@@ -190,7 +190,9 @@ export default function ExpenseAssignmentsPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="font-mono font-bold text-stone-900 dark:text-zinc-100">
-                        {k.folio ?? `VJE-${k.tripNumber ?? '—'}`}
+                        {k.tripNumber != null 
+                          ? `VJE-${String(k.tripNumber).padStart(6, '0')}` 
+                          : (k.folio ?? `VJE-${k.tripId.slice(0, 8)}`)}
                       </p>
                       <p className="text-xs text-stone-500 dark:text-zinc-500 mt-1">
                         Enviado: {money.format(k.assignedAmount)} · Comprobado: {money.format(k.spentAmount)}
@@ -229,7 +231,9 @@ export default function ExpenseAssignmentsPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="font-mono font-bold text-stone-900 dark:text-zinc-100">
-                        {k.folio ?? `VJE-${k.tripNumber ?? '—'}`}
+                        {k.tripNumber != null 
+                          ? `VJE-${String(k.tripNumber).padStart(6, '0')}` 
+                          : (k.folio ?? `VJE-${k.tripId.slice(0, 8)}`)}
                       </p>
                       <p className="text-xs text-stone-500 dark:text-zinc-500 mt-1">
                         Enviado: {money.format(k.assignedAmount)} · Comprobado: {money.format(k.spentAmount)}

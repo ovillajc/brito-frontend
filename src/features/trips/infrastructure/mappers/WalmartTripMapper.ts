@@ -136,7 +136,7 @@ export class WalmartTripMapper {
       dhd_diesel: entity.dhd.diesel,
       dhd_casetas: entity.dhd.casetas,
       dhd_total_invoice: entity.dhd.totalInvoice,
-      dettes_log: JSON.stringify(entity.dettesLog),
+      dettes_log: entity.dettesLog,
       departure_temperature: entity.departureTemperature,
       departure_time: entity.departureTime?.toISOString() ?? null,
       num_stores: entity.numStores,

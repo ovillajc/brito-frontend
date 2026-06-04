@@ -61,6 +61,7 @@ export function usePoolMutations() {
       if (result.ok) {
         queryClient.invalidateQueries({ queryKey: ['fleet', 'pools'] })
         queryClient.invalidateQueries({ queryKey: ['fleet', 'available-units'] })
+        queryClient.invalidateQueries({ queryKey: ['fleet', 'assemblies'] })
         toast.success('Unidades asignadas correctamente')
       }
     }

@@ -34,6 +34,18 @@ export interface EmployeeEntity {
   bloodType?: string | null
   medicalNotes?: string | null
   profileId?: string | null
+
+  // Operator credentials
+  licenseNumber?: string | null
+  licenseType?: string | null
+  licenseExpiration?: Date | null
+  opaloId?: string | null
+  opaloExpiration?: Date | null
+  rcontrolId?: string | null
+  rcontrolExpiration?: Date | null
+  fasttrackId?: string | null
+  fasttrackExpiration?: Date | null
+
   createdAt: Date
   updatedAt: Date
 }

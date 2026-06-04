@@ -24,7 +24,7 @@ import { createUnitAssemblyAction, updateUnitAssemblyAction } from '../../action
 import { UnitAssemblyEntity, UnitStatus } from '../../../domain/entities'
 
 import { useCompanyProfiles } from '../../../../company-profile/presentation/hooks/use-company-profile'
-import { useTractors, useTrailers, useClients } from '../../hooks/use-fleet'
+import { useTractors, useTrailers, useClients, useUnitAssemblies } from '../../hooks/use-fleet'
 import { getEmployeesAction } from '@/src/features/hr/presentation/actions/employee.actions'
 import { EmployeeEntity } from '@/src/features/hr/domain/entities'
 
@@ -62,6 +62,7 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
   const { data: clients, isLoading: isLoadingClients } = useClients()
   const { data: trucks, isLoading: isLoadingTrucks } = useTractors()
   const { data: trailers, isLoading: isLoadingTrailers } = useTrailers()
+  const { data: assemblies, isLoading: isLoadingAssemblies } = useUnitAssemblies()
 
   const { data: operators, isLoading: isLoadingOperators } = useQuery({
     queryKey: ['hr', 'employees', 'operators'],
@@ -80,6 +81,7 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
     handleSubmit,
     trigger,
     reset,
+    watch,
     formState: { errors },
   } = useForm<CreateUnitAssemblyInput>({
     resolver: zodResolver(createUnitAssemblySchema),
@@ -96,6 +98,8 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
       isActive: true,
       status: 'at_base',
       theoreticalYield: undefined,
+      poolRole: 'titular',
+      substitutesUnitId: null,
     },
 
   })
@@ -115,6 +119,8 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
         isActive: assembly.isActive,
         status: assembly.status || 'at_base',
         theoreticalYield: assembly.theoreticalYield ?? undefined,
+        poolRole: assembly.poolRole ?? 'titular',
+        substitutesUnitId: assembly.substitutesUnitId || null,
       })
 
     } else if (isOpen && !assembly) {
@@ -130,6 +136,8 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
         companyProfileId: '',
         isActive: true,
         theoreticalYield: undefined,
+        poolRole: 'titular',
+        substitutesUnitId: null,
       })
     }
   }, [isOpen, assembly, reset])
@@ -223,6 +231,16 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
             {errors.clientId && <p className="text-xs text-red-500">{errors.clientId.message}</p>}
           </div>
         </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="poolRole">Rol en Pool</Label>
+            <select id="poolRole" className={SELECT_CLASS} {...register('poolRole')}>
+              <option value="titular">Titular</option>
+              <option value="sustituta">Sustituta</option>
+            </select>
+          </div>
+        </div>
       </div>
       <WizardFooter isFirstStep isLastStep={false} onCancel={handleClose} onNext={goNext} />
     </div>
@@ -244,30 +262,48 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
           </select>
           {errors.truckId && <p className="text-xs text-red-500">{errors.truckId.message}</p>}
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="trailerId">Remolque 1 (opcional)</Label>
-            <select id="trailerId" className={SELECT_CLASS} disabled={isLoadingTrailers} {...register('trailerId')}>
-              <option value="">Sin remolque asignado</option>
-              {trailers?.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.economicNumber} — {t.trailerModelName || 'Sin modelo'} [{t.plates || '---'}]
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="trailer2Id">Remolque 2 (opcional)</Label>
-            <select id="trailer2Id" className={SELECT_CLASS} disabled={isLoadingTrailers} {...register('trailer2Id')}>
-              <option value="">Sin remolque 2 asignado</option>
-              {trailers?.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.economicNumber} — {t.trailerModelName || 'Sin modelo'} [{t.plates || '---'}]
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        
+        {(() => {
+          const selectedTruckId = watch('truckId')
+          const selectedTruck = trucks?.find(t => t.id === selectedTruckId)
+          const isTorton = selectedTruck?.vehicleType === 'TORTON'
+
+          if (isTorton) {
+            return (
+              <div className="bg-[#1a5c3a]/10 border border-[#1a5c3a]/20 p-4 rounded-xl">
+                <p className="text-sm text-[#1a5c3a] font-medium">Has seleccionado un Torton. Los Tortons son unidades unificadas y no requieren asignación de remolques separados.</p>
+              </div>
+            )
+          }
+
+          return (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="trailerId">Remolque 1 (opcional)</Label>
+                <select id="trailerId" className={SELECT_CLASS} disabled={isLoadingTrailers} {...register('trailerId')}>
+                  <option value="">Sin remolque asignado</option>
+                  {trailers?.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.economicNumber} — {t.trailerModelName || 'Sin modelo'} [{t.plates || '---'}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="trailer2Id">Remolque 2 (opcional)</Label>
+                <select id="trailer2Id" className={SELECT_CLASS} disabled={isLoadingTrailers} {...register('trailer2Id')}>
+                  <option value="">Sin remolque 2 asignado</option>
+                  {trailers?.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.economicNumber} — {t.trailerModelName || 'Sin modelo'} [{t.plates || '---'}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )
+        })()}
+        
         <div className="grid gap-2 mt-2">
           <p className="text-xs text-stone-500 dark:text-zinc-400">
             El rendimiento teórico representa los km/L esperados con esta combinación de tracto y remolque.

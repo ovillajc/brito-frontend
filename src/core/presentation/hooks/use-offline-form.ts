@@ -60,7 +60,7 @@ interface UseOfflineFormResult<TInput, TOutput> {
   execute: (
     payload: TInput,
     offlineDisplayData: Record<string, unknown>
-  ) => Promise<{ ok: boolean; data?: TOutput; offline?: boolean }>
+  ) => Promise<{ ok: boolean; data?: TOutput; offline?: boolean; error?: string }>
   isLoading: boolean
 }
 
@@ -90,8 +90,9 @@ export function useOfflineForm<TInput, TOutput>({
     offlineDisplayData: Record<string, unknown>
   ) => {
     if (isSubmitBlocked) {
-      toast.warning('Sincronización en progreso. Espera un momento antes de guardar.')
-      return { ok: false }
+      const message = 'Sincronización en progreso. Espera un momento antes de guardar.'
+      toast.warning(message)
+      return { ok: false, error: message }
     }
 
     setIsLoading(true)
@@ -102,7 +103,7 @@ export function useOfflineForm<TInput, TOutput>({
         const result = await onlineAction(payload)
         if (!result.ok) {
           toast.error(result.error.message)
-          return { ok: false }
+          return { ok: false, error: result.error.message }
         }
         return { ok: true, data: result.data }
       }
@@ -152,7 +153,7 @@ export function useOfflineForm<TInput, TOutput>({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error inesperado'
       toast.error(`Error al guardar: ${message}`)
-      return { ok: false }
+      return { ok: false, error: message }
     } finally {
       setIsLoading(false)
     }

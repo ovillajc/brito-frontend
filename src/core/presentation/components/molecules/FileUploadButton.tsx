@@ -3,7 +3,10 @@
 /**
  * @fileoverview Componente reutilizable para subir un único archivo a Cloudflare R2.
  *
- * Muestra un botón de carga con feedback visual (progreso, éxito, error).
+ * Usa XMLHttpRequest contra /api/r2/upload-stream para poder rastrear el progreso
+ * real de la subida (evento onprogress). Las Server Actions no permiten este tipo
+ * de seguimiento ya que envían el body completo antes de procesar.
+ *
  * Al completarse, llama al `onUploadComplete` con la URL pública del archivo.
  *
  * @molecule
@@ -22,7 +25,6 @@
 
 import React, { useRef, useState } from 'react'
 import { Paperclip, CheckCircle, Loader2, XCircle, ExternalLink } from 'lucide-react'
-import { uploadFileToR2Action } from '@/src/core/infrastructure/storage/r2-upload.action'
 
 interface FileUploadButtonProps {
   /** Carpeta dentro del bucket R2 donde se guardará el archivo. */
@@ -45,8 +47,58 @@ type UploadState =
   | { status: 'success'; url: string }
   | { status: 'error'; message: string }
 
+/** Sube un archivo con progreso real usando XMLHttpRequest. */
+function uploadWithProgress(
+  file: File,
+  folder: string,
+  onProgress: (pct: number) => void
+): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+  return new Promise((resolve) => {
+    const formData = new FormData()
+    formData.set('file', file)
+    formData.set('folder', folder)
+
+    const xhr = new XMLHttpRequest()
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        // Cap at 95% until server confirms success
+        onProgress(Math.round((e.loaded / e.total) * 95))
+      }
+    })
+
+    xhr.addEventListener('load', () => {
+      try {
+        const body = JSON.parse(xhr.responseText) as {
+          ok: boolean
+          data?: { url: string }
+          error?: { message: string }
+        }
+        if (body.ok && body.data?.url) {
+          resolve({ ok: true, url: body.data.url })
+        } else {
+          resolve({ ok: false, message: body.error?.message ?? 'Error al subir el archivo.' })
+        }
+      } catch {
+        resolve({ ok: false, message: 'Respuesta inesperada del servidor.' })
+      }
+    })
+
+    xhr.addEventListener('error', () => {
+      resolve({ ok: false, message: 'Error de red al subir el archivo.' })
+    })
+
+    xhr.addEventListener('abort', () => {
+      resolve({ ok: false, message: 'Subida cancelada.' })
+    })
+
+    xhr.open('POST', '/api/r2/upload-stream')
+    xhr.send(formData)
+  })
+}
+
 /**
- * Botón de carga de archivos con feedback visual integrado.
+ * Botón de carga de archivos con feedback de progreso real.
  */
 export function FileUploadButton({
   folder,
@@ -63,33 +115,21 @@ export function FileUploadButton({
     const file = e.target.files?.[0]
     if (!file) return
 
+    // Limpiar input para permitir re-seleccionar el mismo archivo tras un error
+    if (inputRef.current) inputRef.current.value = ''
+
     setState({ status: 'uploading', progress: 0 })
 
-    const formData = new FormData()
-    formData.set('file', file)
-    formData.set('folder', folder)
-
-    // Simulamos progreso visual mientras se sube
-    const progressInterval = setInterval(() => {
-      setState((prev) =>
-        prev.status === 'uploading' && prev.progress < 85
-          ? { status: 'uploading', progress: prev.progress + 15 }
-          : prev
-      )
-    }, 300)
-
-    const result = await uploadFileToR2Action(formData)
-    clearInterval(progressInterval)
+    const result = await uploadWithProgress(file, folder, (pct) => {
+      setState({ status: 'uploading', progress: pct })
+    })
 
     if (result.ok) {
-      setState({ status: 'success', url: result.data.url })
-      onUploadComplete(result.data.url)
+      setState({ status: 'success', url: result.url })
+      onUploadComplete(result.url)
     } else {
-      setState({ status: 'error', message: result.error.message })
+      setState({ status: 'error', message: result.message })
     }
-
-    // Limpiamos el input para permitir re-subir el mismo archivo
-    if (inputRef.current) inputRef.current.value = ''
   }
 
   const handleRetry = () => {
@@ -110,7 +150,7 @@ export function FileUploadButton({
         onChange={handleFileChange}
       />
 
-      {/* Estado idle o URL existente */}
+      {/* Estado idle o error */}
       {(state.status === 'idle' || state.status === 'error') && (
         <div className="flex flex-col gap-1">
           <button
@@ -134,16 +174,19 @@ export function FileUploadButton({
         </div>
       )}
 
-      {/* Estado de subida */}
+      {/* Estado de subida con progreso real */}
       {state.status === 'uploading' && (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 text-sm text-stone-500 dark:text-zinc-400">
-            <Loader2 className="size-4 animate-spin text-[#1a5c3a]" />
-            <span>Subiendo archivo...</span>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between gap-2 text-sm text-stone-500 dark:text-zinc-400">
+            <span className="flex items-center gap-1.5">
+              <Loader2 className="size-4 animate-spin text-[#1a5c3a]" />
+              Subiendo archivo…
+            </span>
+            <span className="text-xs font-medium text-[#1a5c3a] tabular-nums">{state.progress}%</span>
           </div>
           <div className="h-1.5 w-full bg-stone-100 dark:bg-zinc-800 rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#1a5c3a] rounded-full transition-all duration-300"
+              className="h-full bg-[#1a5c3a] rounded-full transition-all duration-200"
               style={{ width: `${state.progress}%` }}
             />
           </div>

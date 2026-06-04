@@ -70,7 +70,11 @@ const EXPENSES_COLUMNS: CrudColumn<ExpensesTableRowEntity>[] = [
         </div>
         {row.tripId && (
           <div className="flex items-center gap-1.5 text-xs text-[#006d37] dark:text-primary-container font-mono mt-0.5">
-            <span className="truncate max-w-[120px]">VJE-{row.tripId.split('-')[0]}</span>
+            <span className="truncate max-w-[120px]">
+              {row.tripNumber != null
+                ? `VJE-${String(row.tripNumber).padStart(6, '0')}`
+                : `VJE-${row.tripId.slice(0, 8)}`}
+            </span>
           </div>
         )}
       </div>

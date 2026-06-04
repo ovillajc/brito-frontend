@@ -46,6 +46,7 @@ export interface TripsTableRowEntity {
   walmartData?: {
     coordinatorName: string | null
     route: string | null
+    cargoType: string | null
     cartaPorteWalmart: string | null
     numStores: number | null
     statusWalmart: string | null

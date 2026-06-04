@@ -50,6 +50,7 @@ export interface FuelLoadRow {
   supervisor_name: string | null
   load_date: string | null
   ticket_folio: string | null
+  ticket_url: string | null
   liters_loaded: number
   price_per_liter: number
   total_cost: number
@@ -113,6 +114,7 @@ export interface FuelMetricsListTripRow {
     vehicle_type: string
     trailer_id: string | null
     ticket_folio: string | null
+    ticket_url?: string | null
     liters_loaded: number | null
     price_per_liter: number | null
     total_cost: number | null
@@ -127,6 +129,7 @@ export interface FuelLoadHistoryRow {
   vehicle_type: string
   load_date: string | null
   ticket_folio: string | null
+  ticket_url: string | null
   liters_loaded: number
   price_per_liter: number
   total_cost: number
@@ -192,6 +195,7 @@ export class FuelMetricsMapper {
       supervisorName: row.supervisor_name,
       loadDate: row.load_date ? new Date(row.load_date) : null,
       ticketFolio: row.ticket_folio,
+      ticketUrl: row.ticket_url,
       litersLoaded: row.liters_loaded,
       pricePerLiter: row.price_per_liter,
       totalCost: row.total_cost,
@@ -217,6 +221,7 @@ export class FuelMetricsMapper {
       supervisor_name: entity.supervisorName,
       load_date: entity.loadDate?.toISOString() ?? null,
       ticket_folio: entity.ticketFolio,
+      ticket_url: entity.ticketUrl,
       liters_loaded: entity.litersLoaded,
       price_per_liter: entity.pricePerLiter,
       total_cost: entity.totalCost,
@@ -393,6 +398,7 @@ export class FuelMetricsMapper {
       operatorName: row.trips?.unit_assemblies?.employees?.full_name ?? null,
       loadDate: row.load_date,
       ticketFolio: row.ticket_folio,
+      ticketUrl: row.ticket_url,
       litersLoaded: row.liters_loaded,
       pricePerLiter: row.price_per_liter,
       totalCost: row.total_cost,

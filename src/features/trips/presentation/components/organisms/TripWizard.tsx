@@ -7,7 +7,7 @@
  * @organism
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Controller, useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -20,6 +20,7 @@ import { WizardFooter } from '@/src/core/presentation/components/molecules/wizar
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { Button } from '@/src/core/presentation/components/ui/button'
+import { Textarea } from '@/src/core/presentation/components/ui/textarea'
 import { ConfirmDialog } from '@/src/core/presentation/components/molecules/confirm-dialog'
 import type { TripsTableRowEntity } from './TripsTable'
 import { ClientEntity, TripStatus, UnitAssemblyEntity } from '@/src/features/fleet/domain/entities'
@@ -45,6 +46,7 @@ const tripWizardSchema = z.object({
   forceUnitAssignment: z.boolean().optional(),
   operatorName: z.string().min(1, 'El operador es obligatorio'),
   departureDate: z.string().optional(),
+  observations: z.string().optional(),
   status: z.enum([
     'scheduled',
     'in_progress',
@@ -76,10 +78,13 @@ const tripWizardSchema = z.object({
   // Step 2 — Datos Walmart (Opcionales, validados condicionalmente si es Walmart)
   coordinatorName: z.string().optional(),
   route: z.string().optional(),
+  walmartCargoType: z.string().optional(),
   cartaPorteWalmart: z.string().optional(),
   numStores: z.number({ error: 'Ingresa un número' }).min(1).optional().or(z.literal('')),
+  walmartDepartureTemperature: z.string().optional(),
   walmartDepartureTime: z.string().optional(),
   walmartDestinationCities: z.string().optional(),
+  walmartIncidencias: z.string().optional(),
   strNumLoad: z.string().optional(),
   dhdNumLoad: z.string().optional(),
   strComplementCartaPorte: z.string().optional(),
@@ -100,6 +105,21 @@ const tripWizardSchema = z.object({
 })
 
 type TripWizardValues = z.infer<typeof tripWizardSchema>
+
+function toDateTimeLocalValue(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const dt = new Date(iso)
+  if (Number.isNaN(dt.getTime())) return ''
+  return dt.toISOString().slice(0, 16)
+}
+
+function getWalmartDestinationCities(clientSpecificData: Record<string, unknown> | null | undefined): string {
+  if (!clientSpecificData || typeof clientSpecificData !== 'object') return ''
+  const walmartRaw = (clientSpecificData as Record<string, unknown>).walmart
+  if (!walmartRaw || typeof walmartRaw !== 'object') return ''
+  const destinationCities = (walmartRaw as Record<string, unknown>).destinationCities
+  return typeof destinationCities === 'string' ? destinationCities : ''
+}
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -153,6 +173,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
       forceUnitAssignment: false,
       operatorName: '',
       departureDate: '',
+      observations: '',
       tripNumberClient: '',
       holcimExpensesReviewed: '',
       holcimRemision: '',
@@ -168,11 +189,15 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
       barichonPo: '',
       barichonTotal: '',
       coordinatorName: '',
+      status: 'scheduled',
       route: '',
+      walmartCargoType: '',
       cartaPorteWalmart: '',
       numStores: '',
+      walmartDepartureTemperature: '',
       walmartDepartureTime: '',
       walmartDestinationCities: '',
+      walmartIncidencias: '',
       strNumLoad: '',
       dhdNumLoad: '',
       strComplementCartaPorte: '',
@@ -188,7 +213,6 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
       strTotalInvoice: '',
       dhdTotalInvoice: '',
       dettesLog: [],
-      status: 'scheduled',
     },
 
   })
@@ -305,6 +329,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
         forceUnitAssignment: false,
         operatorName: tripRow.operatorName ?? '',
         departureDate: tripRow.departureDate ? tripRow.departureDate.substring(0, 16) : '', // yyyy-MM-ddThh:mm
+        observations: tripRow.observations ?? '',
 
         tripNumberClient: tripRow.tripNumberClient ?? '',
         holcimExpensesReviewed: holcimDefaults.expensesReviewed,
@@ -326,24 +351,38 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
         coordinatorName: tripRow.walmartData?.coordinatorName ?? '',
         route: tripRow.walmartData?.route ?? '',
         cartaPorteWalmart: tripRow.walmartData?.cartaPorteWalmart ?? '',
-        numStores: tripRow.walmartData?.numStores ?? '',
-        walmartDepartureTime: '',
-        walmartDestinationCities: '',
-        strNumLoad: '',
-        dhdNumLoad: '',
-        strComplementCartaPorte: '',
-        dhdComplementCartaPorte: '',
-        strPreinvoiceKm: '',
-        dhdPreinvoiceKm: '',
-        strKmTraveled: '',
-        dhdKmTraveled: '',
-        strDiesel: '',
-        dhdDiesel: '',
-        strCasetas: '',
-        dhdCasetas: '',
-        strTotalInvoice: '',
-        dhdTotalInvoice: '',
-        dettesLog: [],
+        numStores: typeof tripRow.walmartData?.numStores === 'number' ? tripRow.walmartData.numStores : '',
+        walmartCargoType: tripRow.walmartData?.cargoType ?? '',
+        walmartDepartureTemperature: tripRow.walmartData?.departureTemperature ?? '',
+        walmartDepartureTime: toDateTimeLocalValue(tripRow.walmartData?.departureTime),
+        walmartDestinationCities: getWalmartDestinationCities(tripRow.clientSpecificData),
+        walmartIncidencias: tripRow.walmartData?.incidencias ?? '',
+        strNumLoad: tripRow.walmartData?.strNumLoad ?? '',
+        dhdNumLoad: tripRow.walmartData?.dhdNumLoad ?? '',
+        strComplementCartaPorte: tripRow.walmartData?.strComplementCartaPorte ?? '',
+        dhdComplementCartaPorte: tripRow.walmartData?.dhdComplementCartaPorte ?? '',
+        strPreinvoiceKm: typeof tripRow.walmartData?.strPreinvoiceKm === 'number' ? tripRow.walmartData.strPreinvoiceKm : '',
+        dhdPreinvoiceKm: typeof tripRow.walmartData?.dhdPreinvoiceKm === 'number' ? tripRow.walmartData.dhdPreinvoiceKm : '',
+        strKmTraveled: typeof tripRow.walmartData?.strKmTraveled === 'number' ? tripRow.walmartData.strKmTraveled : '',
+        dhdKmTraveled: typeof tripRow.walmartData?.dhdKmTraveled === 'number' ? tripRow.walmartData.dhdKmTraveled : '',
+        strDiesel: typeof tripRow.walmartData?.strDiesel === 'number' ? tripRow.walmartData.strDiesel : '',
+        dhdDiesel: typeof tripRow.walmartData?.dhdDiesel === 'number' ? tripRow.walmartData.dhdDiesel : '',
+        strCasetas: typeof tripRow.walmartData?.strCasetas === 'number' ? tripRow.walmartData.strCasetas : '',
+        dhdCasetas: typeof tripRow.walmartData?.dhdCasetas === 'number' ? tripRow.walmartData.dhdCasetas : '',
+        strTotalInvoice: typeof tripRow.walmartData?.strTotalInvoice === 'number' ? tripRow.walmartData.strTotalInvoice : '',
+        dhdTotalInvoice: typeof tripRow.walmartData?.dhdTotalInvoice === 'number' ? tripRow.walmartData.dhdTotalInvoice : '',
+        dettesLog: Array.isArray(tripRow.walmartData?.dettesLog) 
+          ? tripRow.walmartData.dettesLog.map((d) => {
+              const row = d && typeof d === 'object' ? (d as Record<string, unknown>) : {}
+              const storeId = typeof row.storeId === 'string' ? row.storeId : ''
+              const storeName = typeof row.storeName === 'string' ? row.storeName : ''
+              const appointmentAtRaw = typeof row.appointmentAt === 'string' ? row.appointmentAt : null
+              return {
+                storeName: storeId || storeName || '',
+                appointmentAt: toDateTimeLocalValue(appointmentAtRaw),
+              }
+            })
+          : [],
         status: tripRow.status ?? 'scheduled',
       })
       lastConfirmedUnitNumberRef.current = tripRow.unitEconomicNumber ?? ''
@@ -360,18 +399,25 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
 
   useEffect(() => {
     if (!isOpen) return
-    if (!isHolcim) return
+    if (!selectedClientId) return
     if (isEdit) {
       if (typeof tripRow?.tripNumberClient === 'number' && tripRow.tripNumberClient > 0) {
-        const dt = tripRow.departureDate ? new Date(tripRow.departureDate) : null
-        if (dt) {
-          setHolcimTripLabel(formatHolcimTripLabel(dt, tripRow.tripNumberClient))
+        if (isHolcim) {
+          const dt = tripRow.departureDate ? new Date(tripRow.departureDate) : null
+          if (dt) {
+            setHolcimTripLabel(formatHolcimTripLabel(dt, tripRow.tripNumberClient))
+          }
         }
+        return
       }
-      return
+
+      const current = getValues('tripNumberClient')
+      if (typeof current === 'number' && current > 0) return
     }
 
-    const dt = departureDateValue ? new Date(departureDateValue) : new Date()
+    const dt = departureDateValue
+      ? new Date(departureDateValue)
+      : (tripRow?.departureDate ? new Date(tripRow.departureDate) : new Date())
     if (Number.isNaN(dt.getTime())) return
 
     const key = `${selectedClientId}:${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
@@ -389,9 +435,11 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
 
       const next = result.data
       setValue('tripNumberClient', next, { shouldValidate: false })
-      setHolcimTripLabel(formatHolcimTripLabel(dt, next))
+      if (isHolcim) {
+        setHolcimTripLabel(formatHolcimTripLabel(dt, next))
+      }
     })()
-  }, [departureDateValue, isEdit, isHolcim, isOpen, selectedClientId, setValue, tripRow?.departureDate, tripRow?.tripNumberClient])
+  }, [departureDateValue, getValues, isEdit, isHolcim, isOpen, selectedClientId, setValue, tripRow?.departureDate, tripRow?.tripNumberClient])
 
   // Handlers
   const validateBarichonFields = () => {
@@ -599,9 +647,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 : baseClientSpecific
             )
 
-      const tripNumberClient = (isHolcim || isBarichon) && typeof data.tripNumberClient === 'number'
-        ? data.tripNumberClient
-        : null
+      const tripNumberClient = typeof data.tripNumberClient === 'number' ? data.tripNumberClient : null
 
       const result = await upsertTripWithClientDataAction({
         trip: {
@@ -614,6 +660,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
           unitAssemblyId,
           status: data.status as TripStatus,
           tripNumberClient,
+          observations: data.observations?.trim() || null,
 
           clientSpecificData: clientSpecificDataFinal && Object.keys(clientSpecificDataFinal).length > 0 ? clientSpecificDataFinal : null,
         },
@@ -622,9 +669,12 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
           ? {
               coordinatorName: data.coordinatorName?.trim() || null,
               route: data.route?.trim() || null,
+              cargoType: data.walmartCargoType?.trim() || null,
               cartaPorteWalmart: data.cartaPorteWalmart?.trim() || null,
               numStores: typeof data.numStores === 'number' ? data.numStores : null,
+              departureTemperature: data.walmartDepartureTemperature?.trim() || null,
               departureTime: data.walmartDepartureTime ? new Date(data.walmartDepartureTime).toISOString() : null,
+              incidencias: data.walmartIncidencias?.trim() || null,
               str: {
                 numLoad: data.strNumLoad?.trim() || null,
                 complementCartaPorte: data.strComplementCartaPorte?.trim() || null,
@@ -813,6 +863,11 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
           {errors.status && <p className={errorClass}>{errors.status.message}</p>}
         </div>
 
+        <div className="grid gap-2">
+          <Label htmlFor="observations">Observaciones</Label>
+          <Textarea id="observations" placeholder="Notas u observaciones del viaje..." {...register('observations')} />
+        </div>
+
       </div>
       <WizardFooter
         isFirstStep
@@ -860,7 +915,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
               min="1"
               placeholder="1"
               className={inputClass}
-              {...register('tripNumberClient', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+              {...register('tripNumberClient', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
             />
           )}
           {errors.tripNumberClient && <p className={errorClass}>{errors.tripNumberClient.message as string}</p>}
@@ -986,7 +1041,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
               {holcimTripLabel || '—'}
             </span>
           </div>
-          <input type="hidden" {...register('tripNumberClient', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })} />
+          <input type="hidden" {...register('tripNumberClient', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })} />
         </div>
 
         <div className="grid gap-2">
@@ -1049,6 +1104,26 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
           </div>
         </div>
 
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="walmartCargoType">Tipo de carga</Label>
+            <select id="walmartCargoType" className={inputClass} {...register('walmartCargoType')}>
+              <option value="">Selecciona un tipo</option>
+              <option value="refrigerado">Refrigerado</option>
+              <option value="congelado">Congelado</option>
+              <option value="fruta">Frutas y verduras</option>
+            </select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="walmartDepartureTemperature">Temperatura (Thermo)</Label>
+            <Input
+              id="walmartDepartureTemperature"
+              placeholder="Ej. 4°C"
+              {...register('walmartDepartureTemperature')}
+            />
+          </div>
+        </div>
+
         <div className="grid gap-2">
           <Label htmlFor="numStores">Número de Tiendas (Paradas)</Label>
           <input 
@@ -1057,7 +1132,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
             min="1" 
             placeholder="0" 
             className={inputClass}
-            {...register('numStores', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })} 
+            {...register('numStores', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })} 
           />
         </div>
 
@@ -1107,7 +1182,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('strPreinvoiceKm', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('strPreinvoiceKm', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
             <div className="px-4 py-2">
@@ -1116,7 +1191,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('dhdPreinvoiceKm', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('dhdPreinvoiceKm', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
           </div>
@@ -1129,7 +1204,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('strKmTraveled', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('strKmTraveled', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
             <div className="px-4 py-2">
@@ -1138,7 +1213,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('dhdKmTraveled', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('dhdKmTraveled', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
           </div>
@@ -1151,7 +1226,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('strDiesel', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('strDiesel', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
             <div className="px-4 py-2">
@@ -1160,7 +1235,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('dhdDiesel', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('dhdDiesel', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
           </div>
@@ -1173,7 +1248,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('strCasetas', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('strCasetas', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
             <div className="px-4 py-2">
@@ -1182,7 +1257,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('dhdCasetas', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('dhdCasetas', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
           </div>
@@ -1195,7 +1270,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('strTotalInvoice', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('strTotalInvoice', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
             <div className="px-4 py-2">
@@ -1204,12 +1279,22 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 step="0.01"
                 placeholder="0"
                 className={inputClass}
-                {...register('dhdTotalInvoice', { valueAsNumber: true, setValueAs: (v) => v === '' ? '' : Number(v) })}
+                {...register('dhdTotalInvoice', { setValueAs: (v) => v === '' || Number.isNaN(Number(v)) ? '' : Number(v) })}
               />
             </div>
           </div>
         </div>
       </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="walmartIncidencias">Incidencias</Label>
+        <Textarea
+          id="walmartIncidencias"
+          placeholder="Incidencias del viaje (Walmart)..."
+          {...register('walmartIncidencias')}
+        />
+      </div>
+
       <WizardFooter isFirstStep={false} isLastStep={false} onCancel={handleClose} onBack={goBack} onNext={goNext} />
     </div>
   )

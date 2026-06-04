@@ -26,8 +26,15 @@ export async function updateClientPoolAction(id: string, pool: Partial<ClientPoo
   return await UpdateClientPoolUseCase(repository, id, pool)
 }
 
+import { revalidatePath } from 'next/cache'
+
 export async function assignUnitsToPoolAction(poolId: string, unitIds: string[]): Promise<Either<Failure, void>> {
-  return await AssignUnitsToPoolUseCase(repository, poolId, unitIds)
+  const result = await AssignUnitsToPoolUseCase(repository, poolId, unitIds)
+  if (result.ok) {
+    revalidatePath('/fleet/pools')
+    revalidatePath('/fleet/units')
+  }
+  return result
 }
 
 export async function getAvailableUnitsForClientAction(clientId: string): Promise<Either<Failure, AvailableUnitForClientEntity[]>> {

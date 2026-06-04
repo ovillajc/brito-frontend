@@ -13,6 +13,14 @@ interface BrandLogoProps {
 export const BrandLogo = ({ theme = 'dark', className = '', href = '/', size = 'md', showText = true }: BrandLogoProps) => {
   const isDarkTheme = theme === 'dark'
 
+  const titleClass = isDarkTheme
+    ? 'text-stone-900 dark:text-white'
+    : 'text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]'
+
+  const subtitleClass = isDarkTheme
+    ? 'text-stone-500 dark:text-zinc-400'
+    : 'text-white/80 drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]'
+
   const sizeStyles = {
     sm: {
       imageContainer: 'w-10 h-10',
@@ -45,12 +53,12 @@ export const BrandLogo = ({ theme = 'dark', className = '', href = '/', size = '
       {showText && (
         <div className="flex flex-col leading-none min-w-0">
           <span
-            className={`${sizeStyles.title} font-black tracking-tight uppercase transition-colors text-stone-900 dark:text-white truncate`}
+            className={`${sizeStyles.title} font-black tracking-tight uppercase transition-colors truncate ${titleClass}`}
           >
             Transportes <span className="text-[#e07020]">Brito</span>
           </span>
           <span
-            className={`${sizeStyles.subtitle} font-medium tracking-widest uppercase transition-colors text-stone-500 dark:text-zinc-400 truncate`}
+            className={`${sizeStyles.subtitle} font-medium tracking-widest uppercase transition-colors truncate ${subtitleClass}`}
           >
             Barita de la Chontalpa
           </span>
