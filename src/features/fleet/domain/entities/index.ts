@@ -42,6 +42,7 @@ export interface TruckEntity {
   vehicleType: 'TRUCK' | 'TORTON'
   sizeFt?: number
   capacityKg?: number
+  theoreticalYield?: number | null
 }
 
 /**
