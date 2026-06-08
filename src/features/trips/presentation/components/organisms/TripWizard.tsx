@@ -1175,7 +1175,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
           </div>
 
           <div className="grid grid-cols-3 border-t border-stone-200 dark:border-zinc-700">
-            <div className="px-4 py-3 text-xs text-stone-600 dark:text-zinc-400">Prefactura (KM)</div>
+            <div className="px-4 py-3 text-xs text-stone-600 dark:text-zinc-400">Prefactura</div>
             <div className="px-4 py-2">
               <input
                 type="number"
