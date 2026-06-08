@@ -14,7 +14,13 @@ export async function ReopenOperatorSettlement(
 
   const parsed = reopenOperatorSettlementSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message } }
+    return {
+      ok: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parsed.error.issues[0]?.message ?? 'Datos inválidos para reabrir el ajuste de cuentas',
+      },
+    }
   }
 
   return repo.reopenOperatorSettlement(parsed.data, updatedByProfileId)

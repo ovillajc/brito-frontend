@@ -5,7 +5,12 @@ import type { ExpenseAdvanceEntity, TripExpenseAssignmentKpiEntity, TripExpenseS
 import type { OperatorSettlementEntity, OperatorSettlementKpiEntity } from '../../domain/entities/operator-settlement-entity'
 import type { CreateExpenseAdvanceInput } from '../../domain/schemas/create-expense-advance.schema'
 import type { CreateTripSettlementInput } from '../../domain/schemas/create-trip-settlement.schema'
-import type { CreateOperatorSettlementInput, CloseOperatorSettlementInput, LinkExpenseToSettlementInput } from '../../domain/schemas/operator-settlement.schema'
+import type {
+  CreateOperatorSettlementInput,
+  CloseOperatorSettlementInput,
+  LinkExpenseToSettlementInput,
+  ReopenOperatorSettlementInput,
+} from '../../domain/schemas/operator-settlement.schema'
 import { ExpenseAssignmentMapper, type ExpenseAdvanceRow, type TripExpenseAssignmentKpiRow, type TripExpenseSettlementRow } from '../mappers/ExpenseAssignmentMapper'
 import { OperatorSettlementMapper, type OperatorSettlementRow, type OperatorSettlementKpiRow } from '../mappers/OperatorSettlementMapper'
 
