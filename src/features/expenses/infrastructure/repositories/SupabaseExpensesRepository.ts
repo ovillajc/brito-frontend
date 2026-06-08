@@ -33,7 +33,7 @@ export class SupabaseExpensesRepository implements IExpensesRepository {
           'expense_subcategories(name)',
           'measurement_units(name)',
           'cargo_types(name)',
-          'trips(trip_number, operator_id)',
+          'trips(trip_number, unit_assemblies(employee_id))',
         ].join(', ')
       }
 
@@ -50,7 +50,7 @@ export class SupabaseExpensesRepository implements IExpensesRepository {
       if (filters.settlementId) query = query.eq('settlement_id', filters.settlementId)
       
       if (filters.onlyUnlinked) {
-        query = query.is('settlement_id', null)
+        query = query.is('settlement_id', null).eq('is_settleable', true)
       }
 
       if (filters.expenseType === 'operativo') {
@@ -64,7 +64,7 @@ export class SupabaseExpensesRepository implements IExpensesRepository {
 
       let rawData = data ?? []
       if (filters.onlyUnlinked && filters.operatorId) {
-        rawData = rawData.filter((r: any) => !r.trip_id || r.trips?.operator_id === filters.operatorId)
+        rawData = rawData.filter((r: any) => !r.trip_id || r.trips?.unit_assemblies?.employee_id === filters.operatorId)
       }
 
       return { ok: true, data: rawData.map((r) => ExpenseMapper.toDomain(r as unknown as ExpenseRow)) }
