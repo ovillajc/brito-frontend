@@ -6,13 +6,13 @@
  * Sigue las reglas de Clean Architecture de AGENTS.md.
  */
 
-import React, { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { AnimatePresence } from 'framer-motion'
-import { Layers, PenLine } from 'lucide-react'
+import { ChevronDown, Layers, PenLine, Search } from 'lucide-react'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { ActionFeedback } from '@/src/core/presentation/components/molecules/ActionFeedback'
 import { Wizard, WizardStep } from '@/src/core/presentation/components/organisms/wizard'
@@ -24,12 +24,154 @@ import { createUnitAssemblyAction, updateUnitAssemblyAction } from '../../action
 import { UnitAssemblyEntity, UnitStatus } from '../../../domain/entities'
 
 import { useCompanyProfiles } from '../../../../company-profile/presentation/hooks/use-company-profile'
-import { useTractors, useTrailers, useClients, useUnitAssemblies } from '../../hooks/use-fleet'
+import { useTractors, useTrailers, useClients } from '../../hooks/use-fleet'
 import { getEmployeesAction } from '@/src/features/hr/presentation/actions/employee.actions'
 import { EmployeeEntity } from '@/src/features/hr/domain/entities'
 
 const SELECT_CLASS =
   'flex h-12 w-full rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-stone-900 dark:text-zinc-100 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/20 transition-colors'
+
+function normalizeSearch(value: string | null | undefined) {
+  return (value ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+}
+
+interface SearchableSelectOption {
+  value: string
+  label: string
+  keywords?: string
+}
+
+interface SearchableSelectProps {
+  value: string
+  onChange: (value: string) => void
+  options: SearchableSelectOption[]
+  placeholder: string
+  emptyLabel: string
+  noResultsLabel: string
+  disabled?: boolean
+}
+
+function SearchableSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  emptyLabel,
+  noResultsLabel,
+  disabled = false,
+}: SearchableSelectProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [query, setQuery] = useState('')
+
+  const selectedOption = useMemo(
+    () => options.find((option) => option.value === value) ?? null,
+    [options, value]
+  )
+
+  const filteredOptions = useMemo(() => {
+    const term = normalizeSearch(query)
+    if (!term) return options
+    return options.filter((option) =>
+      normalizeSearch(`${option.label} ${option.keywords ?? ''}`).includes(term)
+    )
+  }, [options, query])
+
+  const handleSelect = (nextValue: string) => {
+    onChange(nextValue)
+    setQuery('')
+    setIsOpen(false)
+  }
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-stone-400 dark:text-zinc-500" />
+        <Input
+          value={isOpen ? query : (selectedOption?.label ?? '')}
+          onFocus={() => {
+            setQuery('')
+            setIsOpen(true)
+          }}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setIsOpen(true)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setQuery('')
+              setIsOpen(false)
+            }
+            if (e.key === 'Enter' && filteredOptions.length === 1) {
+              e.preventDefault()
+              handleSelect(filteredOptions[0].value)
+            }
+          }}
+          onBlur={() => {
+            window.setTimeout(() => {
+              setQuery('')
+              setIsOpen(false)
+            }, 120)
+          }}
+          placeholder={placeholder}
+          disabled={disabled}
+          className="pl-10 pr-10"
+        />
+        <button
+          type="button"
+          className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-stone-400 transition-colors hover:text-stone-600 disabled:pointer-events-none disabled:opacity-50 dark:text-zinc-500 dark:hover:text-zinc-300"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            if (disabled) return
+            setQuery('')
+            setIsOpen((prev) => !prev)
+          }}
+          disabled={disabled}
+          aria-label="Mostrar opciones"
+        >
+          <ChevronDown className="size-4" />
+        </button>
+      </div>
+
+      {isOpen && !disabled && (
+        <div className="absolute z-50 mt-2 max-h-56 w-full overflow-auto rounded-xl border border-stone-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => handleSelect('')}
+            className="flex w-full rounded-lg px-3 py-2 text-left text-sm text-stone-600 transition-colors hover:bg-stone-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            {emptyLabel}
+          </button>
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => handleSelect(option.value)}
+                className={`flex w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                  option.value === value
+                    ? 'bg-[#1a5c3a]/10 text-[#1a5c3a] dark:bg-emerald-500/15 dark:text-emerald-300'
+                    : 'text-stone-700 hover:bg-stone-100 dark:text-zinc-200 dark:hover:bg-zinc-800'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-sm text-stone-500 dark:text-zinc-400">
+              {noResultsLabel}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface UnitAssemblyWizardProps {
   isOpen: boolean
@@ -62,8 +204,6 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
   const { data: clients, isLoading: isLoadingClients } = useClients()
   const { data: trucks, isLoading: isLoadingTrucks } = useTractors()
   const { data: trailers, isLoading: isLoadingTrailers } = useTrailers()
-  const { data: assemblies, isLoading: isLoadingAssemblies } = useUnitAssemblies()
-
   const { data: operators, isLoading: isLoadingOperators } = useQuery({
     queryKey: ['hr', 'employees', 'operators'],
     queryFn: async () => {
@@ -81,6 +221,7 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
     handleSubmit,
     trigger,
     reset,
+    setValue,
     watch,
     formState: { errors },
   } = useForm<CreateUnitAssemblyInput>({
@@ -103,6 +244,41 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
     },
 
   })
+
+  const selectedTruckId = watch('truckId')
+  const selectedTrailerId = watch('trailerId')
+  const selectedTrailer2Id = watch('trailer2Id')
+  const selectedEmployeeId = watch('employeeId')
+
+  const operatorOptions = useMemo(
+    () =>
+      (operators ?? []).map((operator) => ({
+        value: operator.id,
+        label: `${operator.fullName}${operator.rfc ? ` — RFC: ${operator.rfc}` : ''}`,
+        keywords: `${operator.fullName} ${operator.rfc ?? ''} ${operator.licenseNumber ?? ''} ${operator.opaloId ?? ''}`,
+      })),
+    [operators]
+  )
+
+  const truckOptions = useMemo(
+    () =>
+      (trucks ?? []).map((truck) => ({
+        value: truck.id,
+        label: `${truck.economicNumber} — ${truck.brand} ${truck.model} [${truck.plates}]`,
+        keywords: `${truck.economicNumber} ${truck.brand} ${truck.model} ${truck.plates} ${truck.vehicleType ?? ''}`,
+      })),
+    [trucks]
+  )
+
+  const trailerOptions = useMemo(
+    () =>
+      (trailers ?? []).map((trailer) => ({
+        value: trailer.id,
+        label: `${trailer.economicNumber} — ${trailer.trailerModelName || 'Sin modelo'} [${trailer.plates || '---'}]`,
+        keywords: `${trailer.economicNumber} ${trailer.trailerModelName ?? ''} ${trailer.plates ?? ''}`,
+      })),
+    [trailers]
+  )
 
   useEffect(() => {
     if (isOpen && assembly) {
@@ -252,19 +428,20 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
       <div className="space-y-4">
         <div className="grid gap-2">
           <Label htmlFor="truckId">Tractocamión *</Label>
-          <select id="truckId" className={SELECT_CLASS} disabled={isLoadingTrucks} {...register('truckId')}>
-            <option value="">Selecciona un tracto *</option>
-            {trucks?.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.economicNumber} — {t.brand} {t.model} [{t.plates}]
-              </option>
-            ))}
-          </select>
+          <input type="hidden" {...register('truckId')} />
+          <SearchableSelect
+            value={selectedTruckId ?? ''}
+            onChange={(value) => setValue('truckId', value, { shouldDirty: true, shouldValidate: true })}
+            options={truckOptions}
+            placeholder="Buscar y seleccionar tracto por económico, marca, modelo o placas"
+            emptyLabel="Selecciona un tracto *"
+            noResultsLabel="No se encontraron tractos con esa búsqueda."
+            disabled={isLoadingTrucks}
+          />
           {errors.truckId && <p className="text-xs text-red-500">{errors.truckId.message}</p>}
         </div>
         
         {(() => {
-          const selectedTruckId = watch('truckId')
           const selectedTruck = trucks?.find(t => t.id === selectedTruckId)
           const isTorton = selectedTruck?.vehicleType === 'TORTON'
 
@@ -280,25 +457,29 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="trailerId">Remolque 1 (opcional)</Label>
-                <select id="trailerId" className={SELECT_CLASS} disabled={isLoadingTrailers} {...register('trailerId')}>
-                  <option value="">Sin remolque asignado</option>
-                  {trailers?.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.economicNumber} — {t.trailerModelName || 'Sin modelo'} [{t.plates || '---'}]
-                    </option>
-                  ))}
-                </select>
+                <input type="hidden" {...register('trailerId')} />
+                <SearchableSelect
+                  value={selectedTrailerId ?? ''}
+                  onChange={(value) => setValue('trailerId', value, { shouldDirty: true, shouldValidate: true })}
+                  options={trailerOptions}
+                  placeholder="Buscar y seleccionar remolque por económico, modelo o placas"
+                  emptyLabel="Sin remolque asignado"
+                  noResultsLabel="No se encontraron remolques para Remolque 1."
+                  disabled={isLoadingTrailers}
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="trailer2Id">Remolque 2 (opcional)</Label>
-                <select id="trailer2Id" className={SELECT_CLASS} disabled={isLoadingTrailers} {...register('trailer2Id')}>
-                  <option value="">Sin remolque 2 asignado</option>
-                  {trailers?.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.economicNumber} — {t.trailerModelName || 'Sin modelo'} [{t.plates || '---'}]
-                    </option>
-                  ))}
-                </select>
+                <input type="hidden" {...register('trailer2Id')} />
+                <SearchableSelect
+                  value={selectedTrailer2Id ?? ''}
+                  onChange={(value) => setValue('trailer2Id', value, { shouldDirty: true, shouldValidate: true })}
+                  options={trailerOptions}
+                  placeholder="Buscar y seleccionar remolque por económico, modelo o placas"
+                  emptyLabel="Sin remolque 2 asignado"
+                  noResultsLabel="No se encontraron remolques para Remolque 2."
+                  disabled={isLoadingTrailers}
+                />
               </div>
             </div>
           )
@@ -333,14 +514,16 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
       <div className="space-y-4">
         <div className="grid gap-2">
           <Label htmlFor="employeeId">Operador *</Label>
-          <select id="employeeId" className={SELECT_CLASS} disabled={isLoadingOperators} {...register('employeeId')}>
-            <option value="">Selecciona un operador *</option>
-            {operators?.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.fullName} {e.rfc ? `— RFC: ${e.rfc}` : ''}
-              </option>
-            ))}
-          </select>
+          <input type="hidden" {...register('employeeId')} />
+          <SearchableSelect
+            value={selectedEmployeeId ?? ''}
+            onChange={(value) => setValue('employeeId', value, { shouldDirty: true, shouldValidate: true })}
+            options={operatorOptions}
+            placeholder="Buscar y seleccionar operador por nombre, RFC o licencia"
+            emptyLabel="Selecciona un operador *"
+            noResultsLabel="No se encontraron operadores con esa búsqueda."
+            disabled={isLoadingOperators}
+          />
           {errors.employeeId && <p className="text-xs text-red-500">{errors.employeeId.message}</p>}
         </div>
         <div className="flex items-center gap-3 mt-2">

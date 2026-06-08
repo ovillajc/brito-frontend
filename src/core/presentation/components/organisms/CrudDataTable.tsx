@@ -33,7 +33,6 @@ import {
   TableHead,
   TableBody,
   TableCell,
-  TableContainer,
 } from '@/src/core/presentation/components/ui/table'
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { DataTableToolbar } from '@/src/core/presentation/components/molecules/data-table-toolbar'
@@ -80,6 +79,10 @@ const extractTextFromNode = (node: React.ReactNode): string => {
     }
   }
   return ''
+}
+
+function isUuidLike(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -181,7 +184,7 @@ interface CrudDataTableProps<T extends { id: string }> {
   pageSize?: number
 
   /** Callback para exportar a Excel. Si no se provee, se usará una exportación genérica automática. */
-  onExport?: () => void
+  onExport?: (rows: T[]) => void
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -290,7 +293,7 @@ export function CrudDataTable<T extends { id: string }>({
 
   const handleExport = () => {
     if (onExport) {
-      onExport()
+      onExport(filteredData)
       return
     }
 
@@ -306,7 +309,14 @@ export function CrudDataTable<T extends { id: string }>({
         const rowData: Record<string, unknown> = {}
         columns.forEach(col => {
           if (col.accessor) {
-            rowData[col.header] = col.accessor(item)
+            const accessorValue = col.accessor(item)
+            if (typeof accessorValue === 'string' && isUuidLike(accessorValue)) {
+              const node = col.cell(item)
+              const cellText = extractTextFromNode(node).replace(/\s+/g, ' ').trim()
+              rowData[col.header] = cellText && !isUuidLike(cellText) ? cellText : accessorValue
+            } else {
+              rowData[col.header] = accessorValue
+            }
           } else {
             const node = col.cell(item)
             const rawText = extractTextFromNode(node)
@@ -321,7 +331,7 @@ export function CrudDataTable<T extends { id: string }>({
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Datos')
       XLSX.writeFile(workbook, `Reporte_${new Date().toISOString().split('T')[0]}.xlsx`)
       toast.success('Excel exportado correctamente')
-    } catch (e) {
+    } catch {
       toast.error('Error al generar Excel')
     }
   }
