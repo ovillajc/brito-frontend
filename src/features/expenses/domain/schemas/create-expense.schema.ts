@@ -15,7 +15,7 @@ export const createExpenseSchema = z.object({
   categoryId: z.string().uuid({ message: 'Selecciona una categoría' }),
   /** FK expense_subcategories.id */
   subcategoryId: z.string().uuid({ message: 'Selecciona un detalle' }),
-  description: z.string().min(1, 'La descripción es requerida'),
+  description: z.string().optional().nullable().default(null),
   unitPrice: z.coerce.number().positive('El precio unitario debe ser mayor a 0').nullable().default(null),
   quantity: z.coerce.number().positive('La cantidad debe ser mayor a 0').nullable().default(null),
   /** FK measurement_units.id */
@@ -29,7 +29,9 @@ export const createExpenseSchema = z.object({
   cargoTypeId: z.string().uuid().nullable().default(null),
   comments: z.string().trim().nullable().default(null),
   expenseDate: z.string().min(1, 'La fecha es requerida'),
-  receiptUrl: z.string().url().nullable().default(null),
+  receiptUrl: z.string().nullable().default(null),
+  /** FK operator_settlements.id (Opcional, para vincular directamente a un ajuste) */
+  settlementId: z.string().uuid().nullable().optional(),
 }).superRefine((val, ctx) => {
   if (val.unitPrice === null) {
     ctx.addIssue({ code: 'custom', path: ['unitPrice'], message: 'El precio unitario es requerido' })

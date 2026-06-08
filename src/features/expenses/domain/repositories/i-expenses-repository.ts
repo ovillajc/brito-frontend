@@ -39,6 +39,9 @@ export interface ExpensesListFilters {
   to?: Date
   limit?: number
   expenseType?: 'operativo' | 'general' | 'all'
+  settlementId?: string
+  operatorId?: string
+  onlyUnlinked?: boolean
 }
 
 // ---------------------------------------------------------------------------

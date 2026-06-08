@@ -24,9 +24,22 @@ export class SupabaseExpensesServerRepository implements IExpensesRepository {
   async list(filters: ExpensesListFilters = {}): Promise<Either<Failure, ExpenseEntity[]>> {
     try {
       const supabase = await createClient()
+      
+      let selectClause = SELECT_WITH_JOINS
+      if (filters.onlyUnlinked && filters.operatorId) {
+        selectClause = [
+          '*',
+          'expense_categories(name)',
+          'expense_subcategories(name)',
+          'measurement_units(name)',
+          'cargo_types(name)',
+          'trips!inner(trip_number, operator_id)',
+        ].join(', ')
+      }
+
       let query = supabase
         .from('expenses')
-        .select(SELECT_WITH_JOINS)
+        .select(selectClause)
         .order('expense_date', { ascending: false })
 
       if (filters.tripId) query = query.eq('trip_id', filters.tripId)
@@ -34,6 +47,11 @@ export class SupabaseExpensesServerRepository implements IExpensesRepository {
       if (filters.from) query = query.gte('expense_date', filters.from.toISOString())
       if (filters.to) query = query.lte('expense_date', filters.to.toISOString())
       if (filters.limit) query = query.limit(filters.limit)
+      if (filters.settlementId) query = query.eq('settlement_id', filters.settlementId)
+      
+      if (filters.onlyUnlinked && filters.operatorId) {
+        query = query.is('settlement_id', null).eq('trips.operator_id', filters.operatorId)
+      }
 
       const { data, error } = await query
       if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }

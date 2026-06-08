@@ -31,6 +31,30 @@ import {
 import type { OfflineModule } from '@/src/core/infrastructure/offline/db'
 import type { Either, Failure } from '@/src/core/domain/either'
 
+// #region debug-point expense-create-missing-reporter
+const __DBG_URL = process.env.NEXT_PUBLIC_DEBUG_SERVER_URL ?? ''
+const __DBG_SESSION = process.env.NEXT_PUBLIC_DEBUG_SESSION_ID ?? ''
+const __DBG_RUN_ID = process.env.NEXT_PUBLIC_DEBUG_RUN_ID ?? ''
+
+async function dbgReport(event: string, data: Record<string, unknown> = {}) {
+  if (!__DBG_URL || !__DBG_SESSION) return
+  try {
+    await fetch(__DBG_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ts: new Date().toISOString(),
+        sessionId: __DBG_SESSION,
+        runId: __DBG_RUN_ID || undefined,
+        event,
+        data,
+      }),
+      cache: 'no-store',
+    })
+  } catch {}
+}
+// #endregion debug-point expense-create-missing-reporter
+
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
 interface PendingFileConfig {
@@ -89,9 +113,22 @@ export function useOfflineForm<TInput, TOutput>({
     payload: TInput,
     offlineDisplayData: Record<string, unknown>
   ) => {
+    // #region debug-point expense-create-missing-execute-start
+    void dbgReport('offlineForm.execute.start', {
+      module,
+      actionName,
+      isOnline,
+      isSubmitBlocked,
+      pendingFiles: pendingFiles.length,
+    })
+    // #endregion debug-point expense-create-missing-execute-start
+
     if (isSubmitBlocked) {
       const message = 'Sincronización en progreso. Espera un momento antes de guardar.'
       toast.warning(message)
+      // #region debug-point expense-create-missing-execute-blocked
+      void dbgReport('offlineForm.execute.blocked', { module, actionName, message })
+      // #endregion debug-point expense-create-missing-execute-blocked
       return { ok: false, error: message }
     }
 
@@ -103,12 +140,27 @@ export function useOfflineForm<TInput, TOutput>({
         const result = await onlineAction(payload)
         if (!result.ok) {
           toast.error(result.error.message)
+          // #region debug-point expense-create-missing-execute-online-failed
+          void dbgReport('offlineForm.execute.online_failed', {
+            module,
+            actionName,
+            errorCode: result.error.code,
+            errorMessage: result.error.message,
+            statusCode: (result.error as unknown as { statusCode?: unknown } | null | undefined)?.statusCode ?? null,
+          })
+          // #endregion debug-point expense-create-missing-execute-online-failed
           return { ok: false, error: result.error.message }
         }
+        // #region debug-point expense-create-missing-execute-online-ok
+        void dbgReport('offlineForm.execute.online_ok', { module, actionName })
+        // #endregion debug-point expense-create-missing-execute-online-ok
         return { ok: true, data: result.data }
       }
 
       // ── Modo offline: encolar en IndexedDB ────────────────────────────────
+      // #region debug-point expense-create-missing-execute-offline
+      void dbgReport('offlineForm.execute.offline_path', { module, actionName })
+      // #endregion debug-point expense-create-missing-execute-offline
 
       // 1. Guardar archivos en IndexedDB (si los hay)
       const fileIds: number[] = []
@@ -153,6 +205,9 @@ export function useOfflineForm<TInput, TOutput>({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error inesperado'
       toast.error(`Error al guardar: ${message}`)
+      // #region debug-point expense-create-missing-execute-exception
+      void dbgReport('offlineForm.execute.exception', { module, actionName, message })
+      // #endregion debug-point expense-create-missing-execute-exception
       return { ok: false, error: message }
     } finally {
       setIsLoading(false)

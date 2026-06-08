@@ -24,9 +24,22 @@ export class SupabaseExpensesRepository implements IExpensesRepository {
   async list(filters: ExpensesListFilters = {}): Promise<Either<Failure, ExpenseEntity[]>> {
     try {
       const supabase = createClient()
+      
+      let selectClause = SELECT_WITH_JOINS
+      if (filters.onlyUnlinked) {
+        selectClause = [
+          '*',
+          'expense_categories(name)',
+          'expense_subcategories(name)',
+          'measurement_units(name)',
+          'cargo_types(name)',
+          'trips(trip_number, operator_id)',
+        ].join(', ')
+      }
+
       let query = supabase
         .from('expenses')
-        .select(SELECT_WITH_JOINS)
+        .select(selectClause)
         .order('expense_date', { ascending: false })
 
       if (filters.tripId)     query = query.eq('trip_id', filters.tripId)
@@ -34,6 +47,11 @@ export class SupabaseExpensesRepository implements IExpensesRepository {
       if (filters.from)       query = query.gte('expense_date', filters.from.toISOString())
       if (filters.to)         query = query.lte('expense_date', filters.to.toISOString())
       if (filters.limit)      query = query.limit(filters.limit)
+      if (filters.settlementId) query = query.eq('settlement_id', filters.settlementId)
+      
+      if (filters.onlyUnlinked) {
+        query = query.is('settlement_id', null)
+      }
 
       if (filters.expenseType === 'operativo') {
         query = query.or('trip_id.not.is.null,truck_id.not.is.null,trailer_id.not.is.null')
@@ -44,7 +62,12 @@ export class SupabaseExpensesRepository implements IExpensesRepository {
       const { data, error } = await query
       if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
 
-      return { ok: true, data: (data ?? []).map((r) => ExpenseMapper.toDomain(r as unknown as ExpenseRow)) }
+      let rawData = data ?? []
+      if (filters.onlyUnlinked && filters.operatorId) {
+        rawData = rawData.filter((r: any) => !r.trip_id || r.trips?.operator_id === filters.operatorId)
+      }
+
+      return { ok: true, data: rawData.map((r) => ExpenseMapper.toDomain(r as unknown as ExpenseRow)) }
     } catch {
       return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al obtener gastos' } }
     }

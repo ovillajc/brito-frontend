@@ -66,7 +66,7 @@ export interface ExpenseEntity {
   /** Nombre de la sub-categoría (denormalizado desde JOIN) */
   subcategoryName: string | null
   /** Descripción libre del gasto */
-  description: string
+  description: string | null
   /** Precio unitario del artículo/servicio */
   unitPrice: number | null
   /** Cantidad de unidades */
@@ -89,4 +89,5 @@ export interface ExpenseEntity {
   receiptUrl: string | null
   createdBy: string | null
   createdAt: Date
+  settlementId: string | null
 }
