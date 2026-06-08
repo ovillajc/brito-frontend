@@ -2,9 +2,12 @@ import { createClient } from '@/src/core/lib/supabase/client'
 import type { Either, Failure } from '@/src/core/domain/either'
 import type { IExpenseAssignmentsRepository } from '../../domain/repositories/i-expense-assignments-repository'
 import type { ExpenseAdvanceEntity, TripExpenseAssignmentKpiEntity, TripExpenseSettlementEntity } from '../../domain/entities/expense-assignment-entity'
+import type { OperatorSettlementEntity, OperatorSettlementKpiEntity } from '../../domain/entities/operator-settlement-entity'
 import type { CreateExpenseAdvanceInput } from '../../domain/schemas/create-expense-advance.schema'
 import type { CreateTripSettlementInput } from '../../domain/schemas/create-trip-settlement.schema'
+import type { CreateOperatorSettlementInput, CloseOperatorSettlementInput, LinkExpenseToSettlementInput } from '../../domain/schemas/operator-settlement.schema'
 import { ExpenseAssignmentMapper, type ExpenseAdvanceRow, type TripExpenseAssignmentKpiRow, type TripExpenseSettlementRow } from '../mappers/ExpenseAssignmentMapper'
+import { OperatorSettlementMapper, type OperatorSettlementKpiRow } from '../mappers/OperatorSettlementMapper'
 
 const SELECT_ADVANCES = [
   '*',
@@ -45,23 +48,54 @@ export class SupabaseExpenseAssignmentsRepository implements IExpenseAssignments
     }
   }
 
-  async createAdvance(_input: CreateExpenseAdvanceInput, _assignedBy: string | null): Promise<Either<Failure, ExpenseAdvanceEntity>> {
-    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
+  async listOperatorSettlementKpis(limit: number, onlyOpen?: boolean): Promise<Either<Failure, OperatorSettlementKpiEntity[]>> {
+    try {
+      const supabase = createClient()
+      let query = supabase
+        .from('operator_settlement_kpis')
+        .select('*')
+        .order('opened_at', { ascending: false })
+        .limit(limit)
+
+      if (onlyOpen) query = query.eq('status', 'open')
+
+      const { data, error } = await query
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: (data ?? []).map((r) => OperatorSettlementMapper.kpiToDomain(r as unknown as OperatorSettlementKpiRow)) }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al listar ajustes de operador' } }
+    }
   }
 
-  async linkAdvanceToTrip(_advanceId: string, _tripId: string): Promise<Either<Failure, void>> {
+  // Operaciones de escritura: delegan al servidor vía Server Actions
+  async createAdvance(_i: CreateExpenseAdvanceInput, _b: string | null): Promise<Either<Failure, ExpenseAdvanceEntity>> {
     return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
   }
-
-  async updateAdvance(_id: string, _input: CreateExpenseAdvanceInput): Promise<Either<Failure, ExpenseAdvanceEntity>> {
+  async linkAdvanceToTrip(_a: string, _t: string): Promise<Either<Failure, void>> {
     return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
   }
-
+  async updateAdvance(_id: string, _i: CreateExpenseAdvanceInput): Promise<Either<Failure, ExpenseAdvanceEntity>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
+  }
   async deleteAdvance(_id: string): Promise<Either<Failure, void>> {
     return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
   }
-
-  async createSettlement(_input: CreateTripSettlementInput, _settledBy: string | null): Promise<Either<Failure, TripExpenseSettlementEntity>> {
+  async createSettlement(_i: CreateTripSettlementInput, _b: string | null): Promise<Either<Failure, TripExpenseSettlementEntity>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
+  }
+  async createOperatorSettlement(_i: CreateOperatorSettlementInput, _b: string | null): Promise<Either<Failure, OperatorSettlementEntity>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
+  }
+  async closeOperatorSettlement(_i: CloseOperatorSettlementInput, _b: string | null): Promise<Either<Failure, OperatorSettlementEntity>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
+  }
+  async linkExpenseToSettlement(_i: LinkExpenseToSettlementInput): Promise<Either<Failure, void>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
+  }
+  async unlinkExpenseFromSettlement(_expenseId: string): Promise<Either<Failure, void>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
+  }
+  async deleteOperatorSettlement(_id: string): Promise<Either<Failure, void>> {
     return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
   }
 }

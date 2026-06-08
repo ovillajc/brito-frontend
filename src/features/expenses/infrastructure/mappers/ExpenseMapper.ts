@@ -51,7 +51,7 @@ export interface ExpenseRow {
   trailer_id: string | null
   category_id: string | null
   subcategory_id: string | null
-  description: string
+  description: string | null
   unit_price: number | null
   quantity: number | null
   unit_id: string | null
@@ -63,6 +63,7 @@ export interface ExpenseRow {
   receipt_url: string | null
   created_by: string | null
   created_at: string
+  settlement_id: string | null
   // JOINs opcionales
   expense_categories?: { name: string } | null
   expense_subcategories?: { name: string } | null
@@ -136,6 +137,7 @@ export class ExpenseMapper {
       receiptUrl: row.receipt_url,
       createdBy: row.created_by,
       createdAt: new Date(row.created_at),
+      settlementId: row.settlement_id,
     }
   }
 
@@ -152,7 +154,7 @@ export class ExpenseMapper {
       trailer_id: input.trailerId || null,
       category_id: input.categoryId || null,
       subcategory_id: input.subcategoryId || null,
-      description: input.description,
+      description: input.description ?? null,
       unit_price: input.unitPrice,
       quantity: input.quantity,
       unit_id: input.unitId || null,
@@ -163,6 +165,7 @@ export class ExpenseMapper {
       expense_date: input.expenseDate,
       receipt_url: input.receiptUrl || null,
       created_by: createdByProfileId || null,
+      settlement_id: input.settlementId ?? null,
     }
   }
 
@@ -184,7 +187,7 @@ export class ExpenseMapper {
       trailer_id: input.trailerId || null,
       category_id: input.categoryId || null,
       subcategory_id: input.subcategoryId || null,
-      description: input.description,
+      description: input.description ?? null,
       unit_price: input.unitPrice,
       quantity: input.quantity,
       unit_id: input.unitId || null,
@@ -194,6 +197,7 @@ export class ExpenseMapper {
       comments: input.comments || null,
       expense_date: input.expenseDate,
       receipt_url: input.receiptUrl || null,
+      settlement_id: input.settlementId ?? null,
     }
   }
 }

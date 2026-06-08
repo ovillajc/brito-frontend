@@ -24,10 +24,35 @@ import { EXPENSE_FREQUENCY } from '../../../domain/entities/expense-entity'
 import { createExpenseSchema, type CreateExpenseInput } from '../../../domain/schemas/create-expense.schema'
 import { useExpenseCatalogs, useExpenseSubcategories } from '../../hooks/use-expense-catalogs'
 import { useCreateExpense, useUpdateExpense } from '../../hooks/use-expenses'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTripsList } from '@/src/features/trips/presentation/hooks/use-trips'
 import { useOfflineForm } from '@/src/core/presentation/hooks/use-offline-form'
 import { createExpenseAction } from '@/src/features/expenses/presentation/actions/expenses.actions'
 import { useConnectivityStore } from '@/src/core/presentation/stores/use-connectivity-store'
+
+// #region debug-point expense-create-missing-reporter
+const __DBG_URL = process.env.NEXT_PUBLIC_DEBUG_SERVER_URL ?? ''
+const __DBG_SESSION = process.env.NEXT_PUBLIC_DEBUG_SESSION_ID ?? ''
+const __DBG_RUN_ID = process.env.NEXT_PUBLIC_DEBUG_RUN_ID ?? ''
+
+async function dbgReport(event: string, data: Record<string, unknown> = {}) {
+  if (!__DBG_URL || !__DBG_SESSION) return
+  try {
+    await fetch(__DBG_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ts: new Date().toISOString(),
+        sessionId: __DBG_SESSION,
+        runId: __DBG_RUN_ID || undefined,
+        event,
+        data,
+      }),
+      cache: 'no-store',
+    })
+  } catch {}
+}
+// #endregion debug-point expense-create-missing-reporter
 
 // ── ReceiptPreview ───────────────────────────────────────────────────────────
 
@@ -86,6 +111,7 @@ interface ExpenseWizardProps {
   onClose: () => void
   expenseRow?: ExpenseEntity
   defaultTripId?: string
+  defaultSettlementId?: string
   mode?: 'create' | 'edit' | 'view'
 }
 
@@ -93,7 +119,7 @@ type SubmissionStatus = 'idle' | 'success' | 'error'
 
 // ── Componente ────────────────────────────────────────────────────────────────
 
-export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode }: ExpenseWizardProps) {
+export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, defaultSettlementId, mode }: ExpenseWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('idle')
   const [submissionError, setSubmissionError] = useState<string | null>(null)
@@ -108,6 +134,7 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
   const tripsQuery = useTripsList({ limit: 50 })
   const isOffline = useConnectivityStore((s) => s.status === 'offline')
   const isSubmitBlocked = useConnectivityStore((s) => s.isSubmitBlocked)
+  const queryClient = useQueryClient()
 
   const { execute: executeOffline, isLoading: offlineLoading } = useOfflineForm<CreateExpenseInput, ExpenseEntity>({
     module: 'expenses',
@@ -142,6 +169,7 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
       comments: null,
       expenseDate: new Date().toISOString().slice(0, 10),
       receiptUrl: null,
+      settlementId: defaultSettlementId ?? null,
     },
     mode: 'onSubmit',
   })
@@ -226,8 +254,9 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
     } else if (isOpen && !expenseRow) {
       reset()
       if (defaultTripId) setValue('tripId', defaultTripId)
+      if (defaultSettlementId) setValue('settlementId', defaultSettlementId)
     }
-  }, [isOpen, expenseRow, reset, defaultTripId, setValue])
+  }, [isOpen, expenseRow, reset, defaultTripId, defaultSettlementId, setValue])
 
   // Handlers
   const goNext = async () => {
@@ -235,7 +264,7 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
       setActiveStep((p) => p + 1)
       return
     }
-    const ok = await trigger(['categoryId', 'subcategoryId', 'expenseDate', 'description'])
+    const ok = await trigger(['categoryId', 'subcategoryId', 'expenseDate'])
     if (ok) setActiveStep((p) => p + 1)
   }
 
@@ -247,6 +276,21 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
         handleClose()
         return
       }
+
+      // #region debug-point expense-create-missing-submit
+      void dbgReport('expenses.wizard.submit', {
+        mode: resolvedMode,
+        isOffline,
+        isSubmitBlocked,
+        hasReceiptUrl: !!data.receiptUrl,
+        unitPrice: data.unitPrice,
+        quantity: data.quantity,
+        amount: data.amount,
+        categoryId: data.categoryId,
+        subcategoryId: data.subcategoryId,
+        tripId: data.tripId,
+      })
+      // #endregion debug-point expense-create-missing-submit
 
       const amountFallback =
         data.unitPrice != null && data.quantity != null
@@ -276,10 +320,19 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
           subcategoryId: normalizedData.subcategoryId,
         }
         const result = await executeOffline(normalizedData, displayData)
+        // #region debug-point expense-create-missing-offline-result
+        void dbgReport('expenses.wizard.executeOffline.result', {
+          ok: result.ok,
+          offline: !!result.offline,
+          error: result.error ?? null,
+        })
+        // #endregion debug-point expense-create-missing-offline-result
         if (result.ok) {
+          await queryClient.invalidateQueries({ queryKey: ['expenses'] })
           setSubmissionError(null)
           setSubmissionStatus('success')
         } else if (result.offline) {
+          await queryClient.invalidateQueries({ queryKey: ['expenses'] })
           // Guardado localmente — cerrar el wizard
           handleClose()
         } else {
@@ -392,7 +445,7 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="description">Descripción</Label>
+          <Label htmlFor="description">Descripción (Opcional)</Label>
           <Input id="description" placeholder="Ej. Permiso Puerto" disabled={isReadOnly} {...register('description')} />
           {errors.description && <p className={errorClass}>{errors.description.message}</p>}
         </div>
@@ -439,6 +492,7 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
 
         <div className="grid gap-2">
           <Label htmlFor="receiptUrl">Ticket / Factura</Label>
+          <input type="hidden" {...register('receiptUrl')} />
           {isReadOnly ? (
             // ── Modo Vista: Previsualización del comprobante ────────────────
             <ReceiptPreview url={watch('receiptUrl') ?? null} />
@@ -449,14 +503,14 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
                 folder="expenses/receipts"
                 label="Adjuntar Ticket o Factura (PDF / Imagen)"
                 currentUrl={watch('receiptUrl')}
-                onUploadComplete={(url) => setValue('receiptUrl', url)}
+                onUploadComplete={(url) => setValue('receiptUrl', url, { shouldValidate: true, shouldDirty: true })}
                 disabled={isReadOnly || !(Number(unitPrice) > 0 && Number(quantity) > 0 && !!watch('unitId'))}
               />
 
               {watch('receiptUrl') ? (
                 <button
                   type="button"
-                  onClick={() => setValue('receiptUrl', null)}
+                  onClick={() => setValue('receiptUrl', null, { shouldValidate: true, shouldDirty: true })}
                   className="text-xs text-red-600 hover:underline self-start"
                 >
                   Eliminar comprobante
@@ -464,6 +518,7 @@ export function ExpenseWizard({ isOpen, onClose, expenseRow, defaultTripId, mode
               ) : null}
             </div>
           )}
+          {errors.receiptUrl && <p className={errorClass}>{errors.receiptUrl.message}</p>}
         </div>
 
         <div className="grid gap-2">

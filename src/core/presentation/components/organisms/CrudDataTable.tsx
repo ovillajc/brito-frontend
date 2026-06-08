@@ -38,6 +38,49 @@ import {
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { DataTableToolbar } from '@/src/core/presentation/components/molecules/data-table-toolbar'
 import { ConfirmDialog } from '@/src/core/presentation/components/molecules/confirm-dialog'
+import * as XLSX from 'xlsx'
+
+// #region debug-point diesel-expense-delete-reporter
+const __DBG_URL = process.env.NEXT_PUBLIC_DEBUG_SERVER_URL ?? ''
+const __DBG_SESSION = process.env.NEXT_PUBLIC_DEBUG_SESSION_ID ?? ''
+const __DBG_RUN_ID = process.env.NEXT_PUBLIC_DEBUG_RUN_ID ?? ''
+
+async function dbgReport(event: string, data: Record<string, unknown> = {}) {
+  if (!__DBG_URL || !__DBG_SESSION) return
+  try {
+    await fetch(__DBG_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ts: new Date().toISOString(),
+        sessionId: __DBG_SESSION,
+        runId: __DBG_RUN_ID || undefined,
+        event,
+        data,
+      }),
+      cache: 'no-store',
+    })
+  } catch {}
+}
+// #endregion debug-point diesel-expense-delete-reporter
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Extrae texto plano de un ReactNode para usarlo en exportaciones (ej. Excel).
+ */
+const extractTextFromNode = (node: React.ReactNode): string => {
+  if (node === null || node === undefined) return ''
+  if (typeof node === 'string' || typeof node === 'number' || typeof node === 'boolean') return String(node)
+  if (Array.isArray(node)) return node.map(extractTextFromNode).join(' ').trim()
+  if (React.isValidElement(node)) {
+    const children = (node.props as { children?: React.ReactNode } | null | undefined)?.children
+    if (children) {
+      return extractTextFromNode(children)
+    }
+  }
+  return ''
+}
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -57,6 +100,11 @@ export interface CrudColumn<T> {
   className?: string
   /** Clases CSS adicionales para la celda del encabezado. */
   headerClassName?: string
+  /** 
+   * Función opcional para extraer el valor en texto para exportar a Excel.
+   * Si no se provee, la tabla intentará extraer el texto plano del ReactNode devuelto por `cell`.
+   */
+  accessor?: (item: T) => string | number | boolean | null | undefined
 }
 
 /** Configuración del estado vacío cuando no hay datos. */
@@ -131,6 +179,9 @@ interface CrudDataTableProps<T extends { id: string }> {
 
   /** Número de registros por página. Por defecto: 10. Si es 0 desactiva paginación. */
   pageSize?: number
+
+  /** Callback para exportar a Excel. Si no se provee, se usará una exportación genérica automática. */
+  onExport?: () => void
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -159,6 +210,7 @@ export function CrudDataTable<T extends { id: string }>({
   className,
   canManage = true,
   pageSize = 10,
+  onExport,
 }: CrudDataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('')
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -199,13 +251,28 @@ export function CrudDataTable<T extends { id: string }>({
     if (!pendingDeleteId || !_onDelete) return
     setIsDeleting(true)
     try {
+      // #region debug-point diesel-expense-delete-confirm
+      void dbgReport('crud.delete.confirm', { id: pendingDeleteId })
+      // #endregion debug-point diesel-expense-delete-confirm
       const result = await _onDelete(pendingDeleteId)
       if (result.ok) {
+        // #region debug-point diesel-expense-delete-ok
+        void dbgReport('crud.delete.ok', { id: pendingDeleteId })
+        // #endregion debug-point diesel-expense-delete-ok
         toast.success('Registro eliminado correctamente')
       } else {
+        // #region debug-point diesel-expense-delete-failed
+        void dbgReport('crud.delete.failed', {
+          id: pendingDeleteId,
+          message: result.error?.message ?? null,
+        })
+        // #endregion debug-point diesel-expense-delete-failed
         toast.error(result.error?.message ?? 'Error al eliminar')
       }
     } catch {
+      // #region debug-point diesel-expense-delete-exception
+      void dbgReport('crud.delete.exception', { id: pendingDeleteId })
+      // #endregion debug-point diesel-expense-delete-exception
       toast.error('Error inesperado al eliminar')
     } finally {
       setIsDeleting(false)
@@ -219,24 +286,64 @@ export function CrudDataTable<T extends { id: string }>({
     : "¿Eliminar registro?"
   const computedDeleteDescription = pendingDeleteItem && deleteConfirmDescription
     ? (typeof deleteConfirmDescription === 'function' ? deleteConfirmDescription(pendingDeleteItem) : deleteConfirmDescription)
-    : "Esta acción es irreversible. El registro y toda su información asociada serán eliminados permanentemente."
+    : "Esta acción no se puede deshacer. ¿Estás seguro de que deseas eliminar este elemento?"
+
+  const handleExport = () => {
+    if (onExport) {
+      onExport()
+      return
+    }
+
+    if (!filteredData || filteredData.length === 0) {
+      toast.error('No hay datos para exportar')
+      return
+    }
+
+    try {
+      toast.info('Generando Excel...')
+
+      const exportData = filteredData.map(item => {
+        const rowData: Record<string, unknown> = {}
+        columns.forEach(col => {
+          if (col.accessor) {
+            rowData[col.header] = col.accessor(item)
+          } else {
+            const node = col.cell(item)
+            const rawText = extractTextFromNode(node)
+            rowData[col.header] = rawText ? rawText.replace(/\s+/g, ' ').trim() : ''
+          }
+        })
+        return rowData
+      })
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Datos')
+      XLSX.writeFile(workbook, `Reporte_${new Date().toISOString().split('T')[0]}.xlsx`)
+      toast.success('Excel exportado correctamente')
+    } catch (e) {
+      toast.error('Error al generar Excel')
+    }
+  }
 
   const EmptyIcon = emptyState.icon
 
   return (
-    <div className={`flex flex-col gap-4 ${className ?? ''}`}>
+    <div className={`bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-[20px] shadow-sm flex flex-col overflow-hidden ${className ?? ''}`}>
       {/* Toolbar */}
-      <DataTableToolbar
-        searchPlaceholder={searchPlaceholder}
-        searchValue={searchFilter ? searchTerm : undefined}
-        onSearchChange={searchFilter ? setSearchTerm : undefined}
-        actionLabel={canManage ? actionLabel : undefined}
-        onAction={_onAction}
-      />
+      <div className="p-4 border-b border-stone-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/50">
+        <DataTableToolbar
+          searchPlaceholder={searchPlaceholder}
+          searchValue={searchFilter ? searchTerm : undefined}
+          onSearchChange={searchFilter ? setSearchTerm : undefined}
+          actionLabel={canManage ? actionLabel : undefined}
+          onAction={_onAction}
+          onExport={handleExport}
+        />
+      </div>
 
-      {/* Empty state (when not loading and no data) */}
       {isEmpty ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-stone-50/50 border-2 border-dashed border-stone-200 dark:border-zinc-700 rounded-[20px] text-center">
+        <div className="flex flex-col items-center justify-center py-20 bg-stone-50/50 text-center">
           <div className="size-16 rounded-full bg-stone-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
             <EmptyIcon className="size-8 text-stone-300 dark:text-zinc-600" />
           </div>
@@ -249,7 +356,7 @@ export function CrudDataTable<T extends { id: string }>({
         </div>
       ) : (
         <>
-          <TableContainer>
+          <div className="w-full overflow-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-stone-50/50 dark:bg-zinc-900/50">
@@ -355,11 +462,11 @@ export function CrudDataTable<T extends { id: string }>({
                 )}
               </TableBody>
             </Table>
-          </TableContainer>
+          </div>
 
           {/* Pagination Controls */}
           {!isLoading && totalPages > 1 && (
-            <div className="flex items-center justify-between px-2 pt-2 border-t border-stone-200 dark:border-zinc-800 mt-2">
+            <div className="flex items-center justify-between p-4 border-t border-stone-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/50">
               <p className="text-sm text-stone-500 dark:text-zinc-400">
                 Mostrando {(safeCurrentPage - 1) * itemsPerPage + 1} a {Math.min(safeCurrentPage * itemsPerPage, filteredData.length)} de {filteredData.length} resultados
               </p>

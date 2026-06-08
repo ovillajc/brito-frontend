@@ -11,6 +11,7 @@ import { GetExpenses } from '../../application/GetExpenses'
 import { createExpenseAction, deleteExpenseAction, updateExpenseAction } from '../actions/expenses.actions'
 import type { CreateExpenseInput } from '../../domain/schemas/create-expense.schema'
 import type { ExpensesListFilters } from '../../domain/repositories/i-expenses-repository'
+import type { ExpenseEntity } from '../../domain/entities/expense-entity'
 
 const expensesRepo = new SupabaseExpensesRepository()
 
@@ -18,7 +19,10 @@ const expensesRepo = new SupabaseExpensesRepository()
  * Hook para obtener la lista de gastos con filtros opcionales.
  * @param filters - Filtros de listado (tripId, categoryId, rango de fechas, límite)
  */
-export function useExpenses(filters?: ExpensesListFilters) {
+export function useExpenses(
+  filters?: ExpensesListFilters,
+  options?: Omit<import('@tanstack/react-query').UseQueryOptions<ExpenseEntity[], Error, ExpenseEntity[], any>, 'queryKey' | 'queryFn'>
+) {
   return useQuery({
     queryKey: ['expenses', filters],
     queryFn: async () => {
@@ -27,6 +31,7 @@ export function useExpenses(filters?: ExpensesListFilters) {
       return result.data
     },
     staleTime: 1000 * 30,
+    ...options,
   })
 }
 

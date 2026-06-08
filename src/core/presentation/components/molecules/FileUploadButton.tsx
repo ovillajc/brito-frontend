@@ -23,7 +23,7 @@
  * ```
  */
 
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { Paperclip, CheckCircle, Loader2, XCircle, ExternalLink } from 'lucide-react'
 
 interface FileUploadButtonProps {
@@ -110,6 +110,13 @@ export function FileUploadButton({
 }: FileUploadButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [state, setState] = useState<UploadState>({ status: 'idle' })
+
+  // Sincronizar estado interno si la URL actual es limpiada desde el exterior
+  useEffect(() => {
+    if (state.status === 'success' && currentUrl !== state.url) {
+      setState({ status: 'idle' })
+    }
+  }, [currentUrl, state])
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
