@@ -24,7 +24,7 @@
  */
 
 import React, { useState } from 'react'
-import { Edit2, Trash2, Eye } from 'lucide-react'
+import { Edit2, Trash2, Eye, ArrowUp, ArrowDown, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Table,
@@ -85,13 +85,50 @@ function isUuidLike(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
+function normalizeString(value: unknown) {
+  if (value === null || value === undefined) return ''
+  return String(value).trim().toLowerCase()
+}
+
+function toDomId(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9_-]+/g, '-')
+}
+
+function looksNumeric(value: unknown) {
+  if (typeof value === 'number') return Number.isFinite(value)
+  const raw = normalizeString(value)
+  if (!raw) return false
+  const parsed = Number(raw.replace(/,/g, ''))
+  return Number.isFinite(parsed)
+}
+
+function asNumber(value: unknown) {
+  if (typeof value === 'number') return value
+  const raw = normalizeString(value)
+  const parsed = Number(raw.replace(/,/g, ''))
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function isCategoricalHeader(value: string) {
+  return /(status|estado|type|tipo|category|categoria|role|rol|estatus)/i.test(value)
+}
+
 // ─── Types ──────────────────────────────────────────────────────────────────
+
+export type CrudColumnFilterConfig<T> =
+  {
+      type?: 'select'
+      options: Array<{ label: string; value: string }>
+      placeholder?: string
+      getValue?: (item: T) => string | number | boolean | null | undefined
+    }
 
 /**
  * Definición de una columna para `CrudDataTable`.
  * @template T - Tipo de la entidad de dominio.
  */
 export interface CrudColumn<T> {
+  id?: string
   /** Texto del encabezado de la columna. */
   header: string
   /**
@@ -108,6 +145,8 @@ export interface CrudColumn<T> {
    * Si no se provee, la tabla intentará extraer el texto plano del ReactNode devuelto por `cell`.
    */
   accessor?: (item: T) => string | number | boolean | null | undefined
+  filter?: boolean | CrudColumnFilterConfig<T>
+  sortable?: boolean
 }
 
 /** Configuración del estado vacío cuando no hay datos. */
@@ -219,11 +258,112 @@ export function CrudDataTable<T extends { id: string }>({
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [areColumnFiltersVisible, setAreColumnFiltersVisible] = useState(false)
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({})
+  const [sortKey, setSortKey] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   // Reset page when search changes
   React.useEffect(() => {
     setCurrentPage(1)
   }, [searchTerm])
+
+  const columnsWithKeys = React.useMemo(() => {
+    return columns.map((col) => ({
+      key: col.id ?? col.header,
+      col,
+    }))
+  }, [columns])
+
+  const getCellFilterValue = React.useCallback(
+    (item: T, col: CrudColumn<T>, config?: CrudColumnFilterConfig<T>) => {
+      if (config?.getValue) return config.getValue(item)
+      if (col.accessor) return col.accessor(item)
+      return extractTextFromNode(col.cell(item))
+    },
+    []
+  )
+
+  const autoSelectOptionsByKey = React.useMemo(() => {
+    const rows = data ?? []
+    const result: Record<string, Array<{ label: string; value: string }>> = {}
+
+    for (const { key, col } of columnsWithKeys) {
+      const baseCfg = typeof col.filter === 'object' ? col.filter : undefined
+      const values: Array<{ label: string; value: string }> = []
+      const seen = new Set<string>()
+
+      for (const row of rows) {
+        const raw = getCellFilterValue(row, col, baseCfg)
+        const label = String(raw ?? '').trim()
+        const normalized = normalizeString(label)
+        if (!normalized) continue
+        if (isUuidLike(normalized)) continue
+        if (seen.has(normalized)) continue
+        seen.add(normalized)
+        values.push({ label, value: label })
+      }
+
+      result[key] = values.sort((a, b) => a.label.localeCompare(b.label, 'es-MX'))
+    }
+
+    return result
+  }, [columnsWithKeys, data, getCellFilterValue])
+
+  const filterableColumns = React.useMemo(() => {
+    return columnsWithKeys
+      .map(({ key, col }) => {
+        if (col.filter === false) return { key, col, enabled: false as const, config: undefined, mode: 'none' as const }
+
+        const explicitConfig = typeof col.filter === 'object' ? col.filter : undefined
+        if (explicitConfig?.type === 'select') {
+          return { key, col, enabled: true as const, config: explicitConfig, mode: 'select' as const }
+        }
+
+        const headerKey = `${key} ${col.header}`
+        const options = autoSelectOptionsByKey[key] ?? []
+        const total = (data ?? []).length
+        const uniqueCount = options.length
+
+        const shouldBeSelect =
+          isCategoricalHeader(headerKey) ||
+          (total >= 2 &&
+            uniqueCount > 1 &&
+            uniqueCount <= 12 &&
+            uniqueCount / Math.max(1, total) <= 0.4 &&
+            options.every((opt) => opt.label.length > 0 && opt.label.length <= 32 && !looksNumeric(opt.label)))
+
+        if (shouldBeSelect) {
+          const config: CrudColumnFilterConfig<T> = {
+            options,
+            placeholder: 'Todos',
+            ...(explicitConfig && 'getValue' in explicitConfig ? { getValue: explicitConfig.getValue } : {}),
+          }
+          return { key, col, enabled: true as const, config, mode: 'select' as const }
+        }
+
+        return { key, col, enabled: false as const, config: undefined, mode: 'none' as const }
+      })
+      .filter((c) => c.enabled)
+  }, [autoSelectOptionsByKey, columnsWithKeys, data])
+
+  React.useEffect(() => {
+    setColumnFilters((prev) => {
+      const next: Record<string, string> = {}
+      for (const { key } of filterableColumns) {
+        next[key] = prev[key] ?? ''
+      }
+      return next
+    })
+  }, [filterableColumns])
+
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [columnFilters])
+
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [sortDirection, sortKey])
 
   const _onAction = canManage ? onAction : undefined
   const _onEdit = canManage ? onEdit : undefined
@@ -233,20 +373,79 @@ export function CrudDataTable<T extends { id: string }>({
   const hasRowActions = !!(onView || _onEdit || _onDelete)
   const totalCols = columns.length + (hasRowActions ? 1 : 0)
 
-  // Filtrado client-side
-  const filteredData = data
-    ? searchFilter && searchTerm.trim()
-      ? data.filter((item) => searchFilter(item, searchTerm.toLowerCase()))
-      : data
-    : []
+  const searchFilteredData = React.useMemo(() => {
+    if (!data) return []
+    if (!searchFilter || !searchTerm.trim()) return data
+    return data.filter((item) => searchFilter(item, searchTerm.toLowerCase()))
+  }, [data, searchFilter, searchTerm])
 
-  const isEmpty = !isLoading && filteredData.length === 0
+  const activeColumnFiltersCount = React.useMemo(() => {
+    return Object.values(columnFilters).filter((value) => value.trim() !== '').length
+  }, [columnFilters])
+
+  const columnFilteredData = React.useMemo(() => {
+    if (!searchFilteredData.length) return []
+
+    const activeKeys = Object.entries(columnFilters)
+      .map(([key, value]) => ({ key, value: value.trim() }))
+      .filter(({ value }) => value !== '')
+
+    if (activeKeys.length === 0) return searchFilteredData
+
+    return searchFilteredData.filter((item) => {
+      for (const { key, value } of activeKeys) {
+        const colMeta = filterableColumns.find((c) => c.key === key)
+        if (!colMeta) continue
+
+        const cfg = colMeta.config
+        const rawValue = getCellFilterValue(item, colMeta.col, cfg)
+
+        if (normalizeString(rawValue) !== normalizeString(value)) return false
+      }
+
+      return true
+    })
+  }, [columnFilters, filterableColumns, getCellFilterValue, searchFilteredData])
+
+  const sortedData = React.useMemo(() => {
+    const items = [...columnFilteredData]
+    if (!sortKey) return items
+
+    const colEntry = columnsWithKeys.find((c) => c.key === sortKey)
+    if (!colEntry) return items
+    if (colEntry.col.sortable === false) return items
+
+    items.sort((a, b) => {
+      const config = typeof colEntry.col.filter === 'object' ? colEntry.col.filter : undefined
+      const aVal = getCellFilterValue(a, colEntry.col, config)
+      const bVal = getCellFilterValue(b, colEntry.col, config)
+
+      const aNum = looksNumeric(aVal) ? asNumber(aVal) : null
+      const bNum = looksNumeric(bVal) ? asNumber(bVal) : null
+
+      if (aNum != null || bNum != null) {
+        if (aNum == null && bNum == null) return 0
+        if (aNum == null) return 1
+        if (bNum == null) return -1
+        return sortDirection === 'asc' ? aNum - bNum : bNum - aNum
+      }
+
+      const aStr = normalizeString(aVal)
+      const bStr = normalizeString(bVal)
+      const cmp = aStr.localeCompare(bStr, 'es-MX')
+      return sortDirection === 'asc' ? cmp : -cmp
+    })
+
+    return items
+  }, [columnFilteredData, columnsWithKeys, getCellFilterValue, sortDirection, sortKey])
+
+  const isEmpty = !isLoading && sortedData.length === 0
 
   // Paginación
   const itemsPerPage = pageSize > 0 ? pageSize : Number.MAX_SAFE_INTEGER
-  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage))
+  const totalPages = Math.max(1, Math.ceil(sortedData.length / itemsPerPage))
   const safeCurrentPage = Math.min(currentPage, totalPages)
-  const paginatedData = filteredData.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage)
+  const paginatedData = sortedData.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage)
 
   const handleDeleteRequest = (id: string) => setPendingDeleteId(id)
   const handleCancelDelete = () => setPendingDeleteId(null)
@@ -283,7 +482,7 @@ export function CrudDataTable<T extends { id: string }>({
     }
   }
 
-  const pendingDeleteItem = pendingDeleteId ? filteredData.find((d) => d.id === pendingDeleteId) : null
+  const pendingDeleteItem = pendingDeleteId ? sortedData.find((d) => d.id === pendingDeleteId) : null
   const computedDeleteTitle = pendingDeleteItem && deleteConfirmTitle 
     ? (typeof deleteConfirmTitle === 'function' ? deleteConfirmTitle(pendingDeleteItem) : deleteConfirmTitle)
     : "¿Eliminar registro?"
@@ -293,11 +492,11 @@ export function CrudDataTable<T extends { id: string }>({
 
   const handleExport = () => {
     if (onExport) {
-      onExport(filteredData)
+      onExport(sortedData)
       return
     }
 
-    if (!filteredData || filteredData.length === 0) {
+    if (!sortedData || sortedData.length === 0) {
       toast.error('No hay datos para exportar')
       return
     }
@@ -305,7 +504,7 @@ export function CrudDataTable<T extends { id: string }>({
     try {
       toast.info('Generando Excel...')
 
-      const exportData = filteredData.map(item => {
+      const exportData = sortedData.map(item => {
         const rowData: Record<string, unknown> = {}
         columns.forEach(col => {
           if (col.accessor) {
@@ -336,6 +535,34 @@ export function CrudDataTable<T extends { id: string }>({
     }
   }
 
+  const setColumnFilterValue = (key: string, value: string) => {
+    setColumnFilters((prev) => ({
+      ...prev,
+      [key]: value,
+    }))
+  }
+
+  const clearAllColumnFilters = () => {
+    setColumnFilters((prev) => {
+      const next: Record<string, string> = {}
+      for (const key of Object.keys(prev)) next[key] = ''
+      return next
+    })
+  }
+
+  const handleSortHeaderClick = (key: string, col: CrudColumn<T>) => {
+    if (col.sortable === false) return
+    setCurrentPage(1)
+    setSortKey((prev) => {
+      if (prev !== key) {
+        setSortDirection('asc')
+        return key
+      }
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
+      return prev
+    })
+  }
+
   const EmptyIcon = emptyState.icon
 
   return (
@@ -346,11 +573,60 @@ export function CrudDataTable<T extends { id: string }>({
           searchPlaceholder={searchPlaceholder}
           searchValue={searchFilter ? searchTerm : undefined}
           onSearchChange={searchFilter ? setSearchTerm : undefined}
+          onFiltersClick={filterableColumns.length > 0 ? () => setAreColumnFiltersVisible((prev) => !prev) : undefined}
+          filtersCount={activeColumnFiltersCount}
           actionLabel={canManage ? actionLabel : undefined}
           onAction={_onAction}
           onExport={handleExport}
         />
       </div>
+
+      {areColumnFiltersVisible && filterableColumns.length > 0 ? (
+        <div className="border-b border-stone-200 dark:border-zinc-800 bg-stone-50/30 dark:bg-zinc-900/30 px-4 py-3">
+          <div className="flex flex-wrap items-end gap-3">
+            {filterableColumns.map(({ key, col, config }) => {
+              if (!config) return null
+
+              const domId = `crud-filter-${toDomId(key)}`
+              const value = columnFilters[key] ?? ''
+
+              return (
+                <div key={key} className="relative min-w-[180px] flex-1 sm:flex-none">
+                  <label htmlFor={domId} className="mb-1 block text-xs font-medium text-stone-600 dark:text-zinc-300">
+                    {col.header}
+                  </label>
+                  <select
+                    id={domId}
+                    aria-label={col.header}
+                    value={value}
+                    onChange={(e) => setColumnFilterValue(key, e.target.value)}
+                    className="h-10 w-full appearance-none rounded-xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 pl-3 pr-12 text-sm text-stone-900 dark:text-zinc-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/30"
+                  >
+                    <option value="">{config.placeholder ?? 'Todos'}</option>
+                    {config.options.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-[34px] size-4 text-stone-400 dark:text-zinc-500" />
+                </div>
+              )
+            })}
+            {activeColumnFiltersCount > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={clearAllColumnFilters}
+                className="h-10 border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
+              >
+                Limpiar filtros
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {isEmpty ? (
         <div className="flex flex-col items-center justify-center py-20 bg-stone-50/50 text-center">
@@ -370,12 +646,22 @@ export function CrudDataTable<T extends { id: string }>({
             <Table>
               <TableHeader>
                 <TableRow className="bg-stone-50/50 dark:bg-zinc-900/50">
-                  {columns.map((col) => (
+                  {columnsWithKeys.map(({ key, col }) => (
                     <TableHead
-                      key={col.header}
-                      className={`font-bold text-stone-900 dark:text-zinc-100 ${col.headerClassName ?? ''}`}
+                      key={key}
+                      className={`font-bold text-stone-900 dark:text-zinc-100 select-none ${col.headerClassName ?? ''}`}
+                      onClick={() => handleSortHeaderClick(key, col)}
                     >
-                      {col.header}
+                      <div className={col.sortable === false ? '' : 'flex items-center gap-2'}>
+                        <span>{col.header}</span>
+                        {col.sortable === false ? null : sortKey === key ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="size-3.5 text-stone-400" />
+                          ) : (
+                            <ArrowDown className="size-3.5 text-stone-400" />
+                          )
+                        ) : null}
+                      </div>
                     </TableHead>
                   ))}
                   {hasRowActions && (
@@ -478,7 +764,7 @@ export function CrudDataTable<T extends { id: string }>({
           {!isLoading && totalPages > 1 && (
             <div className="flex items-center justify-between p-4 border-t border-stone-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/50">
               <p className="text-sm text-stone-500 dark:text-zinc-400">
-                Mostrando {(safeCurrentPage - 1) * itemsPerPage + 1} a {Math.min(safeCurrentPage * itemsPerPage, filteredData.length)} de {filteredData.length} resultados
+                Mostrando {(safeCurrentPage - 1) * itemsPerPage + 1} a {Math.min(safeCurrentPage * itemsPerPage, sortedData.length)} de {sortedData.length} resultados
               </p>
               <div className="flex items-center gap-2">
                 <Button
