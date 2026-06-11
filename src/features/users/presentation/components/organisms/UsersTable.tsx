@@ -123,7 +123,7 @@ export function UsersTable() {
         const date = user.lastSignInAt
         return date ? (
           <span className="text-xs text-stone-600 dark:text-zinc-400">
-            {new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(date))}
+            {new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(date))}
           </span>
         ) : (
           <span className="text-xs text-stone-400 italic">Nunca registrado</span>

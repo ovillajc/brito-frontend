@@ -102,8 +102,8 @@ export function ClientDetailsDialog({ isOpen, onClose, clientRow }: ClientDetail
         <section>
           <SectionTitle title="Fechas de Registro" icon={Calendar} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <DetailItem icon={Calendar} label="Fecha de Alta" value={clientRow.createdAt ? new Date(clientRow.createdAt).toLocaleString('es-MX') : null} />
-            <DetailItem icon={Calendar} label="Última Actualización" value={clientRow.updatedAt ? new Date(clientRow.updatedAt).toLocaleString('es-MX') : null} />
+            <DetailItem icon={Calendar} label="Fecha de Alta" value={clientRow.createdAt ? new Date(clientRow.createdAt).toLocaleString('es-MX', { hour12: false }) : null} />
+            <DetailItem icon={Calendar} label="Última Actualización" value={clientRow.updatedAt ? new Date(clientRow.updatedAt).toLocaleString('es-MX', { hour12: false }) : null} />
           </div>
         </section>
       </div>

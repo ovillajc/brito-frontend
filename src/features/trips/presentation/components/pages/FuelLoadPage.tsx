@@ -27,11 +27,17 @@ function formatMoney(value: number | null) {
   return value.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
 }
 
-function formatDateIso(value: string | null) {
+function pad2(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function formatDateTimeLocal(value: string | null) {
   if (!value) return '—'
-  const iso = value.replace(' ', 'T')
-  if (iso.length >= 16) return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`
-  return value
+  const normalized = value.includes(' ') && !value.includes('T') ? value.replace(' ', 'T') : value
+  const dt = new Date(normalized)
+  if (Number.isNaN(dt.getTime())) return '—'
+
+  return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())} ${pad2(dt.getHours())}:${pad2(dt.getMinutes())}`
 }
 
 import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
@@ -65,7 +71,7 @@ export default function FuelLoadPage({ trips, units, initialHistory = [] }: Fuel
       header: 'Fecha',
       cell: (row) => (
         <span className="text-sm text-stone-700 dark:text-zinc-200">
-          {formatDateIso(row.loadDate)}
+          {formatDateTimeLocal(row.loadDate)}
         </span>
       ),
     },
