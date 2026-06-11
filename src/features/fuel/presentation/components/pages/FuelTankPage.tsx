@@ -16,6 +16,8 @@ import type { FuelTankMovementEntity, FuelTankSummaryEntity } from '@/src/featur
 import {
   adjustFuelTankAction,
   createDefaultFuelTankAction,
+  getActiveFuelTankSummaryAction,
+  getFuelTankMovementsAction,
   registerFuelTankPurchaseAction,
 } from '@/src/features/fuel/presentation/actions/fuel-tanks.actions'
 
@@ -58,6 +60,7 @@ export default function FuelTankPage({ initialSummary, initialMovements }: FuelT
   const [isBootstrapping, setIsBootstrapping] = useState(false)
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isAdjusting, setIsAdjusting] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // ── Feedback states ──
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
@@ -201,9 +204,34 @@ export default function FuelTankPage({ initialSummary, initialMovements }: FuelT
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-on-surface">Combustible</h1>
-        <p className="text-sm text-on-surface-variant">Control de tanque y costos promedio</p>
+      <header className="flex flex-col gap-2">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl font-bold tracking-tight text-on-surface">Combustible</h1>
+            <p className="text-sm text-on-surface-variant">Control de tanque y costos promedio</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-xl"
+            disabled={isRefreshing}
+            onClick={async () => {
+              setIsRefreshing(true)
+              try {
+                const [summaryResult, movementsResult] = await Promise.all([
+                  getActiveFuelTankSummaryAction(),
+                  getFuelTankMovementsAction(20),
+                ])
+                if (summaryResult.ok) setSummary(summaryResult.data)
+                if (movementsResult.ok) setMovements(movementsResult.data)
+              } finally {
+                setIsRefreshing(false)
+              }
+            }}
+          >
+            {isRefreshing ? 'Actualizando...' : 'Actualizar'}
+          </Button>
+        </div>
       </header>
 
       {!summary ? (
@@ -343,7 +371,7 @@ export default function FuelTankPage({ initialSummary, initialMovements }: FuelT
                   ) : (
                     movements.map((m) => (
                       <tr key={m.id} className="border-t border-stone-100 dark:border-zinc-800">
-                        <td className="py-2 pr-4">{m.movementDate.toLocaleString('es-MX')}</td>
+                        <td className="py-2 pr-4">{m.movementDate.toLocaleString('es-MX', { hour12: false })}</td>
                         <td className="py-2 pr-4">
                           <Badge className={
                             m.movementType === 'IN'
@@ -385,4 +413,3 @@ export default function FuelTankPage({ initialSummary, initialMovements }: FuelT
     </div>
   )
 }
-

@@ -236,6 +236,7 @@ export function UnitAssemblyDetailsDialog({ isOpen, onClose, assembly }: UnitAss
                                   year: 'numeric',
                                   hour: '2-digit',
                                   minute: '2-digit',
+                                  hour12: false,
                                 }).format(new Date(log.createdAt))}
                               </time>
                             </div>

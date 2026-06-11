@@ -37,6 +37,16 @@ type ExpenseRow = { id: string }
 type FuelTankRow = { id: string; is_active: boolean }
 type FuelTankMovementAggRow = { movement_type: 'IN' | 'OUT' | 'ADJUST'; liters: number; total_cost: number }
 type FuelTankMovementRow = { id: string }
+type FuelTankMovementFullRow = { id: string; tank_id: string; liters: number; unit_cost: number | null; total_cost: number | null; movement_date: string | null; movement_type: 'IN' | 'OUT' | 'ADJUST' }
+type FuelLoadPrevRow = {
+  ticket_url: string | null
+  source_type: string | null
+  liters_loaded: number
+  load_date: string | null
+  fuel_tank_movement_id: string | null
+  trip_id: string | null
+  truck_id: string | null
+}
 
 async function ensureExpenseCategoryId(supabase: Awaited<ReturnType<typeof createClient>>, name: string): Promise<Either<Failure, string>> {
   const { data: found, error: findError } = await supabase
@@ -543,11 +553,178 @@ export async function updateFuelLoadAction(
   }
 
   const supabase = await createClient()
-  const prev = await supabase.from('fuel_loads').select('ticket_url').eq('id', id).maybeSingle()
-  const previousTicketUrl =
-    prev.data && typeof (prev.data as Record<string, unknown>).ticket_url === 'string'
-      ? ((prev.data as Record<string, unknown>).ticket_url as string)
-      : null
+  const { data: prevLoad, error: prevLoadError } = await supabase
+    .from('fuel_loads')
+    .select('ticket_url,source_type,liters_loaded,load_date,fuel_tank_movement_id,trip_id,truck_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (prevLoadError) {
+    const nextTicketUrl = data.ticketUrl ?? null
+    if (nextTicketUrl) {
+      await deleteR2ObjectByPublicUrl(nextTicketUrl)
+    }
+    return { ok: false, error: { code: 'DB_ERROR', message: prevLoadError.message } }
+  }
+
+  if (!prevLoad) {
+    const nextTicketUrl = data.ticketUrl ?? null
+    if (nextTicketUrl) {
+      await deleteR2ObjectByPublicUrl(nextTicketUrl)
+    }
+    return { ok: false, error: { code: 'NOT_FOUND', message: 'Carga no encontrada', statusCode: 404 } }
+  }
+
+  const prevRow = prevLoad as FuelLoadPrevRow
+  const previousTicketUrl = prevRow.ticket_url
+  const prevSourceType = (prevRow.source_type ?? 'EXTERNAL') as 'EXTERNAL' | 'INTERNAL_TANK'
+  const nextSourceType = (data.sourceType ?? prevSourceType) as 'EXTERNAL' | 'INTERNAL_TANK'
+  const nextLitersLoaded = data.litersLoaded ?? prevRow.liters_loaded
+  const nextLoadDate = data.loadDate ?? (prevRow.load_date ? new Date(prevRow.load_date) : null)
+
+  if (!Number.isFinite(nextLitersLoaded) || nextLitersLoaded <= 0) {
+    const nextTicketUrl = data.ticketUrl ?? null
+    if (nextTicketUrl && nextTicketUrl !== previousTicketUrl) {
+      await deleteR2ObjectByPublicUrl(nextTicketUrl)
+    }
+    return { ok: false, error: { code: 'INVALID_LITERS', message: 'Los litros cargados deben ser mayores a 0', statusCode: 400 } }
+  }
+
+  if (!nextLoadDate || Number.isNaN(nextLoadDate.getTime())) {
+    const nextTicketUrl = data.ticketUrl ?? null
+    if (nextTicketUrl && nextTicketUrl !== previousTicketUrl) {
+      await deleteR2ObjectByPublicUrl(nextTicketUrl)
+    }
+    return { ok: false, error: { code: 'INVALID_DATE', message: 'Fecha de carga inválida', statusCode: 400 } }
+  }
+
+  const prevMovementId = prevRow.fuel_tank_movement_id
+  const wasInternal = prevSourceType === 'INTERNAL_TANK'
+  const willBeInternal = nextSourceType === 'INTERNAL_TANK'
+
+  let prevMovement: FuelTankMovementFullRow | null = null
+  if (prevMovementId) {
+    const { data: movementRow, error: movementError } = await supabase
+      .from('fuel_tank_movements')
+      .select('id,tank_id,liters,unit_cost,total_cost,movement_date,movement_type')
+      .eq('id', prevMovementId)
+      .maybeSingle()
+
+    if (movementError) {
+      const nextTicketUrl = data.ticketUrl ?? null
+      if (nextTicketUrl && nextTicketUrl !== previousTicketUrl) {
+        await deleteR2ObjectByPublicUrl(nextTicketUrl)
+      }
+      return { ok: false, error: { code: 'DB_ERROR', message: movementError.message } }
+    }
+
+    prevMovement = (movementRow ?? null) as FuelTankMovementFullRow | null
+  }
+
+  if (wasInternal && !prevMovementId) {
+    const nextTicketUrl = data.ticketUrl ?? null
+    if (nextTicketUrl && nextTicketUrl !== previousTicketUrl) {
+      await deleteR2ObjectByPublicUrl(nextTicketUrl)
+    }
+    return { ok: false, error: { code: 'TANK_LINK_MISSING', message: 'La carga interna no está vinculada a un movimiento del tanque' } }
+  }
+
+  if (wasInternal && prevMovementId && !prevMovement) {
+    const nextTicketUrl = data.ticketUrl ?? null
+    if (nextTicketUrl && nextTicketUrl !== previousTicketUrl) {
+      await deleteR2ObjectByPublicUrl(nextTicketUrl)
+    }
+    return { ok: false, error: { code: 'TANK_MOVEMENT_MISSING', message: 'No se encontró el movimiento de tanque asociado a esta carga' } }
+  }
+
+  const computeTankSummary = async (tankId: string) => {
+    const { data: movements, error } = await supabase
+      .from('fuel_tank_movements')
+      .select('movement_type,liters,total_cost')
+      .eq('tank_id', tankId)
+
+    if (error) return { ok: false as const, error: { code: 'DB_ERROR', message: error.message } }
+
+    const agg = (movements ?? []) as unknown as FuelTankMovementAggRow[]
+    const { litersInTank, inventoryValue } = agg.reduce(
+      (acc, m) => {
+        const cost = Number.isFinite(m.total_cost) ? m.total_cost : 0
+        if (m.movement_type === 'IN') {
+          acc.litersInTank += m.liters
+          acc.inventoryValue += cost
+        } else if (m.movement_type === 'OUT') {
+          acc.litersInTank -= m.liters
+          acc.inventoryValue -= cost
+        } else {
+          acc.litersInTank += m.liters
+          acc.inventoryValue += cost
+        }
+        return acc
+      },
+      { litersInTank: 0, inventoryValue: 0 }
+    )
+
+    return { ok: true as const, data: { litersInTank, inventoryValue } }
+  }
+
+  if (willBeInternal) {
+    const tankIdToCheck = prevMovement?.tank_id
+    let tankId = tankIdToCheck ?? null
+    if (!tankId) {
+      const { data: tank, error: tankError } = await supabase
+        .from('fuel_tanks')
+        .select('id,is_active')
+        .eq('is_active', true)
+        .maybeSingle()
+
+      if (tankError) {
+        const nextTicketUrl = data.ticketUrl ?? null
+        if (nextTicketUrl && nextTicketUrl !== previousTicketUrl) {
+          await deleteR2ObjectByPublicUrl(nextTicketUrl)
+        }
+        return { ok: false, error: { code: 'DB_ERROR', message: tankError.message } }
+      }
+
+      tankId = ((tank as FuelTankRow | null)?.id ?? null)
+      if (!tankId) {
+        const nextTicketUrl = data.ticketUrl ?? null
+        if (nextTicketUrl && nextTicketUrl !== previousTicketUrl) {
+          await deleteR2ObjectByPublicUrl(nextTicketUrl)
+        }
+        return { ok: false, error: { code: 'NO_TANK', message: 'No hay un tanque activo configurado' } }
+      }
+    }
+
+    const summaryResult = await computeTankSummary(tankId)
+    if (!summaryResult.ok) {
+      const nextTicketUrl = data.ticketUrl ?? null
+      if (nextTicketUrl && nextTicketUrl !== previousTicketUrl) {
+        await deleteR2ObjectByPublicUrl(nextTicketUrl)
+      }
+      return summaryResult
+    }
+
+    const currentLitersInTank = summaryResult.data.litersInTank
+    const currentInventoryValue = summaryResult.data.inventoryValue
+    const prevMovementLiters = prevMovement?.liters ?? 0
+    const effectiveAvailableLiters = wasInternal ? currentLitersInTank + prevMovementLiters : currentLitersInTank
+
+    if (effectiveAvailableLiters <= 0 || currentInventoryValue <= 0) {
+      const nextTicketUrl = data.ticketUrl ?? null
+      if (nextTicketUrl && nextTicketUrl !== previousTicketUrl) {
+        await deleteR2ObjectByPublicUrl(nextTicketUrl)
+      }
+      return { ok: false, error: { code: 'TANK_EMPTY', message: 'El tanque no tiene inventario suficiente para costear la carga' } }
+    }
+
+    if (nextLitersLoaded > effectiveAvailableLiters) {
+      const nextTicketUrl = data.ticketUrl ?? null
+      if (nextTicketUrl && nextTicketUrl !== previousTicketUrl) {
+        await deleteR2ObjectByPublicUrl(nextTicketUrl)
+      }
+      return { ok: false, error: { code: 'TANK_INSUFFICIENT', message: `Inventario insuficiente en tanque. Disponible: ${effectiveAvailableLiters.toFixed(2)} L` } }
+    }
+  }
 
   const repo = new SupabaseFuelMetricsRepository()
   const result = await UpdateFuelLoad(repo, id, data)
@@ -557,8 +734,141 @@ export async function updateFuelLoadAction(
     if (previousTicketUrl && previousTicketUrl !== nextTicketUrl) {
       await deleteR2ObjectByPublicUrl(previousTicketUrl)
     }
+    try {
+      if (willBeInternal) {
+        const { data: tank, error: tankError } = await supabase
+          .from('fuel_tanks')
+          .select('id,is_active')
+          .eq('is_active', true)
+          .maybeSingle()
+
+        if (tankError) {
+          throw new Error(tankError.message)
+        }
+
+        const activeTankId = (tank as FuelTankRow | null)?.id ?? null
+        const tankId = prevMovement?.tank_id ?? activeTankId
+        if (!tankId) {
+          throw new Error('No hay un tanque activo configurado')
+        }
+
+        const summaryResult = await computeTankSummary(tankId)
+        if (!summaryResult.ok) {
+          throw new Error(summaryResult.error.message)
+        }
+
+        const litersInTank = summaryResult.data.litersInTank
+        const inventoryValue = summaryResult.data.inventoryValue
+        const avgCostPerLiter = inventoryValue / litersInTank
+
+        const unitCost =
+          prevMovement?.unit_cost != null && Number.isFinite(prevMovement.unit_cost) && prevMovement.unit_cost > 0
+            ? prevMovement.unit_cost
+            : (Number.isFinite(avgCostPerLiter) && avgCostPerLiter > 0 ? avgCostPerLiter : null)
+
+        if (unitCost == null) {
+          throw new Error('Costo promedio inválido para el tanque')
+        }
+
+        const movementTotal = nextLitersLoaded * unitCost
+
+        if (wasInternal && prevMovementId) {
+          const { error: updateMovementError } = await supabase
+            .from('fuel_tank_movements')
+            .update({
+              liters: nextLitersLoaded,
+              unit_cost: unitCost,
+              total_cost: movementTotal,
+              movement_date: nextLoadDate.toISOString(),
+              trip_id: result.data.tripId,
+              truck_id: result.data.truckId,
+              fuel_load_id: id,
+            })
+            .eq('id', prevMovementId)
+
+          if (updateMovementError) {
+            throw new Error(updateMovementError.message)
+          }
+
+          const { error: updateLoadTotalsError } = await supabase
+            .from('fuel_loads')
+            .update({
+              price_per_liter: unitCost,
+              total_cost: movementTotal,
+              fuel_tank_movement_id: prevMovementId,
+              source_type: 'INTERNAL_TANK',
+            })
+            .eq('id', id)
+
+          if (updateLoadTotalsError) {
+            throw new Error(updateLoadTotalsError.message)
+          }
+        } else {
+          const { data: createdMovement, error: createMovementError } = await supabase
+            .from('fuel_tank_movements')
+            .insert({
+              tank_id: tankId,
+              movement_type: 'OUT',
+              liters: nextLitersLoaded,
+              unit_cost: unitCost,
+              total_cost: movementTotal,
+              movement_date: nextLoadDate.toISOString(),
+              trip_id: result.data.tripId,
+              truck_id: result.data.truckId,
+              fuel_load_id: id,
+              expense_id: null,
+              created_by: null,
+            })
+            .select('id')
+            .single()
+
+          if (createMovementError) {
+            throw new Error(createMovementError.message)
+          }
+
+          const movementId = (createdMovement as FuelTankMovementRow).id
+          const { error: linkError } = await supabase
+            .from('fuel_loads')
+            .update({
+              fuel_tank_movement_id: movementId,
+              price_per_liter: unitCost,
+              total_cost: movementTotal,
+              source_type: 'INTERNAL_TANK',
+            })
+            .eq('id', id)
+
+          if (linkError) {
+            await supabase.from('fuel_tank_movements').delete().eq('id', movementId)
+            throw new Error(linkError.message)
+          }
+        }
+      } else if (wasInternal && prevMovementId) {
+        const { error: unlinkLoadError } = await supabase
+          .from('fuel_loads')
+          .update({ fuel_tank_movement_id: null })
+          .eq('id', id)
+
+        if (unlinkLoadError) {
+          throw new Error(unlinkLoadError.message)
+        }
+
+        const { error: deleteMovementError } = await supabase
+          .from('fuel_tank_movements')
+          .delete()
+          .eq('id', prevMovementId)
+
+        if (deleteMovementError) {
+          throw new Error(deleteMovementError.message)
+        }
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Error al sincronizar el inventario del tanque'
+      return { ok: false, error: { code: 'TANK_SYNC_ERROR', message } }
+    }
+
     revalidatePath(`/trips/fuel`)
     revalidatePath(`/trips/fuel/load`)
+    revalidatePath(`/fuel`)
   } else {
     const nextTicketUrl = data.ticketUrl ?? null
     if (nextTicketUrl && nextTicketUrl !== previousTicketUrl) {
@@ -595,6 +905,7 @@ export async function deleteFuelLoadAction(id: string): Promise<Either<Failure, 
     }
     revalidatePath(`/trips/fuel`)
     revalidatePath(`/trips/fuel/load`)
+    revalidatePath(`/fuel`)
   }
 
   return result

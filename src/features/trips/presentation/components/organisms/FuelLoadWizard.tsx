@@ -43,6 +43,23 @@ function getFuelLoadSourceType(value: string | null | undefined): FuelLoadSource
   return FUEL_LOAD_SOURCE_TYPE.External
 }
 
+function toDatetimeLocalInputValue(date: Date) {
+  const tzOffsetMs = date.getTimezoneOffset() * 60000
+  return new Date(date.getTime() - tzOffsetMs).toISOString().slice(0, 16)
+}
+
+function toDatetimeLocalInputValueFromString(value: string | null | undefined) {
+  if (!value) return toDatetimeLocalInputValue(new Date())
+  const normalized = value.includes(' ') && !value.includes('T') ? value.replace(' ', 'T') : value
+  const hasTimeZone = /z$/i.test(normalized) || /[+-]\d{2}:\d{2}$/.test(normalized)
+  if (!hasTimeZone) {
+    return normalized.length >= 16 ? normalized.slice(0, 16) : normalized
+  }
+  const dt = new Date(normalized)
+  if (Number.isNaN(dt.getTime())) return toDatetimeLocalInputValue(new Date())
+  return toDatetimeLocalInputValue(dt)
+}
+
 function getFuelLoadDefaultValues(editRow?: FuelLoadHistoryRowEntity | null): DefaultValues<FuelLoadFormValues> {
   if (editRow) {
     return {
@@ -52,7 +69,7 @@ function getFuelLoadDefaultValues(editRow?: FuelLoadHistoryRowEntity | null): De
       trailerId: editRow.trailerId ?? '',
       ticketFolio: editRow.ticketFolio ?? '',
       ticketUrl: editRow.ticketUrl ?? null,
-      loadDate: editRow.loadDate ? new Date(editRow.loadDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
+      loadDate: toDatetimeLocalInputValueFromString(editRow.loadDate),
       litersLoaded: editRow.litersLoaded,
       pricePerLiter: editRow.pricePerLiter,
       isFullTankFill: editRow.isFullTankFill,
@@ -68,10 +85,18 @@ function getFuelLoadDefaultValues(editRow?: FuelLoadHistoryRowEntity | null): De
     trailerId: '',
     ticketFolio: '',
     ticketUrl: null,
-    loadDate: new Date().toISOString().slice(0, 16),
+    loadDate: toDatetimeLocalInputValue(new Date()),
     isFullTankFill: false,
     sourceType: FUEL_LOAD_SOURCE_TYPE.External,
   }
+}
+
+const TRIP_STATUS_LABELS: Record<TripWithRelations['trip']['status'], string> = {
+  scheduled: 'Programado',
+  in_progress: 'En Ruta',
+  in_delivery: 'En Reparto',
+  completed: 'Completado',
+  cancelled: 'Cancelado',
 }
 
 export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelLoadWizardProps) {
@@ -124,7 +149,22 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
     return units.find((u) => u.id === unitAssemblyId) ?? null
   }, [selectedTrip, units])
 
+  const sortedTrips = useMemo(() => {
+    return [...trips].sort((a, b) => {
+      const aTripNumber = a.trip.tripNumber ?? -1
+      const bTripNumber = b.trip.tripNumber ?? -1
+      if (aTripNumber !== bTripNumber) return bTripNumber - aTripNumber
+
+      const aDate = a.trip.departureDate?.getTime?.() ?? (a.trip.departureDate ? new Date(a.trip.departureDate).getTime() : 0)
+      const bDate = b.trip.departureDate?.getTime?.() ?? (b.trip.departureDate ? new Date(b.trip.departureDate).getTime() : 0)
+      if (aDate !== bDate) return bDate - aDate
+
+      return (a.trip.id ?? '').localeCompare(b.trip.id ?? '')
+    })
+  }, [trips])
+
   const totalCost = liters != null && price != null ? liters * price : null
+  const isSaving = editRow ? updateFuelLoad.isPending : registerFuelLoad.isPending
 
   const inputClass = [
     'flex h-12 w-full rounded-xl border border-stone-200 dark:border-zinc-700',
@@ -158,6 +198,16 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
       return
     }
 
+    const isExternal = values.sourceType === FUEL_LOAD_SOURCE_TYPE.External
+    const normalizedPricePerLiter =
+      isExternal && values.pricePerLiter != null && Number.isFinite(values.pricePerLiter)
+        ? values.pricePerLiter
+        : undefined
+    const normalizedTotalCost =
+      isExternal && Number.isFinite(values.litersLoaded) && normalizedPricePerLiter != null
+        ? values.litersLoaded * normalizedPricePerLiter
+        : undefined
+
     const payload = {
       tripId: values.tripId || null,
       truckId: selectedUnit ? selectedUnit.truckId : (values.vehicleType === 'TRUCK' ? (values.truckId || null) : null),
@@ -168,18 +218,26 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
       vehicleType: values.vehicleType ?? 'TRUCK',
       trailerId: selectedUnit ? (values.trailerId || null) : (values.vehicleType === 'TRAILER' ? (values.trailerId || null) : null),
       litersLoaded: Number.isFinite(values.litersLoaded) ? values.litersLoaded : 0,
-      pricePerLiter: values.pricePerLiter != null && Number.isFinite(values.pricePerLiter) ? values.pricePerLiter : undefined,
-      totalCost: Number.isFinite(values.litersLoaded) && values.pricePerLiter != null && Number.isFinite(values.pricePerLiter)
-        ? values.litersLoaded * values.pricePerLiter
-        : 0,
+      pricePerLiter: normalizedPricePerLiter,
+      totalCost: normalizedTotalCost,
       isFullTankFill: values.isFullTankFill,
       sourceType: values.sourceType,
       odometerAtLoad: values.odometerAtLoad ?? null,
     }
 
-    const result = editRow
-      ? await updateFuelLoad.mutateAsync({ id: editRow.id, data: payload })
-      : await registerFuelLoad.mutateAsync({ ...payload, pricePerLiter: payload.pricePerLiter ?? null })
+    let result:
+      | Awaited<ReturnType<typeof updateFuelLoad.mutateAsync>>
+      | Awaited<ReturnType<typeof registerFuelLoad.mutateAsync>>
+      | null = null
+    try {
+      result = editRow
+        ? await updateFuelLoad.mutateAsync({ id: editRow.id, data: payload })
+        : await registerFuelLoad.mutateAsync({ ...payload, pricePerLiter: payload.pricePerLiter ?? null })
+    } catch {
+      setSubmissionStatus('error')
+      setErrorMessage(editRow ? 'Error inesperado al actualizar la carga' : 'Error inesperado al registrar la carga')
+      return
+    }
 
     if (!result.ok) {
       setSubmissionStatus('error')
@@ -241,7 +299,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
       trailerId: '',
       ticketFolio: '',
       ticketUrl: null,
-      loadDate: new Date().toISOString().slice(0, 16),
+      loadDate: toDatetimeLocalInputValue(new Date()),
       litersLoaded: undefined,
       pricePerLiter: undefined,
       isFullTankFill: false,
@@ -253,15 +311,15 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
     <div className="flex flex-col gap-6 pt-2">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="tripId">Viaje (opcional si es base)</Label>
+          <Label htmlFor="tripId">Viaje (opcional si es base) — Total: {sortedTrips.length}</Label>
           <select id="tripId" className={inputClass} {...register('tripId')}>
             <option value="">Sin viaje (Carga base)</option>
-            {trips.map((t) => (
+            {sortedTrips.map((t) => (
               <option key={t.trip.id} value={t.trip.id}>
                 {(t.trip.tripNumber !== null
                   ? `VJE-${String(t.trip.tripNumber).padStart(6, '0')}`
                   : (t.trip.folio ?? t.trip.id.slice(0, 8))
-                )} — {(t.unitEconomicNumber ?? 'Sin unidad')} — {(t.trip.origin ?? '—')} → {(t.trip.destination ?? '—')}
+                )} — {(t.unitEconomicNumber ?? 'Sin unidad')} — {(TRIP_STATUS_LABELS[t.trip.status] ?? t.trip.status)} — {(t.trip.origin ?? '—')} → {(t.trip.destination ?? '—')}
               </option>
             ))}
           </select>
@@ -340,7 +398,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
         isLastStep={false}
         onCancel={handleClose}
         onNext={goNext}
-        isSubmitting={registerFuelLoad.isPending}
+        isSubmitting={isSaving}
       />
     </div>
   )
@@ -393,7 +451,16 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
         {vehicleType === 'TRUCK' && (
           <div className="grid gap-2">
             <Label htmlFor="odometerAtLoad">Odómetro al cargar (Opcional)</Label>
-            <Input id="odometerAtLoad" type="number" step="1" min="0" placeholder="Ej. 150500" {...register('odometerAtLoad', { valueAsNumber: true, setValueAs: (v) => v === '' ? null : Number(v) })} />
+            <Input
+              id="odometerAtLoad"
+              type="number"
+              step="1"
+              min="0"
+              placeholder="Ej. 150500"
+              {...register('odometerAtLoad', {
+                setValueAs: (v) => (v === '' || v == null ? null : Number(v)),
+              })}
+            />
             {err(errors.odometerAtLoad?.message)}
           </div>
         )}
@@ -405,7 +472,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
         onCancel={handleClose}
         onBack={goBack}
         onNext={goNext}
-        isSubmitting={registerFuelLoad.isPending}
+        isSubmitting={isSaving}
       />
     </div>
   )
@@ -473,7 +540,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
         onCancel={handleClose}
         onBack={goBack}
         onNext={handleFinish}
-        isSubmitting={registerFuelLoad.isPending}
+        isSubmitting={isSaving}
       />
     </div>
   )
@@ -502,9 +569,11 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
         <Dialog key="feedback" isOpen={isOpen} onClose={handleClose} size="md">
           <ActionFeedback
             status={submissionStatus === 'success' ? 'success' : 'error'}
-            title={submissionStatus === 'success' ? '¡Carga Registrada!' : 'Error al procesar'}
+            title={submissionStatus === 'success'
+              ? (editRow ? '¡Carga Actualizada!' : '¡Carga Registrada!')
+              : 'Error al procesar'}
             message={submissionStatus === 'success'
-              ? 'La carga de diésel quedó registrada correctamente.'
+              ? (editRow ? 'La carga de diésel fue actualizada correctamente.' : 'La carga de diésel quedó registrada correctamente.')
               : (errorMessage ?? 'No pudimos completar la operación en este momento.')
             }
             primaryActionLabel="Finalizar"

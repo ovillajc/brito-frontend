@@ -50,6 +50,19 @@ function formatMoney(value: number | null) {
   return value.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
 }
 
+function pad2(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function formatDateTimeLocal(value: string | null) {
+  if (!value) return '—'
+  const normalized = value.includes(' ') && !value.includes('T') ? value.replace(' ', 'T') : value
+  const dt = new Date(normalized)
+  if (Number.isNaN(dt.getTime())) return '—'
+
+  return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())} ${pad2(dt.getHours())}:${pad2(dt.getMinutes())}`
+}
+
 function isPdfFile(url: string | null): boolean {
   if (!url) return false
   try {
@@ -101,7 +114,7 @@ export function FuelLoadDetailsDialog({ isOpen, onClose, loadRow }: FuelLoadDeta
         <section>
           <SectionTitle title="Información de Carga" icon={Fuel} />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <DetailItem icon={Calendar} label="Fecha de Carga" value={loadRow.loadDate ? new Date(loadRow.loadDate).toLocaleString('es-MX') : null} />
+            <DetailItem icon={Calendar} label="Fecha de Carga" value={formatDateTimeLocal(loadRow.loadDate)} />
             <DetailItem icon={Fuel} label="Litros Cargados" value={`${loadRow.litersLoaded.toLocaleString('es-MX')} L`} />
             <DetailItem icon={BarChart2} label="Odómetro / Horas" value={loadRow.odometerAtLoad?.toLocaleString('es-MX') ?? '—'} />
             <DetailItem icon={Hash} label="Precio por Litro" value={formatMoney(loadRow.pricePerLiter)} />

@@ -225,7 +225,7 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <DetailItem icon={Truck} label="N° Económico" value={tripRow.unitEconomicNumber} />
                   <DetailItem icon={User} label="Operador" value={tripRow.operatorName} />
-                  <DetailItem icon={Calendar} label="Fecha de Salida" value={tripRow.departureDate ? new Date(tripRow.departureDate).toLocaleString('es-MX') : null} />
+                  <DetailItem icon={Calendar} label="Fecha de Salida" value={tripRow.departureDate ? new Date(tripRow.departureDate).toLocaleString('es-MX', { hour12: false }) : null} />
                 </div>
               </section>
 
@@ -257,7 +257,7 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
                     <DetailItem icon={Hash} label="Estatus del viaje" value={formatTripStatus(tripRow.status)} />
                     <DetailItem icon={Hash} label="Núm. Tiendas" value={tripRow.walmartData?.numStores} />
                     <DetailItem icon={MapPin} label="Temp. Salida" value={tripRow.walmartData?.departureTemperature} />
-                    <DetailItem icon={Calendar} label="Hora Salida" value={tripRow.walmartData?.departureTime ? new Date(tripRow.walmartData.departureTime).toLocaleString('es-MX') : null} />
+                    <DetailItem icon={Calendar} label="Hora Salida" value={tripRow.walmartData?.departureTime ? new Date(tripRow.walmartData.departureTime).toLocaleString('es-MX', { hour12: false }) : null} />
                   </div>
                 </section>
 
@@ -323,7 +323,7 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
                           </div>
                           <div className="flex items-center gap-1.5 text-xs text-stone-500">
                             <Calendar className="size-3.5 text-stone-400" />
-                            <span>Cita: {appointmentAt ? new Date(appointmentAt).toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' }) : 'Sin cita asignada'}</span>
+                            <span>Cita: {appointmentAt ? new Date(appointmentAt).toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short', hour12: false }) : 'Sin cita asignada'}</span>
                           </div>
                         </div>
                         )

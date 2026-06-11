@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
-import { AlertTriangle, HandCoins, Receipt, CheckCircle2, Link2, Plus, Unlink, Trash2, FolderOpen, Download } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { AlertTriangle, HandCoins, Receipt, CheckCircle2, Link2, Plus, Unlink, Trash2, Download, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/core/presentation/components/ui/card'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { Button } from '@/src/core/presentation/components/ui/button'
+import { Input } from '@/src/core/presentation/components/ui/input'
 import { CrudDataTable, type CrudColumn } from '@/src/core/presentation/components/organisms/CrudDataTable'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 import {
@@ -24,7 +25,6 @@ import type { OperatorSettlementKpiEntity } from '../../../domain/entities/opera
 import type { ExpenseEntity } from '../../../domain/entities/expense-entity'
 import { ExpenseAdvanceWizard } from '../organisms/ExpenseAdvanceWizard'
 import { ExpenseAdvanceDetailsDialog } from '../organisms/ExpenseAdvanceDetailsDialog'
-import { TripSettlementDialog } from '../organisms/TripSettlementDialog'
 import { OperatorSettlementDialog } from '../organisms/OperatorSettlementDialog'
 import { OperatorSettlementCard } from '../organisms/OperatorSettlementCard'
 import * as XLSX from 'xlsx'
@@ -36,6 +36,7 @@ import { toast } from 'sonner'
 
 const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 })
 const fmtDate = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' })
+const SETTLEMENTS_PER_PAGE = 4
 
 export default function ExpenseAssignmentsPage() {
   const advancesQuery = useExpenseAdvances()
@@ -57,7 +58,7 @@ export default function ExpenseAssignmentsPage() {
   const deleteSettlementMutation = useDeleteOperatorSettlement()
 
   const advances = advancesQuery.data ?? []
-  const kpis = settlementKpisQuery.data ?? []
+  const kpis = useMemo(() => settlementKpisQuery.data ?? [], [settlementKpisQuery.data])
 
   const unlinkExpenseMutation = useUnlinkExpenseFromSettlement()
 
@@ -89,6 +90,9 @@ export default function ExpenseAssignmentsPage() {
 
   const openSettlements = useMemo(() => kpis.filter((k) => k.status === 'open'), [kpis])
   const closedSettlements = useMemo(() => kpis.filter((k) => k.status === 'closed'), [kpis])
+  const [settlementSearch, setSettlementSearch] = useState('')
+  const [openSettlementsPage, setOpenSettlementsPage] = useState(1)
+  const [closedSettlementsPage, setClosedSettlementsPage] = useState(1)
 
   const employeesQuery = useQuery({
     queryKey: ['expenses', 'assignments', 'employees'],
@@ -106,6 +110,38 @@ export default function ExpenseAssignmentsPage() {
 
   const [isCreateSettlementOpen, setIsCreateSettlementOpen] = useState(false)
   const [newSettlementOperatorId, setNewSettlementOperatorId] = useState('')
+
+  const normalizedSettlementSearch = settlementSearch.trim().toLowerCase()
+
+  const filteredOpenSettlements = useMemo(() => {
+    if (!normalizedSettlementSearch) return openSettlements
+    return openSettlements.filter((k) =>
+      (k.operatorName ?? k.operatorId).toLowerCase().includes(normalizedSettlementSearch)
+    )
+  }, [normalizedSettlementSearch, openSettlements])
+
+  const filteredClosedSettlements = useMemo(() => {
+    if (!normalizedSettlementSearch) return closedSettlements
+    return closedSettlements.filter((k) =>
+      (k.operatorName ?? k.operatorId).toLowerCase().includes(normalizedSettlementSearch)
+    )
+  }, [normalizedSettlementSearch, closedSettlements])
+
+  const openSettlementsPageCount = Math.max(1, Math.ceil(filteredOpenSettlements.length / SETTLEMENTS_PER_PAGE))
+  const closedSettlementsPageCount = Math.max(1, Math.ceil(filteredClosedSettlements.length / SETTLEMENTS_PER_PAGE))
+
+  const safeOpenSettlementsPage = Math.min(openSettlementsPage, openSettlementsPageCount)
+  const safeClosedSettlementsPage = Math.min(closedSettlementsPage, closedSettlementsPageCount)
+
+  const paginatedOpenSettlements = useMemo(() => {
+    const start = (safeOpenSettlementsPage - 1) * SETTLEMENTS_PER_PAGE
+    return filteredOpenSettlements.slice(start, start + SETTLEMENTS_PER_PAGE)
+  }, [filteredOpenSettlements, safeOpenSettlementsPage])
+
+  const paginatedClosedSettlements = useMemo(() => {
+    const start = (safeClosedSettlementsPage - 1) * SETTLEMENTS_PER_PAGE
+    return filteredClosedSettlements.slice(start, start + SETTLEMENTS_PER_PAGE)
+  }, [filteredClosedSettlements, safeClosedSettlementsPage])
 
   const totals = useMemo(() => {
     const assigned = kpis.reduce((acc, k) => acc + k.assignedAmount, 0)
@@ -143,7 +179,7 @@ export default function ExpenseAssignmentsPage() {
     },
     {
       header: 'Fecha',
-      cell: (a) => new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(a.assignedAt)),
+      cell: (a) => new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short', hour12: false }).format(new Date(a.assignedAt)),
       className: 'text-sm text-stone-600 dark:text-zinc-400',
     },
     {
@@ -256,7 +292,7 @@ export default function ExpenseAssignmentsPage() {
       if (!result.ok) throw new Error(result.error.message)
       const expenses = result.data
 
-      const aoa: any[][] = [
+      const aoa: (string | number)[][] = [
         ['RESUMEN DE AJUSTE DE CUENTAS'],
         [],
         ['Operador', k.operatorName ?? k.operatorId],
@@ -352,7 +388,20 @@ export default function ExpenseAssignmentsPage() {
                 Ajustes de cuentas abiertos por operador.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <div className="relative w-full sm:w-56">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
+                <Input
+                  value={settlementSearch}
+                  onChange={(e) => {
+                    setSettlementSearch(e.target.value)
+                    setOpenSettlementsPage(1)
+                    setClosedSettlementsPage(1)
+                  }}
+                  placeholder="Buscar operador..."
+                  className="h-9 rounded-xl border-stone-200 pl-9 dark:border-zinc-800"
+                />
+              </div>
               <Button
                 size="sm"
                 variant="outline"
@@ -370,18 +419,18 @@ export default function ExpenseAssignmentsPage() {
                   <Plus className="size-4" /> Nuevo Ajuste
                 </Button>
               )}
-              <Badge variant="secondary">{openSettlements.length}</Badge>
+              <Badge variant="secondary">{filteredOpenSettlements.length}/{openSettlements.length}</Badge>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 xl:gap-6">
-            {openSettlements.length === 0 ? (
+            {filteredOpenSettlements.length === 0 ? (
               <div className="col-span-full p-6 rounded-2xl border border-stone-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/40 flex flex-col items-center justify-center text-stone-500 dark:text-zinc-500">
                 <HandCoins className="h-8 w-8 mb-2 opacity-20" />
-                <p>No hay cuentas pendientes por liquidar.</p>
+                <p>{normalizedSettlementSearch ? 'No hay operadores que coincidan con la búsqueda.' : 'No hay cuentas pendientes por liquidar.'}</p>
               </div>
             ) : (
-              openSettlements.map((k) => (
+              paginatedOpenSettlements.map((k) => (
                 <OperatorSettlementCard
                   key={k.settlementId}
                   settlement={k}
@@ -400,21 +449,55 @@ export default function ExpenseAssignmentsPage() {
             )}
           </div>
 
+          {filteredOpenSettlements.length > SETTLEMENTS_PER_PAGE && (
+            <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+              <p className="text-xs text-stone-500 dark:text-zinc-400">
+                Mostrando {(safeOpenSettlementsPage - 1) * SETTLEMENTS_PER_PAGE + 1}-
+                {Math.min(safeOpenSettlementsPage * SETTLEMENTS_PER_PAGE, filteredOpenSettlements.length)} de {filteredOpenSettlements.length} ajustes abiertos
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 rounded-lg"
+                  disabled={safeOpenSettlementsPage <= 1}
+                  onClick={() => setOpenSettlementsPage((page) => Math.max(1, page - 1))}
+                >
+                  <ChevronLeft className="size-4" />
+                  Anterior
+                </Button>
+                <span className="min-w-20 text-center text-xs font-medium text-stone-600 dark:text-zinc-300">
+                  {safeOpenSettlementsPage} / {openSettlementsPageCount}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 rounded-lg"
+                  disabled={safeOpenSettlementsPage >= openSettlementsPageCount}
+                  onClick={() => setOpenSettlementsPage((page) => Math.min(openSettlementsPageCount, page + 1))}
+                >
+                  Siguiente
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between mt-2">
             <div>
               <h2 className="text-base font-bold text-stone-900 dark:text-zinc-100">Cuentas cerradas</h2>
               <p className="text-sm text-stone-500 dark:text-zinc-500">Ajustes ya liquidados (historial reciente)</p>
             </div>
-            <Badge variant="secondary">{closedSettlements.length}</Badge>
+            <Badge variant="secondary">{filteredClosedSettlements.length}/{closedSettlements.length}</Badge>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 xl:gap-6">
-            {closedSettlements.length === 0 ? (
+            {filteredClosedSettlements.length === 0 ? (
               <div className="col-span-full p-6 rounded-2xl border border-stone-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/40 text-sm text-stone-600 dark:text-zinc-400">
-                No hay cuentas cerradas recientemente.
+                {normalizedSettlementSearch ? 'No hay cuentas cerradas para el operador buscado.' : 'No hay cuentas cerradas recientemente.'}
               </div>
             ) : (
-              closedSettlements.slice(0, 10).map((k) => (
+              paginatedClosedSettlements.map((k) => (
                 <OperatorSettlementCard
                   key={k.settlementId}
                   settlement={k}
@@ -437,6 +520,40 @@ export default function ExpenseAssignmentsPage() {
               ))
             )}
           </div>
+
+          {filteredClosedSettlements.length > SETTLEMENTS_PER_PAGE && (
+            <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+              <p className="text-xs text-stone-500 dark:text-zinc-400">
+                Mostrando {(safeClosedSettlementsPage - 1) * SETTLEMENTS_PER_PAGE + 1}-
+                {Math.min(safeClosedSettlementsPage * SETTLEMENTS_PER_PAGE, filteredClosedSettlements.length)} de {filteredClosedSettlements.length} ajustes cerrados
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 rounded-lg"
+                  disabled={safeClosedSettlementsPage <= 1}
+                  onClick={() => setClosedSettlementsPage((page) => Math.max(1, page - 1))}
+                >
+                  <ChevronLeft className="size-4" />
+                  Anterior
+                </Button>
+                <span className="min-w-20 text-center text-xs font-medium text-stone-600 dark:text-zinc-300">
+                  {safeClosedSettlementsPage} / {closedSettlementsPageCount}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 rounded-lg"
+                  disabled={safeClosedSettlementsPage >= closedSettlementsPageCount}
+                  onClick={() => setClosedSettlementsPage((page) => Math.min(closedSettlementsPageCount, page + 1))}
+                >
+                  Siguiente
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Adelantos ── */}
@@ -446,6 +563,7 @@ export default function ExpenseAssignmentsPage() {
             data={advances}
             isLoading={advancesQuery.isLoading}
             columns={ADVANCE_COLUMNS}
+            pageSize={8}
             searchPlaceholder="Buscar por operador o folio..."
             searchFilter={(row, term) =>
               [row.operatorName, row.tripFolio, row.unitLabel, row.notes].some((v) => v?.toLowerCase().includes(term))
