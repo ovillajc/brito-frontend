@@ -4,7 +4,7 @@ import React from 'react'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { EmployeeEntity } from '../../../domain/entities'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
-import { Calendar, Mail, Phone, Hash, Shield, Briefcase, Heart, User, FileText, Download, Eye, Paperclip, X } from 'lucide-react'
+import { Calendar, Mail, Phone, Hash, Shield, Briefcase, Heart, User, FileText, Download, Eye, Paperclip, X, ExternalLink } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/src/core/presentation/components/ui/tabs'
 import { Separator } from '@/src/core/presentation/components/ui/separator'
 import { cn } from '@/src/core/infrastructure/utils/cn'
@@ -59,18 +59,14 @@ function SectionTitle({ title, icon: Icon }: { title: string; icon: React.Elemen
   )
 }
 
-function DocItem({ name, status }: { name: string; status: 'complete' | 'missing' | 'expired' }) {
+function DocItem({ name, url }: { name: string; url: string }) {
   return (
     <div className="flex items-center justify-between p-4 rounded-xl border border-stone-100 dark:border-zinc-800 hover:bg-stone-50 dark:hover:bg-zinc-800/50 transition-colors group">
       <div className="flex items-center gap-4">
         <div
           className={cn(
             'size-10 rounded-full flex items-center justify-center',
-            status === 'complete'
-              ? 'bg-green-50 dark:bg-green-950/20 text-green-600'
-              : status === 'expired'
-                ? 'bg-orange-50 dark:bg-orange-950/20 text-orange-600'
-                : 'bg-stone-50 dark:bg-zinc-900 text-stone-400'
+            'bg-green-50 dark:bg-green-950/20 text-green-600'
           )}
         >
           <FileText className="size-5" />
@@ -81,25 +77,34 @@ function DocItem({ name, status }: { name: string; status: 'complete' | 'missing
             <span
               className={cn(
                 'text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded',
-                status === 'complete'
-                  ? 'text-green-600 bg-green-50 dark:bg-green-950/20'
-                  : status === 'expired'
-                    ? 'text-orange-600 bg-orange-50 dark:bg-orange-950/20'
-                    : 'text-stone-400 bg-stone-50 dark:bg-zinc-900'
+                'text-green-600 bg-green-50 dark:bg-green-950/20'
               )}
             >
-              {status === 'complete' ? 'Completo' : status === 'expired' ? 'Vencido' : 'Pendiente'}
+              Disponible
             </span>
           </div>
         </div>
       </div>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-stone-400 hover:text-stone-900 dark:hover:text-zinc-100">
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-stone-400 hover:text-stone-900 dark:hover:text-zinc-100"
+          title="Ver documento"
+        >
           <Eye className="size-4" />
-        </button>
-        <button className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-stone-400 hover:text-stone-900 dark:hover:text-zinc-100">
+        </a>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          download
+          className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-stone-400 hover:text-stone-900 dark:hover:text-zinc-100"
+          title="Descargar documento"
+        >
           <Download className="size-4" />
-        </button>
+        </a>
       </div>
     </div>
   )
@@ -243,32 +248,39 @@ export function EmployeeDetailsDialog({ isOpen, onClose, employee }: EmployeeDet
             <TabsContent value="docs" className="p-8 space-y-4">
               <div className="flex items-center justify-between mb-2">
                 <SectionTitle title="Expediente Digital" icon={Paperclip} />
-                <button
-                  type="button"
-                  className="flex items-center gap-1.5 text-xs font-bold text-[#1a5c3a] dark:text-primary-container hover:opacity-80 transition-opacity"
-                >
+                <span className="flex items-center gap-1.5 text-xs font-bold text-[#1a5c3a] dark:text-primary-container">
                   <Paperclip className="size-3.5" />
-                  SUBIR ARCHIVO
-                </button>
+                  {employee.documents.length} documento{employee.documents.length === 1 ? '' : 's'}
+                </span>
               </div>
 
-              <div className="grid gap-2.5">
-                <DocItem name="Identificación Oficial (INE/Pasaporte)" status="complete" />
-                <DocItem name="CURP Actualizado" status="complete" />
-                <DocItem name="RFC (Constancia de Situación Fiscal)" status="expired" />
-                <DocItem name="Comprobante de Domicilio" status="complete" />
-                <DocItem name="Contrato Laboral Firmado" status="missing" />
-                <DocItem name="Título / Cédula Profesional" status="missing" />
-                <DocItem name="Examen Médico de Ingreso" status="complete" />
-              </div>
-
-              <div className="mt-6 p-6 rounded-2xl bg-stone-50 dark:bg-zinc-800/30 border border-dashed border-stone-200 dark:border-zinc-700 flex flex-col items-center justify-center text-center">
-                <div className="size-12 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm mb-3">
-                  <FileText className="size-5 text-stone-300" />
+              {employee.documents.length > 0 ? (
+                <div className="grid gap-2.5">
+                  {employee.documents.map((doc) => (
+                    <DocItem key={doc.id} name={doc.documentName} url={doc.fileUrl} />
+                  ))}
                 </div>
-                <p className="text-sm font-bold text-stone-900 dark:text-zinc-100">Cargar más documentos</p>
-                <p className="text-xs text-stone-500 mt-1 max-w-[240px]">Arrastra y suelta archivos aquí o haz clic para buscar en tu equipo.</p>
-              </div>
+              ) : (
+                <div className="mt-6 p-6 rounded-2xl bg-stone-50 dark:bg-zinc-800/30 border border-dashed border-stone-200 dark:border-zinc-700 flex flex-col items-center justify-center text-center">
+                  <div className="size-12 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm mb-3">
+                    <FileText className="size-5 text-stone-300" />
+                  </div>
+                  <p className="text-sm font-bold text-stone-900 dark:text-zinc-100">Sin documentos cargados</p>
+                  <p className="text-xs text-stone-500 mt-1 max-w-[240px]">Este empleado aun no tiene archivos en su expediente digital.</p>
+                </div>
+              )}
+
+              {employee.documents.length > 0 ? (
+                <a
+                  href={employee.documents[0].fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1a5c3a] dark:text-primary-container hover:opacity-80 transition-opacity"
+                >
+                  <ExternalLink className="size-3.5" />
+                  ABRIR DOCUMENTO
+                </a>
+              ) : null}
             </TabsContent>
           </div>
         </Tabs>

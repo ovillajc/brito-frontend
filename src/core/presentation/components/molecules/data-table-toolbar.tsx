@@ -6,6 +6,8 @@ interface DataTableToolbarProps {
   searchPlaceholder?: string
   searchValue?: string
   onSearchChange?: (value: string) => void
+  onFiltersClick?: () => void
+  filtersCount?: number
   actionLabel?: string
   onAction?: () => void
   actionIcon?: React.ReactNode
@@ -15,6 +17,8 @@ export function DataTableToolbar({
   searchPlaceholder = 'Buscar...',
   searchValue,
   onSearchChange,
+  onFiltersClick,
+  filtersCount,
   actionLabel = 'Nuevo',
   onAction,
   actionIcon = <Plus className="size-4" />,
@@ -34,9 +38,9 @@ export function DataTableToolbar({
       </div>
       
       <div className="flex items-center gap-2">
-        <Button variant="green" className="gap-2">
+        <Button variant="green" className="gap-2" onClick={onFiltersClick} disabled={!onFiltersClick}>
           <Filter className="size-4" />
-          Filtros
+          Filtros{filtersCount && filtersCount > 0 ? ` (${filtersCount})` : ''}
         </Button>
         {onExport && (
           <Button variant="outline" className="gap-2" onClick={onExport} title="Exportar a Excel">

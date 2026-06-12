@@ -25,6 +25,7 @@ export interface WizardProps {
   icon?: React.ReactNode
   steps: WizardStep[]
   activeStep: number
+  onStepSelect?: (stepIndex: number) => void
   className?: string
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
 }
@@ -37,6 +38,7 @@ export function Wizard({
   icon,
   steps,
   activeStep,
+  onStepSelect,
   className,
   size = 'lg',
 }: WizardProps) {
@@ -81,14 +83,19 @@ export function Wizard({
           {steps.map((step, index) => {
             const isCompleted = index < activeStep
             const isActive = index === activeStep
+            const isSelectable = typeof onStepSelect === 'function'
 
             return (
               <React.Fragment key={step.id}>
                 {/* Step bubble + label */}
                 <div className="flex flex-col items-center gap-2">
-                  <div
+                  <button
+                    type="button"
+                    onClick={() => onStepSelect?.(index)}
+                    disabled={!isSelectable}
                     className={cn(
                       'size-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300',
+                      isSelectable ? 'cursor-pointer' : 'cursor-default',
                       isCompleted
                         ? 'bg-[#006d37] text-white shadow-sm'
                         : isActive
@@ -101,10 +108,14 @@ export function Wizard({
                     ) : (
                       <span>{String(index + 1).padStart(2, '0')}</span>
                     )}
-                  </div>
-                  <span
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onStepSelect?.(index)}
+                    disabled={!isSelectable}
                     className={cn(
                       'text-[10px] font-bold uppercase tracking-wider whitespace-nowrap',
+                      isSelectable ? 'cursor-pointer' : 'cursor-default',
                       isActive
                         ? 'text-[#006d37] dark:text-primary-container'
                         : isCompleted
@@ -113,7 +124,7 @@ export function Wizard({
                     )}
                   >
                     {step.title}
-                  </span>
+                  </button>
                 </div>
 
                 {/* Connecting line */}

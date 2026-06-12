@@ -1,7 +1,19 @@
-import { EmployeeEntity } from '../../domain/entities'
+import { EmployeeDocumentEntity, EmployeeEntity } from '../../domain/entities'
 import { CreateEmployeeInput, UpdateEmployeeInput } from '../../domain/schemas/employee.schema'
 
 export class EmployeeMapper {
+  static toDocumentDomain(raw: Record<string, unknown>): EmployeeDocumentEntity {
+    return {
+      id: raw.id as string,
+      employeeId: raw.employee_id as string,
+      documentName: (raw.document_name as string | null) ?? 'Documento',
+      fileUrl: raw.file_url as string,
+      expirationDate: raw.expiration_date ? new Date(raw.expiration_date as string) : null,
+      expirationAlert: (raw.expiration_alert as boolean | null) ?? true,
+      createdAt: raw.created_at ? new Date(raw.created_at as string) : new Date(),
+    }
+  }
+
   /**
    * Mapea un payload nativo de Supabase a la entidad de dominio.
    */
@@ -15,6 +27,10 @@ export class EmployeeMapper {
     } else if (raw.driver_details && !Array.isArray(raw.driver_details)) {
       driverDetails = raw.driver_details as Record<string, unknown>
     }
+
+    const rawDocuments = Array.isArray(raw.documents)
+      ? raw.documents as Record<string, unknown>[]
+      : []
 
     return {
       id: raw.id as string,
@@ -47,6 +63,7 @@ export class EmployeeMapper {
       rcontrolExpiration: driverDetails?.rcontrol_expiration ? new Date(driverDetails.rcontrol_expiration as string) : null,
       fasttrackId: driverDetails?.fasttrack_id as string | null,
       fasttrackExpiration: driverDetails?.fasttrack_expiration ? new Date(driverDetails.fasttrack_expiration as string) : null,
+      documents: rawDocuments.map(EmployeeMapper.toDocumentDomain),
 
       createdAt: new Date(raw.created_at as string),
       updatedAt: new Date(raw.updated_at as string),
@@ -95,6 +112,19 @@ export class EmployeeMapper {
       fasttrack_expiration: input.fasttrackExpiration || null,
       updated_at: new Date().toISOString()
     }
+  }
+
+  static toPersistDocuments(input: CreateEmployeeInput | UpdateEmployeeInput, employeeId: string) {
+    return (input.documents ?? [])
+      .filter((doc) => !!doc.documentName?.trim() && !!doc.fileUrl)
+      .map((doc) => ({
+        ...(doc.id ? { id: doc.id } : {}),
+        employee_id: employeeId,
+        document_name: doc.documentName,
+        file_url: doc.fileUrl!,
+        expiration_date: null,
+        expiration_alert: true,
+      }))
   }
 
   /**

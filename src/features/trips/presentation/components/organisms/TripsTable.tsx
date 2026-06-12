@@ -248,7 +248,14 @@ import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
 export function TripsTable({ clients = [], units = [], trips = [], filters }: TripsTableProps) {
   const tripsQuery = useTripsList(filters, filters ? undefined : trips)
   const rawTrips = tripsQuery.data
-  const rows = (tripsQuery.data ?? []).map(mapToRowEntity)
+  const rows = useMemo(() => {
+    const list = (tripsQuery.data ?? []).map(mapToRowEntity)
+    return list.sort((a, b) => {
+      const dateA = a.departureDate ? new Date(a.departureDate).getTime() : 0
+      const dateB = b.departureDate ? new Date(b.departureDate).getTime() : 0
+      return dateB - dateA
+    })
+  }, [tripsQuery.data])
 
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [selectedRow, setSelectedRow] = useState<TripsTableRowEntity | null>(null)
@@ -417,6 +424,21 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
             </span>
           </div>
         ),
+      },
+      {
+        header: 'Fecha',
+        cell: (row) => {
+          if (!row.departureDate) return <span className="text-stone-400">—</span>
+          const d = new Date(row.departureDate)
+          const dateStr = d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
+          const timeStr = d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })
+          return (
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-stone-800 dark:text-zinc-200 capitalize">{dateStr}</span>
+              <span className="text-xs text-stone-500 dark:text-zinc-400">{timeStr} hrs</span>
+            </div>
+          )
+        }
       },
       {
         header: 'Ruta',

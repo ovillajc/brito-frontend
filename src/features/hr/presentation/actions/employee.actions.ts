@@ -9,6 +9,7 @@ import { DeleteEmployeeUseCase } from '../../application/DeleteEmployeeUseCase'
 import { CreateEmployeeInput, UpdateEmployeeInput } from '../../domain/schemas/employee.schema'
 import { GetDepartmentsUseCase } from '../../application/GetDepartmentsUseCase'
 import { SupabaseDepartmentRepository } from '../../infrastructure/repositories/SupabaseDepartmentRepository'
+import { deleteR2ObjectByPublicUrl } from '@/src/core/infrastructure/storage/r2-client'
 
 const employeeRepository = new SupabaseEmployeeRepository()
 const departmentRepository = new SupabaseDepartmentRepository()
@@ -58,4 +59,8 @@ export async function deleteEmployeeAction(id: string) {
     revalidatePath('/hr/employees')
   }
   return result
+}
+
+export async function deleteEmployeeDocumentFileAction(url: string) {
+  return deleteR2ObjectByPublicUrl(url)
 }

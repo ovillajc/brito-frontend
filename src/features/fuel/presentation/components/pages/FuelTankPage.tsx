@@ -11,13 +11,11 @@ import { ActionFeedback } from '@/src/core/presentation/components/molecules/Act
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
-import { Badge } from '@/src/core/presentation/components/ui/badge'
 import type { FuelTankMovementEntity, FuelTankSummaryEntity } from '@/src/features/fuel/domain/entities/fuel-tank-entity'
+import { FuelTankMovementsCard } from '@/src/features/fuel/presentation/components/organisms/FuelTankMovementsCard'
 import {
   adjustFuelTankAction,
   createDefaultFuelTankAction,
-  getActiveFuelTankSummaryAction,
-  getFuelTankMovementsAction,
   registerFuelTankPurchaseAction,
 } from '@/src/features/fuel/presentation/actions/fuel-tanks.actions'
 
@@ -60,7 +58,6 @@ export default function FuelTankPage({ initialSummary, initialMovements }: FuelT
   const [isBootstrapping, setIsBootstrapping] = useState(false)
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isAdjusting, setIsAdjusting] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // ── Feedback states ──
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
@@ -210,27 +207,6 @@ export default function FuelTankPage({ initialSummary, initialMovements }: FuelT
             <h1 className="text-2xl font-bold tracking-tight text-on-surface">Combustible</h1>
             <p className="text-sm text-on-surface-variant">Control de tanque y costos promedio</p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="rounded-xl"
-            disabled={isRefreshing}
-            onClick={async () => {
-              setIsRefreshing(true)
-              try {
-                const [summaryResult, movementsResult] = await Promise.all([
-                  getActiveFuelTankSummaryAction(),
-                  getFuelTankMovementsAction(20),
-                ])
-                if (summaryResult.ok) setSummary(summaryResult.data)
-                if (movementsResult.ok) setMovements(movementsResult.data)
-              } finally {
-                setIsRefreshing(false)
-              }
-            }}
-          >
-            {isRefreshing ? 'Actualizando...' : 'Actualizar'}
-          </Button>
         </div>
       </header>
 
@@ -347,52 +323,7 @@ export default function FuelTankPage({ initialSummary, initialMovements }: FuelT
             </div>
           </div>
 
-          <div className="rounded-2xl border border-stone-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-stone-900 dark:text-zinc-100">Últimos movimientos</h2>
-              <Badge className="bg-stone-100 text-stone-700">{movements.length}</Badge>
-            </div>
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-stone-400">
-                    <th className="py-2 pr-4">Fecha</th>
-                    <th className="py-2 pr-4">Tipo</th>
-                    <th className="py-2 pr-4">Litros</th>
-                    <th className="py-2 pr-4">Costo/L</th>
-                    <th className="py-2 pr-4">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="text-stone-700 dark:text-zinc-200">
-                  {movements.length === 0 ? (
-                    <tr>
-                      <td className="py-3 text-sm text-stone-500 dark:text-zinc-400" colSpan={5}>Sin movimientos</td>
-                    </tr>
-                  ) : (
-                    movements.map((m) => (
-                      <tr key={m.id} className="border-t border-stone-100 dark:border-zinc-800">
-                        <td className="py-2 pr-4">{m.movementDate.toLocaleString('es-MX', { hour12: false })}</td>
-                        <td className="py-2 pr-4">
-                          <Badge className={
-                            m.movementType === 'IN'
-                              ? 'bg-emerald-500/10 text-emerald-700 border-emerald-300'
-                              : m.movementType === 'OUT'
-                                ? 'bg-amber-500/10 text-amber-700 border-amber-300'
-                                : 'bg-blue-500/10 text-blue-700 border-blue-300'
-                          }>
-                            {m.movementType}
-                          </Badge>
-                        </td>
-                        <td className="py-2 pr-4">{formatNumber(m.liters)}</td>
-                        <td className="py-2 pr-4">{m.unitCost != null ? formatMoney(m.unitCost) : '—'}</td>
-                        <td className="py-2 pr-4">{m.totalCost != null ? formatMoney(m.totalCost) : '—'}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <FuelTankMovementsCard movements={movements} title="Últimos movimientos" />
         </>
       )}
 

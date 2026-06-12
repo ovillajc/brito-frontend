@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useForm, type DefaultValues } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Fuel } from 'lucide-react'
+import { Fuel, Search } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import type { UnitAssemblyEntity } from '@/src/features/fleet/domain/entities'
@@ -22,6 +22,7 @@ import { useRegisterFuelLoad, useUpdateFuelLoad } from '@/src/features/trips/pre
 import { deleteFuelLoadTicketAction } from '@/src/features/trips/presentation/actions/fuel-metrics.actions'
 import { useTractors, useTrailers } from '@/src/features/fleet/presentation/hooks/use-fleet'
 import type { FuelLoadHistoryRowEntity } from '@/src/features/trips/domain/entities/fuel-metrics-entity'
+import { useFuelLoadTripsRpc } from '@/src/features/trips/presentation/hooks/use-trips'
 
 type SubmissionStatus = 'idle' | 'success' | 'error'
 
@@ -142,7 +143,27 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
   const sourceType = watch('sourceType')
   const ticketUrl = watch('ticketUrl')
 
-  const selectedTrip = useMemo(() => trips.find((t) => t.trip.id === tripId) ?? null, [trips, tripId])
+  const [tripSearch, setTripSearch] = useState('')
+  const [isSelectingTrip, setIsSelectingTrip] = useState(false)
+  const [tripDateFrom, setTripDateFrom] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 7)
+    return d.toISOString().split('T')[0]
+  })
+  const [tripDateTo, setTripDateTo] = useState(() => {
+    return new Date().toISOString().split('T')[0]
+  })
+
+  const { data: dynamicTripsData, isLoading: isLoadingTrips } = useFuelLoadTripsRpc(
+    tripDateFrom ? new Date(tripDateFrom + 'T00:00:00') : new Date(),
+    tripDateTo ? new Date(tripDateTo + 'T23:59:59') : new Date()
+  )
+
+  const selectedTrip = useMemo(() => {
+    const list = dynamicTripsData ?? trips
+    return list.find((t) => t.trip.id === tripId) ?? null
+  }, [dynamicTripsData, trips, tripId])
+
   const selectedUnit = useMemo(() => {
     const unitAssemblyId = selectedTrip?.trip.unitAssemblyId
     if (!unitAssemblyId) return null
@@ -150,7 +171,22 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
   }, [selectedTrip, units])
 
   const sortedTrips = useMemo(() => {
-    return [...trips].sort((a, b) => {
+    let list = dynamicTripsData ?? trips
+
+    if (tripSearch) {
+      const lower = tripSearch.toLowerCase()
+      list = list.filter(t => 
+        t.trip.folio?.toLowerCase().includes(lower) || 
+        String(t.trip.tripNumber).includes(lower) ||
+        t.unitEconomicNumber?.toLowerCase().includes(lower) ||
+        t.operatorName?.toLowerCase().includes(lower) ||
+        t.trip.origin?.toLowerCase().includes(lower) ||
+        t.trip.destination?.toLowerCase().includes(lower) ||
+        t.trip.id === tripId // Mantener el seleccionado visible
+      )
+    }
+
+    return [...list].sort((a, b) => {
       const aTripNumber = a.trip.tripNumber ?? -1
       const bTripNumber = b.trip.tripNumber ?? -1
       if (aTripNumber !== bTripNumber) return bTripNumber - aTripNumber
@@ -161,7 +197,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
 
       return (a.trip.id ?? '').localeCompare(b.trip.id ?? '')
     })
-  }, [trips])
+  }, [dynamicTripsData, trips, tripSearch, tripId])
 
   const totalCost = liters != null && price != null ? liters * price : null
   const isSaving = editRow ? updateFuelLoad.isPending : registerFuelLoad.isPending
@@ -310,20 +346,59 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
   const step1 = (
     <div className="flex flex-col gap-6 pt-2">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="tripId">Viaje (opcional si es base) — Total: {sortedTrips.length}</Label>
-          <select id="tripId" className={inputClass} {...register('tripId')}>
-            <option value="">Sin viaje (Carga base)</option>
-            {sortedTrips.map((t) => (
-              <option key={t.trip.id} value={t.trip.id}>
-                {(t.trip.tripNumber !== null
-                  ? `VJE-${String(t.trip.tripNumber).padStart(6, '0')}`
-                  : (t.trip.folio ?? t.trip.id.slice(0, 8))
-                )} — {(t.unitEconomicNumber ?? 'Sin unidad')} — {(TRIP_STATUS_LABELS[t.trip.status] ?? t.trip.status)} — {(t.trip.origin ?? '—')} → {(t.trip.destination ?? '—')}
-              </option>
-            ))}
-          </select>
-          {err(errors.tripId?.message)}
+        <div className="grid gap-4 sm:col-span-2 rounded-2xl border border-stone-100 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/50 p-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="grid gap-2 w-full sm:flex-1">
+              <Label>Desde</Label>
+              <input type="date" className={inputClass} value={tripDateFrom} onChange={(e) => setTripDateFrom(e.target.value)} />
+            </div>
+            <div className="grid gap-2 w-full sm:flex-1">
+              <Label>Hasta</Label>
+              <input type="date" className={inputClass} value={tripDateTo} onChange={(e) => setTripDateTo(e.target.value)} />
+            </div>
+            <div className="grid gap-2 w-full sm:flex-[1.5]">
+              <Label>Buscar viaje</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-stone-400" />
+                <Input 
+                  placeholder="Folio, unidad, origen..." 
+                  className="pl-9 h-12 bg-white dark:bg-zinc-800 border-stone-200 dark:border-zinc-700"
+                  value={tripSearch}
+                  onChange={(e) => {
+                    setTripSearch(e.target.value)
+                    setIsSelectingTrip(true)
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="tripId" className="flex items-center justify-between">
+              <span>Seleccionar Viaje (opcional si es base)</span>
+              <span className="text-xs font-semibold text-[#1a5c3a] dark:text-emerald-400">
+                {isLoadingTrips ? 'Cargando viajes...' : `${sortedTrips.length} viaje(s) encontrado(s)`}
+              </span>
+            </Label>
+            <select 
+              id="tripId" 
+              className={inputClass} 
+              size={isSelectingTrip && tripSearch.trim() !== '' ? Math.min(sortedTrips.length + 1, 5) : undefined}
+              {...register('tripId')}
+              onClick={() => setIsSelectingTrip(false)}
+            >
+              <option value="">Sin viaje (Carga base)</option>
+              {sortedTrips.map((t) => (
+                <option key={t.trip.id} value={t.trip.id}>
+                  {(t.trip.tripNumber !== null
+                    ? `VJE-${String(t.trip.tripNumber).padStart(6, '0')}`
+                    : (t.trip.folio ?? t.trip.id.slice(0, 8))
+                  )} — {(t.unitEconomicNumber ?? 'Sin unidad')} — {(TRIP_STATUS_LABELS[t.trip.status] ?? t.trip.status)} — {(t.trip.origin ?? '—')} → {(t.trip.destination ?? '—')}
+                </option>
+              ))}
+            </select>
+            {err(errors.tripId?.message)}
+          </div>
         </div>
 
         <div className="grid gap-2">

@@ -589,3 +589,67 @@ export async function upsertTripWithClientDataAction(
   revalidatePath('/trips/list')
   return { ok: true, data: { trip } }
 }
+
+export type FuelLoadTripRpcResult = {
+  id: string
+  folio: string | null
+  trip_number: number | null
+  status: TripStatus
+  origin: string | null
+  destination: string | null
+  departure_date: string | null
+  unit_assembly_id: string | null
+  unit_economic_number: string | null
+  operator_name: string | null
+}
+
+export async function getFuelLoadTripsRpcAction(
+  from: Date,
+  to: Date
+): Promise<Either<Failure, TripWithRelations[]>> {
+  const canManageFuel = await hasPermission('fuel:manage')
+  const canManageFinances = await hasPermission('finances:manage')
+  const canFuelLoadView = await hasPermission('fuel_load:view')
+  const canFuelLoadCreate = await hasPermission('fuel_load:create')
+  
+  if (!canManageFuel && !canManageFinances && !canFuelLoadView && !canFuelLoadCreate) {
+    return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
+  }
+
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase.rpc('get_trips_for_fuel_load', {
+      p_start_date: from.toISOString(),
+      p_end_date: to.toISOString()
+    })
+    
+    if (error) {
+      return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+    }
+    
+    const mapped: TripWithRelations[] = ((data ?? []) as FuelLoadTripRpcResult[]).map(r => ({
+      trip: {
+        id: r.id,
+        folio: r.folio,
+        tripNumber: r.trip_number,
+        status: r.status,
+        origin: r.origin,
+        destination: r.destination,
+        departureDate: r.departure_date ? new Date(r.departure_date) : null,
+        unitAssemblyId: r.unit_assembly_id ?? '',
+        clientId: '',
+        companyProfileId: null,
+      } as TripEntity,
+      clientName: null,
+      unitEconomicNumber: r.unit_economic_number,
+      operatorName: r.operator_name,
+      isFullAssembly: false,
+      fuelMetrics: null,
+      walmartData: null,
+    }))
+    
+    return { ok: true, data: mapped }
+  } catch (err: any) {
+    return { ok: false, error: { code: 'UNEXPECTED', message: err.message || 'Error executing RPC' } }
+  }
+}
