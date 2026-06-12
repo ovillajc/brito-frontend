@@ -16,10 +16,11 @@ import { WizardFooter } from '@/src/core/presentation/components/molecules/wizar
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { ActionFeedback } from '@/src/core/presentation/components/molecules/ActionFeedback'
-import { ClientEntity } from '@/src/features/fleet/domain/entities'
-import { upsertClientAction } from '@/src/features/fleet/presentation/actions/client.actions'
+import { ClientEntity } from '@/src/features/clients/domain/entities'
+import { upsertClientAction } from '@/src/features/clients/presentation/actions/client.actions'
 import { toast } from 'sonner'
 import { Building2, FileText, MapPin } from 'lucide-react'
+import { useCompanyProfiles } from '@/src/features/company-profile/presentation/hooks/use-company-profile'
 
 const clientWizardSchema = z.object({
   tradeName: z.string().min(1, 'El nombre comercial es obligatorio'),
@@ -27,6 +28,7 @@ const clientWizardSchema = z.object({
   rfc: z.string().optional(),
   taxDomicile: z.string().optional(),
   taxRegime: z.string().optional(),
+  companyProfileId: z.string().optional(),
 })
 
 type ClientWizardValues = z.infer<typeof clientWizardSchema>
@@ -43,6 +45,9 @@ export function ClientWizard({ isOpen, onClose, onSaved, clientData }: ClientWiz
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [submissionError, setSubmissionError] = useState<string | null>(null)
+
+  const companyProfilesQuery = useCompanyProfiles()
+  const companyProfiles = companyProfilesQuery.data ?? []
 
   const isEdit = !!clientData
 
@@ -61,6 +66,7 @@ export function ClientWizard({ isOpen, onClose, onSaved, clientData }: ClientWiz
       rfc: '',
       taxDomicile: '',
       taxRegime: '',
+      companyProfileId: '',
     },
   })
 
@@ -73,6 +79,7 @@ export function ClientWizard({ isOpen, onClose, onSaved, clientData }: ClientWiz
           rfc: clientData.rfc ?? '',
           taxDomicile: clientData.taxDomicile ?? '',
           taxRegime: clientData.taxRegime ?? '',
+          companyProfileId: clientData.companyProfileId ?? '',
         })
       } else {
         reset({
@@ -81,6 +88,7 @@ export function ClientWizard({ isOpen, onClose, onSaved, clientData }: ClientWiz
           rfc: '',
           taxDomicile: '',
           taxRegime: '',
+          companyProfileId: '',
         })
       }
       setActiveStep(0)
@@ -108,6 +116,7 @@ export function ClientWizard({ isOpen, onClose, onSaved, clientData }: ClientWiz
         rfc: data.rfc?.trim() || null,
         taxDomicile: data.taxDomicile?.trim() || null,
         taxRegime: data.taxRegime?.trim() || null,
+        companyProfileId: data.companyProfileId || null,
       }
 
       const result = await upsertClientAction(payload)
@@ -137,6 +146,21 @@ export function ClientWizard({ isOpen, onClose, onSaved, clientData }: ClientWiz
   const step1 = (
     <div className="flex flex-col gap-6 pt-2 h-full">
       <div className="space-y-4 flex-1">
+        <div className="grid gap-2">
+          <Label htmlFor="companyProfileId">Empresa de Facturación (Opcional)</Label>
+          <select
+            id="companyProfileId"
+            {...register('companyProfileId')}
+            className={inputClass}
+          >
+            <option value="">Selecciona una entidad legal...</option>
+            {companyProfiles.map(cp => (
+              <option key={cp.id} value={cp.id}>{cp.legalName}</option>
+            ))}
+          </select>
+          {errors.companyProfileId && <p className={errorClass}>{errors.companyProfileId.message}</p>}
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
             <Label htmlFor="tradeName">Nombre Comercial</Label>
@@ -189,6 +213,15 @@ export function ClientWizard({ isOpen, onClose, onSaved, clientData }: ClientWiz
         <div className="rounded-xl border border-stone-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800/50 p-6">
           <h4 className="text-sm font-bold text-stone-900 dark:text-zinc-100 mb-4">Información Capturada</h4>
           <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="col-span-2">
+              <span className="block text-xs font-semibold text-stone-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Empresa Vinculada</span>
+              <span className="font-medium text-[#1a5c3a] dark:text-primary-container">
+                {formValues.companyProfileId 
+                  ? companyProfiles.find(cp => cp.id === formValues.companyProfileId)?.legalName || 'Desconocida'
+                  : 'Ninguna (Independiente)'}
+              </span>
+            </div>
+
             <div>
               <span className="block text-xs font-semibold text-stone-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Nombre Comercial</span>
               <span className="font-medium text-stone-900 dark:text-zinc-100">{formValues.tradeName || '—'}</span>

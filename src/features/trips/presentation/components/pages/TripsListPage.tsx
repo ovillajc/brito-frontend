@@ -6,7 +6,8 @@
 
 import { useMemo, useState } from 'react'
 import { TripsTable } from '../organisms/TripsTable'
-import { ClientEntity, UnitAssemblyEntity } from '@/src/features/fleet/domain/entities'
+import { UnitAssemblyEntity } from '@/src/features/fleet/domain/entities'
+import { ClientEntity } from '@/src/features/clients/domain/entities'
 import type { TripWithRelations } from '@/src/features/trips/domain/entities/trip-entity'
 import type { TripsListFilters } from '@/src/features/trips/domain/repositories/i-trips-repository'
 

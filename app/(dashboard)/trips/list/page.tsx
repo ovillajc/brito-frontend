@@ -1,5 +1,5 @@
 import TripsListPage from '@/src/features/trips/presentation/components/pages/TripsListPage'
-import { getClientsAction } from '@/src/features/fleet/presentation/actions/client.actions'
+import { getClientsAction } from '@/src/features/clients/presentation/actions/client.actions'
 import { getUnitAssembliesAction } from '@/src/features/fleet/presentation/actions/unit-assembly.actions'
 import { getTripsAction } from '@/src/features/trips/presentation/actions/trips.actions'
 

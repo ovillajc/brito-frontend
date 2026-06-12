@@ -6,7 +6,7 @@ export class SupabaseClientRepository {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('clients')
-      .select('id, trade_name, company_name, rfc, tax_domicile, tax_regime, created_at, updated_at')
+      .select('id, trade_name, company_name, rfc, tax_domicile, tax_regime, company_profile_id, company_profile(legal_name), created_at, updated_at')
       .order('trade_name', { ascending: true })
 
     if (error) throw new Error(`Error al obtener clientes: ${error.message}`)
@@ -19,6 +19,8 @@ export class SupabaseClientRepository {
       rfc: r.rfc,
       taxDomicile: r.tax_domicile,
       taxRegime: r.tax_regime,
+      companyProfileId: r.company_profile_id,
+      companyProfileLegalName: r.company_profile ? (r.company_profile as any).legal_name : undefined,
       createdAt: r.created_at ? new Date(r.created_at) : undefined,
       updatedAt: r.updated_at ? new Date(r.updated_at) : undefined,
     }))
@@ -34,6 +36,7 @@ export class SupabaseClientRepository {
       rfc: client.rfc,
       tax_domicile: client.taxDomicile,
       tax_regime: client.taxRegime,
+      company_profile_id: client.companyProfileId ?? null,
     }
 
     const { data, error } = await supabase

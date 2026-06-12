@@ -8,11 +8,11 @@
 
 import React, { useState } from 'react'
 import { Building2 } from 'lucide-react'
-import { ClientEntity } from '@/src/features/fleet/domain/entities'
+import { ClientEntity } from '@/src/features/clients/domain/entities'
 import { CrudDataTable, type CrudColumn } from '@/src/core/presentation/components/organisms/CrudDataTable'
 import { ClientWizard } from './ClientWizard'
 import { ClientDetailsDialog } from './ClientDetailsDialog'
-import { deleteClientAction } from '@/src/features/fleet/presentation/actions/client.actions'
+import { deleteClientAction } from '@/src/features/clients/presentation/actions/client.actions'
 
 interface ClientsTableProps {
   initialData: ClientEntity[]
@@ -62,6 +62,11 @@ export function ClientsTable({ initialData }: ClientsTableProps) {
           <span className="text-xs text-stone-500 dark:text-zinc-400">
             {c.companyName}
           </span>
+          {c.companyProfileLegalName && (
+            <span className="text-[10px] mt-1 inline-flex w-fit items-center rounded-md bg-[#1a5c3a]/10 px-1.5 py-0.5 font-medium text-[#1a5c3a] dark:bg-primary-container/20 dark:text-primary-container">
+              Empresa: {c.companyProfileLegalName}
+            </span>
+          )}
         </div>
       ),
     },
