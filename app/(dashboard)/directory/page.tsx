@@ -1,7 +1,7 @@
 import React from 'react'
 import { redirect } from 'next/navigation'
 import { verifySession } from '@/src/features/auth/infrastructure/dal'
-import { getClientsAction } from '@/src/features/fleet/presentation/actions/client.actions'
+import { getClientsAction } from '@/src/features/clients/presentation/actions/client.actions'
 import { ClientsTable } from '@/src/features/clients/presentation/components/organisms/ClientsTable'
 import { Building2 } from 'lucide-react'
 

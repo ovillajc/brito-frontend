@@ -10,7 +10,7 @@ import React from 'react'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { Separator } from '@/src/core/presentation/components/ui/separator'
 import { X, Building2, MapPin, FileText, Hash, Calendar } from 'lucide-react'
-import { ClientEntity } from '@/src/features/fleet/domain/entities'
+import { ClientEntity } from '@/src/features/clients/domain/entities'
 
 interface ClientDetailsDialogProps {
   isOpen: boolean
@@ -83,6 +83,7 @@ export function ClientDetailsDialog({ isOpen, onClose, clientRow }: ClientDetail
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DetailItem icon={Building2} label="Nombre Comercial" value={clientRow.tradeName} />
             <DetailItem icon={Building2} label="Razón Social" value={clientRow.companyName} />
+            <DetailItem icon={Building2} label="Empresa Vinculada (Company Profile)" value={clientRow.companyProfileLegalName} className="md:col-span-2" />
           </div>
         </section>
 

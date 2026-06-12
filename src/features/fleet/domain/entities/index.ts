@@ -113,14 +113,17 @@ export interface OperatorEntity {
  */
 export interface ClientEntity {
   id: string
-  tradeName?: string | null
+  tradeName: string
   companyName?: string | null
   rfc?: string | null
   taxDomicile?: string | null
   taxRegime?: string | null
+  companyProfileId?: string | null
+  companyProfileLegalName?: string
   createdAt?: Date
   updatedAt?: Date
 }
+
 
 /**
  * Representa un documento digital asociado a una entidad.
