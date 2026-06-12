@@ -6,6 +6,15 @@ import { z } from 'zod'
  */
 
 // Zod schema for creating an employee
+const employeeDocumentSchema = z.object({
+  id: z.string().uuid().optional(),
+  documentName: z.string().min(1, 'El nombre del documento es requerido'),
+  // fileUrl acepta cualquier string (token __pending_file__:*, URL real, o vacío).
+  // La validación de documentos adjuntos se hace exclusivamente en validateDocumentsStep()
+  // del wizard, nunca a través del resolver Zod en el submit.
+  fileUrl: z.string().optional().or(z.literal('')),
+})
+
 export const createEmployeeSchema = z.object({
   fullName: z.string().min(1, 'El nombre completo es requerido'),
   birthDate: z.string().optional().or(z.literal('')),
@@ -35,6 +44,7 @@ export const createEmployeeSchema = z.object({
   rcontrolExpiration: z.string().optional().or(z.literal('')),
   fasttrackId: z.string().optional().or(z.literal('')),
   fasttrackExpiration: z.string().optional().or(z.literal('')),
+  documents: z.array(employeeDocumentSchema).default([]),
 })
 
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>
