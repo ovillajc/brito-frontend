@@ -109,33 +109,50 @@ export function FileUploadButton({
   accept = 'application/pdf,image/jpeg,image/jpg,image/png,image/webp',
 }: FileUploadButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const isUploadingRef = useRef(false)
+  const lastUploadSignatureRef = useRef<string | null>(null)
   const [state, setState] = useState<UploadState>({ status: 'idle' })
+  const successUrl = state.status === 'success' ? state.url : null
 
   // Sincronizar estado interno si la URL actual es limpiada desde el exterior
   useEffect(() => {
-    if (state.status === 'success' && currentUrl !== state.url) {
-      setState({ status: 'idle' })
+    if (state.status === 'success' && currentUrl !== successUrl) {
+      const frame = window.requestAnimationFrame(() => {
+        setState({ status: 'idle' })
+      })
+      return () => window.cancelAnimationFrame(frame)
     }
-  }, [currentUrl, state])
+  }, [currentUrl, state.status, successUrl])
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
+    const fileSignature = `${file.name}:${file.size}:${file.lastModified}`
+    if (isUploadingRef.current || lastUploadSignatureRef.current === fileSignature) {
+      if (inputRef.current) inputRef.current.value = ''
+      return
+    }
+
     // Limpiar input para permitir re-seleccionar el mismo archivo tras un error
     if (inputRef.current) inputRef.current.value = ''
 
+    isUploadingRef.current = true
+    lastUploadSignatureRef.current = fileSignature
     setState({ status: 'uploading', progress: 0 })
 
     const result = await uploadWithProgress(file, folder, (pct) => {
       setState({ status: 'uploading', progress: pct })
     })
 
+    isUploadingRef.current = false
+
     if (result.ok) {
       setState({ status: 'success', url: result.url })
       onUploadComplete(result.url)
     } else {
       setState({ status: 'error', message: result.message })
+      lastUploadSignatureRef.current = null
     }
   }
 

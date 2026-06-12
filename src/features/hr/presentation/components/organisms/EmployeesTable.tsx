@@ -6,7 +6,7 @@
  * son manejadas por el componente genérico CrudDataTable.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { EmployeeEntity } from '../../../domain/entities'
 import { CrudDataTable, CrudColumn } from '@/src/core/presentation/components/organisms/CrudDataTable'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
@@ -84,7 +84,14 @@ const EMPLOYEE_COLUMNS: CrudColumn<EmployeeEntity>[] = [
 import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
 
 export function EmployeesTable({ initialData }: EmployeesTableProps) {
-  const canManage = useAuthStore((state) => state.hasPermission('all_access'))
+  // Avoid SSR/client hydration mismatch: useAuthStore reads client-only Zustand
+  // store which returns false on the server. We initialize as false and sync
+  // after mount so both renders start with the same value.
+  const hasPermission = useAuthStore((state) => state.hasPermission)
+  const [canManage, setCanManage] = useState(false)
+  useEffect(() => {
+    setCanManage(hasPermission('all_access'))
+  }, [hasPermission])
 
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeEntity | null>(null)

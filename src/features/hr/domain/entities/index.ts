@@ -14,6 +14,16 @@ export interface DepartmentEntity {
   createdAt: Date
 }
 
+export interface EmployeeDocumentEntity {
+  id: string
+  employeeId: string
+  documentName: string
+  fileUrl: string
+  expirationDate?: Date | null
+  expirationAlert: boolean
+  createdAt: Date
+}
+
 export interface EmployeeEntity {
   id: string
   fullName: string
@@ -45,6 +55,7 @@ export interface EmployeeEntity {
   rcontrolExpiration?: Date | null
   fasttrackId?: string | null
   fasttrackExpiration?: Date | null
+  documents: EmployeeDocumentEntity[]
 
   createdAt: Date
   updatedAt: Date
