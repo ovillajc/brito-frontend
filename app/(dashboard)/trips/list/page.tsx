@@ -6,7 +6,7 @@ import { getTripsAction } from '@/src/features/trips/presentation/actions/trips.
 import { ModuleGuard } from '@/src/features/auth/presentation/components/ModuleGuard'
 import { hasPermission, verifySession } from '@/src/features/auth/infrastructure/dal'
 import { redirect } from 'next/navigation'
-import { isLogisticsAllowedClientName, isWalmartClientName } from '@/src/features/trips/domain/rules/client-access'
+import { isWalmartClientName } from '@/src/features/trips/domain/rules/client-access'
 
 export default async function TripsTablePage() {
   const user = await verifySession()
@@ -30,13 +30,12 @@ export default async function TripsTablePage() {
   const units = unitsResult.ok ? unitsResult.data : []
   const trips = tripsResult.ok ? tripsResult.data : []
 
-  const allowAllClients = canViewAll || canManageAll
+  const allowAllClients = canViewAll || canManageAll || canManageLogistica
   const visibleClients = allowAllClients
     ? clients
     : clients.filter((c) => {
         const name = c.tradeName ?? c.companyName ?? ''
         if ((canViewWalmart || canManageWalmart) && isWalmartClientName(name)) return true
-        if (canManageLogistica && isLogisticsAllowedClientName(name)) return true
         return false
       })
 
@@ -45,7 +44,6 @@ export default async function TripsTablePage() {
     : trips.filter((t) => {
         const name = t.clientName ?? ''
         if ((canViewWalmart || canManageWalmart) && isWalmartClientName(name)) return true
-        if (canManageLogistica && isLogisticsAllowedClientName(name)) return true
         return false
       })
 

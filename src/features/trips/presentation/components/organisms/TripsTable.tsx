@@ -8,12 +8,16 @@
  */
 
 import { useCallback, useMemo, useState } from 'react'
-import { MapPin, Briefcase } from 'lucide-react'
+import {  MapPin, Briefcase } from 'lucide-react'
 import { CrudDataTable, type CrudColumn } from '@/src/core/presentation/components/organisms/CrudDataTable'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { TripWizard } from './TripWizard'
 import { TripDetailsDialog } from './TripDetailsDialog'
 import { ConfirmDialog } from '@/src/core/presentation/components/molecules/confirm-dialog'
+import { Dialog } from '@/src/core/presentation/components/ui/dialog'
+import { Button } from '@/src/core/presentation/components/ui/button'
+import { Input } from '@/src/core/presentation/components/ui/input'
+import { Label } from '@/src/core/presentation/components/ui/label'
 import { UnitAssemblyEntity } from '@/src/features/fleet/domain/entities'
 import { ClientEntity } from '@/src/features/clients/domain/entities'
 import type { TripWithRelations, TripStatus } from '@/src/features/trips/domain/entities/trip-entity'
@@ -116,135 +120,10 @@ function mapToRowEntity(item: TripWithRelations): TripsTableRowEntity {
   }
 }
 
-function formatDateForExport(value: Date | string | null | undefined) {
-  if (!value) return ''
-  const date = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString('es-MX', { hour12: false })
-}
 
-function serializeForExport(value: unknown) {
-  if (value == null) return ''
-  if (typeof value === 'string') return value
-  if (typeof value === 'number' || typeof value === 'boolean') return value
-  try {
-    return JSON.stringify(value)
-  } catch {
-    return String(value)
-  }
-}
-
-function humanizeExportKey(value: string) {
-  return value
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/[._-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/^./, (char) => char.toUpperCase())
-}
-
-function formatValueForExport(value: unknown, indent = ''): string {
-  if (value == null) return ''
-  if (typeof value !== 'object') return String(value)
-
-  if (Array.isArray(value)) {
-    return value
-      .map((item, index) => {
-        const itemStr = formatValueForExport(item, indent + '  ')
-        return `${indent}[${index + 1}]\n${itemStr}`
-      })
-      .filter(Boolean)
-      .join('\n\n')
-  }
-
-  return Object.entries(value as Record<string, unknown>)
-    .filter(([_, v]) => v != null && v !== '')
-    .map(([key, val]) => {
-      const humanKey = humanizeExportKey(key)
-      if (typeof val === 'object' && val !== null) {
-        if (val instanceof Date) {
-          return `${indent}${humanKey}: ${formatDateForExport(val)}`
-        }
-        const nested = formatValueForExport(val, indent + '  ')
-        return `${indent}${humanKey}:\n${nested}`
-      }
-      return `${indent}${humanKey}: ${val}`
-    })
-    .join('\n')
-}
-
-function flattenObjectForExport(
-  value: unknown,
-  prefix: string,
-  output: Record<string, string | number | boolean> = {}
-) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    if (value != null && value !== '') {
-      output[prefix] = formatValueForExport(value)
-    } else {
-      output[prefix] = ''
-    }
-    return output
-  }
-
-  Object.entries(value as Record<string, unknown>).forEach(([key, nestedValue]) => {
-    const nextPrefix = `${prefix} ${humanizeExportKey(key)}`
-
-    if (nestedValue == null || nestedValue === '') {
-      output[nextPrefix] = ''
-      return
-    }
-
-    if (nestedValue instanceof Date) {
-      output[nextPrefix] = formatDateForExport(nestedValue)
-      return
-    }
-
-    if (Array.isArray(nestedValue)) {
-      output[nextPrefix] = formatValueForExport(nestedValue)
-      return
-    }
-
-    if (typeof nestedValue === 'object') {
-      flattenObjectForExport(nestedValue, nextPrefix, output)
-      return
-    }
-
-    output[nextPrefix] = String(nestedValue)
-  })
-
-  return output
-}
-
-function normalizeDettesLog(value: unknown) {
-  if (!Array.isArray(value)) return []
-  return value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
-}
-
-function summarizeDettesLog(value: unknown) {
-  const stops = normalizeDettesLog(value)
-  if (stops.length === 0) return ''
-
-  return stops
-    .map((stop, index) => {
-      const stopNumber = typeof stop.stopNumber === 'number' ? stop.stopNumber : index + 1
-      const storeName =
-        typeof stop.storeName === 'string' && stop.storeName.trim().length > 0
-          ? stop.storeName.trim()
-          : (typeof stop.storeId === 'string' ? stop.storeId : `Parada ${stopNumber}`)
-
-      const appointment = formatDateForExport(
-        typeof stop.appointmentAt === 'string' ? stop.appointmentAt : null
-      )
-
-      return appointment
-        ? `${stopNumber}. ${storeName} (${appointment})`
-        : `${stopNumber}. ${storeName}`
-    })
-    .join(' | ')
-}
 
 import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
+import { exportTripsToExcel } from '../../utils/export-trips-excel'
 
 export function TripsTable({ clients = [], units = [], trips = [], filters }: TripsTableProps) {
   const tripsQuery = useTripsList(filters, filters ? undefined : trips)
@@ -276,6 +155,11 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
     from: TripStatus
     to: TripStatus
   } | null>(null)
+
+  const [exportModalOpen, setExportModalOpen] = useState(false)
+  const [exportDataToFilter, setExportDataToFilter] = useState<TripsTableRowEntity[] | null>(null)
+  const [exportStartDate, setExportStartDate] = useState('')
+  const [exportEndDate, setExportEndDate] = useState('')
 
   // Determinar si puede editar una fila específica
   const canEditRow = useCallback((row: TripsTableRowEntity) => {
@@ -330,88 +214,47 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
       toast.error('No hay viajes para exportar')
       return
     }
+    setExportDataToFilter(filteredRows)
+    setExportModalOpen(true)
+  }
 
-    try {
-      toast.info('Generando Excel de viajes...')
+  const confirmExportTrips = () => {
+    if (!exportDataToFilter) return
 
-      const exportRows: Record<string, string | number | boolean>[] = filteredRows
-        .map((row) => {
-          const tripItem = rawTripsMap.get(row.id)
-          if (!tripItem) return null
+    let finalRows = exportDataToFilter
 
-          const unit = tripItem.trip.unitAssemblyId
-            ? unitsMap.get(tripItem.trip.unitAssemblyId)
-            : undefined
-
-          const baseRow: Record<string, string | number | boolean> = {
-            'Folio': row.folio,
-            'Numero Viaje': tripItem.trip.tripNumber ?? '',
-            'Numero Viaje Cliente': tripItem.trip.tripNumberClient ?? '',
-            'Cliente': tripItem.clientName ?? '',
-            'Empresa': unit?.companyProfileLegalName ?? '',
-            'Estado': tripItem.trip.status,
-            'Origen': tripItem.trip.origin ?? '',
-            'Destino': tripItem.trip.destination ?? '',
-            'Fecha Salida': formatDateForExport(tripItem.trip.departureDate),
-            'Fecha Llegada Real': formatDateForExport(tripItem.trip.arrivalDateActual),
-            'Fecha Carga Diesel': formatDateForExport(tripItem.trip.fuelLoadDate),
-            'Ultimo Escaneo': formatDateForExport(tripItem.trip.lastScan),
-            'Observaciones': tripItem.trip.observations ?? '',
-            'Unidad Economico': unit?.economicNumber ?? tripItem.unitEconomicNumber ?? '',
-            'Unidad Nombre': unit?.name ?? '',
-            'Unidad Activa': unit?.isActive == null ? '' : (unit.isActive ? 'Si' : 'No'),
-            'Unidad Estado': unit?.status ?? '',
-            'Rendimiento Teorico': unit?.theoreticalYield ?? '',
-            'Rol Pool': unit?.poolRole ?? '',
-            'Operador': unit?.employeeName ?? tripItem.operatorName ?? '',
-            'Truck Economico': unit?.truckEconomicNumber ?? '',
-            'Truck Placas': unit?.truckPlates ?? '',
-            'Trailer 1 Economico': unit?.trailerEconomicNumber ?? '',
-            'Trailer 1 Placas': unit?.trailerPlates ?? '',
-            'Trailer 2 Economico': unit?.trailer2EconomicNumber ?? '',
-            'Trailer 2 Placas': unit?.trailer2Plates ?? '',
-            'Walmart Coordinador': tripItem.walmartData?.coordinatorName ?? '',
-            'Walmart Ruta': tripItem.walmartData?.route ?? '',
-            'Walmart Tipo Carga': tripItem.walmartData?.cargoType ?? '',
-            'Walmart Carta Porte': tripItem.walmartData?.cartaPorteWalmart ?? '',
-            'Walmart Num Tiendas': tripItem.walmartData?.numStores ?? '',
-            'Walmart Estado': tripItem.walmartData?.statusWalmart ?? '',
-            'Walmart STR Num Load': tripItem.walmartData?.strNumLoad ?? '',
-            'Walmart STR Complemento CP': tripItem.walmartData?.strComplementCartaPorte ?? '',
-            'Walmart STR Preinvoice KM': tripItem.walmartData?.strPreinvoiceKm ?? '',
-            'Walmart STR KM Recorridos': tripItem.walmartData?.strKmTraveled ?? '',
-            'Walmart STR Diesel': tripItem.walmartData?.strDiesel ?? '',
-            'Walmart STR Casetas': tripItem.walmartData?.strCasetas ?? '',
-            'Walmart STR Total Invoice': tripItem.walmartData?.strTotalInvoice ?? '',
-            'Walmart DHD Num Load': tripItem.walmartData?.dhdNumLoad ?? '',
-            'Walmart DHD Complemento CP': tripItem.walmartData?.dhdComplementCartaPorte ?? '',
-            'Walmart DHD Preinvoice KM': tripItem.walmartData?.dhdPreinvoiceKm ?? '',
-            'Walmart DHD KM Recorridos': tripItem.walmartData?.dhdKmTraveled ?? '',
-            'Walmart DHD Diesel': tripItem.walmartData?.dhdDiesel ?? '',
-            'Walmart DHD Casetas': tripItem.walmartData?.dhdCasetas ?? '',
-            'Walmart DHD Total Invoice': tripItem.walmartData?.dhdTotalInvoice ?? '',
-            'Walmart Temperatura Salida': tripItem.walmartData?.departureTemperature ?? '',
-            'Walmart Hora Salida': formatDateForExport(tripItem.walmartData?.departureTime),
-            'Walmart Incidencias': tripItem.walmartData?.incidencias ?? '',
-            'Walmart Total Paradas': normalizeDettesLog(tripItem.walmartData?.dettesLog).length,
-            'Walmart Dettes Resumen': summarizeDettesLog(tripItem.walmartData?.dettesLog),
-            ...flattenObjectForExport(tripItem.trip.clientSpecificData, 'Trip Data'),
-            ...flattenObjectForExport(tripItem.walmartData?.dettesLog, 'Walmart Dettes'),
-          }
-
-          return baseRow
-        })
-        .filter((row): row is Record<string, string | number | boolean> => row !== null)
-
-      const workbook = XLSX.utils.book_new()
-      const worksheet = XLSX.utils.json_to_sheet(exportRows)
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Viajes')
-
-      XLSX.writeFile(workbook, `Viajes_${new Date().toISOString().split('T')[0]}.xlsx`)
-      toast.success('Excel exportado correctamente')
-    } catch {
-      toast.error('Error al exportar los viajes')
+    if (exportStartDate) {
+      const startStr = exportStartDate + 'T00:00:00'
+      const start = new Date(startStr)
+      finalRows = finalRows.filter(r => {
+        const tripItem = rawTripsMap.get(r.id)
+        if (!tripItem?.trip.departureDate) return false
+        return new Date(tripItem.trip.departureDate) >= start
+      })
     }
+
+    if (exportEndDate) {
+      const endStr = exportEndDate + 'T23:59:59'
+      const end = new Date(endStr)
+      finalRows = finalRows.filter(r => {
+        const tripItem = rawTripsMap.get(r.id)
+        if (!tripItem?.trip.departureDate) return false
+        return new Date(tripItem.trip.departureDate) <= end
+      })
+    }
+
+    if (finalRows.length === 0) {
+      toast.error('No hay viajes en el rango de fechas seleccionado')
+      return
+    }
+
+    exportTripsToExcel({
+      filteredRows: finalRows,
+      rawTripsMap,
+      unitsMap,
+    })
+    
+    setExportModalOpen(false)
   }
 
   const columns = useMemo((): CrudColumn<TripsTableRowEntity>[] => {
@@ -565,6 +408,50 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
         tripRow={detailRow}
         onClose={() => { setIsDetailsOpen(false); setDetailRow(null) }}
       />
+
+      <Dialog
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        title="Exportar viajes a Excel"
+        description="Selecciona un rango de fechas de salida para filtrar los viajes a exportar. Si lo dejas en blanco, se exportarán todos los viajes de la vista actual."
+      >
+        <div className="p-6 pt-0 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="exportStartDate">Fecha de inicio</Label>
+              <Input
+                id="exportStartDate"
+                type="date"
+                value={exportStartDate}
+                onChange={(e) => setExportStartDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="exportEndDate">Fecha de fin</Label>
+              <Input
+                id="exportEndDate"
+                type="date"
+                value={exportEndDate}
+                onChange={(e) => setExportEndDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end pt-4 gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setExportModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={confirmExportTrips}
+              className="bg-[#1a5c3a] text-white hover:bg-[#124029]"
+            >
+              Descargar Excel
+            </Button>
+          </div>
+        </div>
+      </Dialog>
 
       <ConfirmDialog
         isOpen={isStatusDialogOpen}
