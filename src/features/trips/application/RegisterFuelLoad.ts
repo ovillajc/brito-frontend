@@ -40,6 +40,7 @@ export interface RegisterFuelLoadInput {
   odometerAtLoad?: number | null
   isFullTankFill: boolean
   sourceType?: 'EXTERNAL' | 'INTERNAL_TANK'
+  isBaseTankDepletedConfirmed?: boolean
 }
 
 export async function RegisterFuelLoad(
@@ -95,6 +96,7 @@ export async function RegisterFuelLoad(
       odometerAtLoad: data.odometerAtLoad ?? null,
       isFullTankFill: data.isFullTankFill,
       sourceType,
+      isBaseTankDepleted: data.isBaseTankDepletedConfirmed ?? false,
       createdBy,
     },
     supervisedBy

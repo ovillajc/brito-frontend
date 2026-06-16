@@ -108,6 +108,9 @@ export interface FuelLoadEntity {
   isFullTankFill: boolean
   sourceType: 'EXTERNAL' | 'INTERNAL_TANK'
 
+  /** True si esta carga agotó el tanque base y generó un excedente */
+  isBaseTankDepleted?: boolean
+
   createdBy: string | null
   createdAt: Date
 }
@@ -300,6 +303,7 @@ export interface FuelLoadHistoryRowEntity {
   totalCost: number
   sourceType: string
   isFullTankFill: boolean
+  isBaseTankDepleted?: boolean
   /** Tipo de vehículo que recibió el combustible */
   vehicleType: FuelLoadVehicleType
   /** Odómetro en el momento de la carga */

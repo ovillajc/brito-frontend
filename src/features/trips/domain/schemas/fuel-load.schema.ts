@@ -23,6 +23,7 @@ export const fuelLoadSchema = z.object({
   pricePerLiter: z.number({ error: 'Ingresa el precio por litro' }).min(0.01, 'El precio debe ser > 0').optional(),
   isFullTankFill: z.boolean(),
   sourceType: z.enum([FUEL_LOAD_SOURCE_TYPE.External, FUEL_LOAD_SOURCE_TYPE.InternalTank]).default(FUEL_LOAD_SOURCE_TYPE.External),
+  isBaseTankDepletedConfirmed: z.boolean().optional().default(false),
 }).superRefine((value, ctx) => {
   if (value.sourceType === FUEL_LOAD_SOURCE_TYPE.External && (value.pricePerLiter == null || Number.isNaN(value.pricePerLiter) || value.pricePerLiter <= 0)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['pricePerLiter'], message: 'El precio por litro es obligatorio' })

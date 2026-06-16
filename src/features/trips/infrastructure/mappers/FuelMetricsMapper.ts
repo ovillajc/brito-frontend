@@ -57,6 +57,7 @@ export interface FuelLoadRow {
   odometer_at_load: number | null
   is_full_tank_fill: boolean
   source_type: string
+  is_base_tank_depleted: boolean
   created_by: string | null
   created_at: string
 }
@@ -135,6 +136,7 @@ export interface FuelLoadHistoryRow {
   total_cost: number
   source_type: string
   is_full_tank_fill: boolean
+  is_base_tank_depleted: boolean
   odometer_at_load: number | null
   truck_id: string | null
   trailer_id: string | null
@@ -202,6 +204,7 @@ export class FuelMetricsMapper {
       odometerAtLoad: row.odometer_at_load,
       isFullTankFill: row.is_full_tank_fill,
       sourceType: (row.source_type ?? 'EXTERNAL') as 'EXTERNAL' | 'INTERNAL_TANK',
+      isBaseTankDepleted: row.is_base_tank_depleted,
       createdBy: row.created_by,
       createdAt: new Date(row.created_at),
     }
@@ -228,6 +231,7 @@ export class FuelMetricsMapper {
       odometer_at_load: entity.odometerAtLoad ?? null,
       is_full_tank_fill: entity.isFullTankFill,
       source_type: entity.sourceType,
+      is_base_tank_depleted: entity.isBaseTankDepleted,
       created_by: entity.createdBy,
     }
   }
@@ -404,6 +408,7 @@ export class FuelMetricsMapper {
       totalCost: row.total_cost,
       sourceType: row.source_type,
       isFullTankFill: row.is_full_tank_fill,
+      isBaseTankDepleted: row.is_base_tank_depleted,
       vehicleType: (row.vehicle_type ?? 'TRUCK') as FuelLoadVehicleType,
       odometerAtLoad: row.odometer_at_load,
       truckId: row.truck_id,
