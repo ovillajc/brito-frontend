@@ -67,6 +67,52 @@ export async function getFuelTankMovementsAction(limit: number): Promise<Either<
   return repo.listMovements(tankResult.data.id, limit)
 }
 
+export interface TankExcessHistoryResult {
+  excesses: { liters: number; totalCost: number; date: Date }[]
+  totalLiters: number
+  totalCost: number
+}
+
+export async function getTankExcessesHistoryAction(): Promise<Either<Failure, TankExcessHistoryResult | null>> {
+  const repo = new SupabaseFuelTankRepository()
+  const tankResult = await repo.getActiveTank()
+  if (!tankResult.ok || !tankResult.data) return { ok: true, data: null }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('fuel_tank_movements')
+    .select('liters,total_cost,movement_date')
+    .eq('tank_id', tankResult.data.id)
+    .eq('movement_type', 'ADJUST')
+    .eq('notes', 'Excedente de proveedor al agotar tanque')
+    .order('movement_date', { ascending: false })
+
+  if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+  if (!data || data.length === 0) return { ok: true, data: null }
+
+  let totalLiters = 0
+  let totalCost = 0
+  const excesses = data.map((row) => {
+    totalLiters += row.liters
+    const cost = row.total_cost ?? 0
+    totalCost += cost
+    return {
+      liters: row.liters,
+      totalCost: cost,
+      date: new Date(row.movement_date)
+    }
+  })
+
+  return { 
+    ok: true, 
+    data: { 
+      excesses,
+      totalLiters,
+      totalCost
+    } 
+  }
+}
+
 export async function createDefaultFuelTankAction(): Promise<Either<Failure, FuelTankSummaryEntity>> {
   const repo = new SupabaseFuelTankRepository()
   const existing = await repo.getActiveTank()

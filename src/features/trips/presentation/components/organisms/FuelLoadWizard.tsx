@@ -106,6 +106,8 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isDeleteTicketConfirmOpen, setIsDeleteTicketConfirmOpen] = useState(false)
   const [isDeletingTicket, setIsDeletingTicket] = useState(false)
+  const [isDepletionPromptOpen, setIsDepletionPromptOpen] = useState(false)
+  const [depletionMessage, setDepletionMessage] = useState<string | null>(null)
 
   const registerFuelLoad = useRegisterFuelLoad()
   const updateFuelLoad = useUpdateFuelLoad()
@@ -259,6 +261,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
       isFullTankFill: values.isFullTankFill,
       sourceType: values.sourceType,
       odometerAtLoad: values.odometerAtLoad ?? null,
+      isBaseTankDepletedConfirmed: values.isBaseTankDepletedConfirmed,
     }
 
     let result:
@@ -276,6 +279,11 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
     }
 
     if (!result.ok) {
+      if (result.error.code === 'TANK_INSUFFICIENT_PROMPT_DEPLETION') {
+        setDepletionMessage(result.error.message)
+        setIsDepletionPromptOpen(true)
+        return
+      }
       setSubmissionStatus('error')
       setErrorMessage(result.error.message)
       return
@@ -340,6 +348,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
       pricePerLiter: undefined,
       isFullTankFill: false,
       sourceType: FUEL_LOAD_SOURCE_TYPE.External,
+      isBaseTankDepletedConfirmed: false,
     })
   }
 
@@ -554,6 +563,13 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
 
   const step3 = (
     <div className="flex flex-col gap-6 pt-2">
+      {editRow?.isBaseTankDepleted && (
+        <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4">
+          <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+            ⚠️ Nota: Esta carga agotó el tanque base y registró un excedente. Editar sus litros o fuente será bloqueado para evitar discrepancias.
+          </p>
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="litersLoaded">Litros cargados (motor)</Label>
@@ -637,6 +653,20 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
         title="¿Eliminar ticket?"
         description="Esta acción borrará el archivo permanentemente de la nube (Cloudflare R2). No podrás recuperarlo. El registro de la carga se conservará sin imagen adjunta."
         confirmLabel="Sí, eliminar archivo"
+        cancelLabel="Cancelar"
+      />
+      <ConfirmDialog
+        isOpen={isDepletionPromptOpen}
+        onClose={() => setIsDepletionPromptOpen(false)}
+        onConfirm={() => {
+          setValue('isBaseTankDepletedConfirmed', true)
+          setIsDepletionPromptOpen(false)
+          handleFinish()
+        }}
+        isLoading={isSaving}
+        title="¿Confirmar vaciado de tanque?"
+        description={depletionMessage ?? ''}
+        confirmLabel="Sí, el tanque se agotó"
         cancelLabel="Cancelar"
       />
       <AnimatePresence mode="wait">

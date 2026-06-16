@@ -19,7 +19,7 @@ import { SaveWalmartTripData } from '@/src/features/trips/application/SaveWalmar
 import { SaveFuelMetrics, type SaveFuelMetricsInput } from '@/src/features/trips/application/SaveFuelMetrics'
 import { isUnitAssignableForNewTrip } from '@/src/features/trips/domain/rules/is-unit-assignable'
 import { hasPermission } from '@/src/features/auth/infrastructure/dal'
-import { canManageTripsForClient, isLogisticsAllowedClientName, isWalmartClientName } from '@/src/features/trips/domain/rules/client-access'
+import { canManageTripsForClient, isWalmartClientName } from '@/src/features/trips/domain/rules/client-access'
 
 async function getCurrentProfileId(): Promise<string | null> {
   const supabase = await createClient()
@@ -161,7 +161,7 @@ export async function getTripsAction(
 
   const effectiveFilters: TripsListFilters = { ...(filters ?? {}) }
 
-  const allowAllClients = canViewAll || canManageAll
+  const allowAllClients = canViewAll || canManageAll || canManageLogistica
   if (!allowAllClients && effectiveFilters.clientId) {
     const clientNameResult = await getClientNameById(supabase, effectiveFilters.clientId)
     if (!clientNameResult.ok) return clientNameResult
@@ -172,10 +172,6 @@ export async function getTripsAction(
       if (!canSeeWalmart) {
         return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
       }
-    } else if (isLogisticsAllowedClientName(clientName)) {
-      if (!canManageLogistica) {
-        return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
-      }
     } else {
       return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado', statusCode: 403 } }
     }
@@ -183,7 +179,7 @@ export async function getTripsAction(
 
   const isWalmartOnly =
     (canViewWalmart || canManageWalmart) &&
-    !(canViewAll || canManageAll || canManageLogistica)
+    !allowAllClients
   if (isWalmartOnly) {
     const walmartIdResult = await getWalmartClientId(supabase)
     if (!walmartIdResult.ok) return walmartIdResult
@@ -198,7 +194,6 @@ export async function getTripsAction(
   const filtered = result.data.filter((t) => {
     const name = t.clientName ?? ''
     if (canSeeWalmart && isWalmartClientName(name)) return true
-    if (canManageLogistica && isLogisticsAllowedClientName(name)) return true
     return false
   })
 
@@ -465,12 +460,8 @@ export async function upsertTripWithClientDataAction(
     if (!(canManageAll || canManageWalmart)) {
       return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado para registrar viajes de Walmart', statusCode: 403 } }
     }
-  } else if (isLogisticsAllowedClientName(clientName)) {
-    if (!(canManageAll || canManageLogistica)) {
-      return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado para registrar viajes de este cliente', statusCode: 403 } }
-    }
   } else {
-    if (!canManageAll) {
+    if (!(canManageAll || canManageLogistica)) {
       return { ok: false, error: { code: 'FORBIDDEN', message: 'No autorizado para registrar viajes de este cliente', statusCode: 403 } }
     }
   }

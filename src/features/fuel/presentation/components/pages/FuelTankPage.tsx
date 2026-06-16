@@ -11,6 +11,7 @@ import { ActionFeedback } from '@/src/core/presentation/components/molecules/Act
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/src/core/presentation/components/ui/tabs'
 import type { FuelTankMovementEntity, FuelTankSummaryEntity } from '@/src/features/fuel/domain/entities/fuel-tank-entity'
 import { FuelTankMovementsCard } from '@/src/features/fuel/presentation/components/organisms/FuelTankMovementsCard'
 import {
@@ -22,6 +23,8 @@ import {
 interface FuelTankPageProps {
   initialSummary: FuelTankSummaryEntity | null
   initialMovements: FuelTankMovementEntity[]
+  excessesHistory: { liters: number; totalCost: number; date: Date }[]
+  excessesTotals: { totalLiters: number; totalCost: number }
 }
 
 const purchaseSchema = z.object({
@@ -52,7 +55,7 @@ function formatNumber(value: number | null) {
   return value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export default function FuelTankPage({ initialSummary, initialMovements }: FuelTankPageProps) {
+export default function FuelTankPage({ initialSummary, initialMovements, excessesHistory, excessesTotals }: FuelTankPageProps) {
   const [summary, setSummary] = useState<FuelTankSummaryEntity | null>(initialSummary)
   const [movements, setMovements] = useState<FuelTankMovementEntity[]>(initialMovements)
   const [isBootstrapping, setIsBootstrapping] = useState(false)
@@ -222,9 +225,25 @@ export default function FuelTankPage({ initialSummary, initialMovements }: FuelT
           </div>
         </div>
       ) : (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="rounded-2xl border border-stone-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
+        <Tabs defaultValue="dashboard" className="w-full flex flex-col gap-6">
+          <TabsList className="flex items-center gap-1 border-b border-outline-variant/30 w-full rounded-none bg-transparent p-0 h-auto justify-start">
+            <TabsTrigger 
+              value="dashboard"
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors relative text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low/50 rounded-t-lg data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:h-0.5 data-[state=active]:after:bg-primary outline-none"
+            >
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger 
+              value="excesses"
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors relative text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low/50 rounded-t-lg data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:h-0.5 data-[state=active]:after:bg-primary outline-none"
+            >
+              Historial de Excedentes
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="flex flex-col gap-6 outline-none">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="rounded-2xl border border-stone-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
               <p className="text-[11px] uppercase tracking-wider font-semibold text-stone-400 dark:text-zinc-500">
                 Tanque
               </p>
@@ -324,7 +343,69 @@ export default function FuelTankPage({ initialSummary, initialMovements }: FuelT
           </div>
 
           <FuelTankMovementsCard movements={movements} title="Últimos movimientos" />
-        </>
+          </TabsContent>
+
+          <TabsContent value="excesses" className="flex flex-col gap-6 outline-none">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-5">
+                <p className="text-[11px] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400">
+                  Total Litros Recuperados
+                </p>
+                <p className="text-2xl font-bold text-amber-800 dark:text-amber-200 mt-1">
+                  +{formatNumber(excessesTotals.totalLiters)} L
+                </p>
+              </div>
+              <div className="rounded-2xl border border-stone-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
+                <p className="text-[11px] uppercase tracking-wider font-semibold text-stone-400 dark:text-zinc-500">
+                  Valor Total Ahorrado
+                </p>
+                <p className="text-2xl font-bold text-stone-900 dark:text-zinc-100 mt-1">
+                  {formatMoney(excessesTotals.totalCost)} MXN
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-stone-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
+              <div className="p-5 border-b border-stone-100 dark:border-zinc-800">
+                <h2 className="text-sm font-bold text-stone-900 dark:text-zinc-100">Eventos de Excedente Registrados</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-stone-500 dark:text-zinc-400 uppercase bg-stone-50 dark:bg-zinc-800/50">
+                    <tr>
+                      <th className="px-5 py-3 font-medium">Fecha</th>
+                      <th className="px-5 py-3 font-medium text-right">Lts Extra</th>
+                      <th className="px-5 py-3 font-medium text-right">Valor Promedio</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {excessesHistory.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="px-5 py-8 text-center text-stone-500">
+                          No hay registros de excedentes.
+                        </td>
+                      </tr>
+                    ) : (
+                      excessesHistory.map((excess, idx) => (
+                        <tr key={idx} className="border-b border-stone-50 dark:border-zinc-800/50 last:border-0 hover:bg-stone-50 dark:hover:bg-zinc-800/50 transition-colors">
+                          <td className="px-5 py-4 whitespace-nowrap text-stone-900 dark:text-zinc-100">
+                            {excess.date.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap text-right font-medium text-amber-600 dark:text-amber-400">
+                            +{formatNumber(excess.liters)} L
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap text-right text-stone-600 dark:text-zinc-400">
+                            {formatMoney(excess.totalCost)} MXN
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       )}
 
       {/* ── Action Feedback Dialog ── */}

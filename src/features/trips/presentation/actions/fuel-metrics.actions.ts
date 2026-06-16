@@ -200,6 +200,7 @@ export async function getFuelLoadHistoryAction(
         'odometer_at_load',
         'truck_id',
         'trailer_id',
+        'is_base_tank_depleted',
         'trucks(economic_number)',
         'trailers(economic_number)',
         'trips(trip_number, folio, clients(trade_name, company_name), unit_assemblies(economic_number, employees(full_name)))',
@@ -360,26 +361,41 @@ export async function registerFuelLoadAction(
       { litersInTank: 0, inventoryValue: 0 }
     )
 
-    if (litersInTank <= 0 || inventoryValue <= 0) {
+    let avgCostPerLiter = 0
+    if (litersInTank > 0 && inventoryValue > 0) {
+      avgCostPerLiter = inventoryValue / litersInTank
+    } else {
+      // Tank is empty or invalid. We need a fallback cost from the last movement.
+      const { data: lastMovements } = await supabase
+        .from('fuel_tank_movements')
+        .select('unit_cost')
+        .eq('tank_id', activeTank)
+        .not('unit_cost', 'is', null)
+        .order('movement_date', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      
+      avgCostPerLiter = lastMovements?.unit_cost ?? 0
+    }
+
+    if (avgCostPerLiter <= 0) {
       if (data.ticketUrl) {
         await deleteR2ObjectByPublicUrl(data.ticketUrl)
       }
-      return { ok: false, error: { code: 'TANK_EMPTY', message: 'El tanque no tiene inventario suficiente para costear la carga' } }
+      return { ok: false, error: { code: 'TANK_COST_INVALID', message: 'No hay historial de costos para calcular el valor de la carga. Agrega inventario al tanque primero.' } }
     }
 
     if (data.litersLoaded > litersInTank) {
-      if (data.ticketUrl) {
-        await deleteR2ObjectByPublicUrl(data.ticketUrl)
+      if (!data.isBaseTankDepletedConfirmed) {
+        if (data.ticketUrl) {
+          await deleteR2ObjectByPublicUrl(data.ticketUrl)
+        }
+        if (litersInTank <= 0) {
+          return { ok: false, error: { code: 'TANK_INSUFFICIENT_PROMPT_DEPLETION', message: `El tanque base se encuentra vacío (0.00 L). Si el proveedor entregó litros extra y deseas cargar este excedente, confírmalo para autorizar la operación.` } }
+        } else {
+          return { ok: false, error: { code: 'TANK_INSUFFICIENT_PROMPT_DEPLETION', message: `El tanque sólo tiene ${litersInTank.toFixed(2)} L registrados. Si la pipa entregó litros extra y con esta carga se agotó el tanque, confírmalo para cuadrar el inventario a cero.` } }
+        }
       }
-      return { ok: false, error: { code: 'TANK_INSUFFICIENT', message: `Inventario insuficiente en tanque. Disponible: ${litersInTank.toFixed(2)} L` } }
-    }
-
-    const avgCostPerLiter = inventoryValue / litersInTank
-    if (!Number.isFinite(avgCostPerLiter) || avgCostPerLiter <= 0) {
-      if (data.ticketUrl) {
-        await deleteR2ObjectByPublicUrl(data.ticketUrl)
-      }
-      return { ok: false, error: { code: 'TANK_COST_INVALID', message: 'Costo promedio inválido para el tanque' } }
     }
 
     const movementTotal = data.litersLoaded * avgCostPerLiter
@@ -428,6 +444,26 @@ export async function registerFuelLoadAction(
 
     await supabase.from('fuel_loads').update({ fuel_tank_movement_id: movementId }).eq('id', result.data.id)
     await supabase.from('fuel_tank_movements').update({ fuel_load_id: result.data.id }).eq('id', movementId)
+
+    if (data.isBaseTankDepletedConfirmed && data.litersLoaded > litersInTank) {
+      const extraLiters = data.litersLoaded - litersInTank
+      const extraCost = extraLiters * avgCostPerLiter
+      
+      await supabase.from('fuel_tank_movements').insert({
+        tank_id: activeTank,
+        movement_type: 'ADJUST',
+        liters: extraLiters,
+        unit_cost: avgCostPerLiter,
+        total_cost: extraCost,
+        movement_date: data.loadDate.toISOString(),
+        trip_id: data.tripId,
+        truck_id: data.truckId,
+        fuel_load_id: result.data.id,
+        expense_id: null,
+        notes: 'Excedente de proveedor al agotar tanque',
+        created_by: null
+      })
+    }
 
     revalidatePath(`/trips/fuel/load`)
     revalidatePath(`/trips/fuel`)
@@ -555,7 +591,7 @@ export async function updateFuelLoadAction(
   const supabase = await createClient()
   const { data: prevLoad, error: prevLoadError } = await supabase
     .from('fuel_loads')
-    .select('ticket_url,source_type,liters_loaded,load_date,fuel_tank_movement_id,trip_id,truck_id')
+    .select('ticket_url,source_type,liters_loaded,load_date,fuel_tank_movement_id,trip_id,truck_id,is_base_tank_depleted')
     .eq('id', id)
     .maybeSingle()
 
@@ -575,8 +611,22 @@ export async function updateFuelLoadAction(
     return { ok: false, error: { code: 'NOT_FOUND', message: 'Carga no encontrada', statusCode: 404 } }
   }
 
-  const prevRow = prevLoad as FuelLoadPrevRow
+  const prevRow = prevLoad as FuelLoadPrevRow & { is_base_tank_depleted: boolean }
   const previousTicketUrl = prevRow.ticket_url
+  
+  if (prevRow.is_base_tank_depleted) {
+    if (data.litersLoaded !== undefined && data.litersLoaded !== prevRow.liters_loaded) {
+      const nextTicketUrl = data.ticketUrl ?? null
+      if (nextTicketUrl && nextTicketUrl !== previousTicketUrl) await deleteR2ObjectByPublicUrl(nextTicketUrl)
+      return { ok: false, error: { code: 'CANNOT_EDIT_DEPLETED_LITERS', message: 'No se pueden modificar los litros de una carga que agotó el tanque. Cancela la carga y regístrala de nuevo.', statusCode: 400 } }
+    }
+    if (data.sourceType !== undefined && data.sourceType !== prevRow.source_type) {
+      const nextTicketUrl = data.ticketUrl ?? null
+      if (nextTicketUrl && nextTicketUrl !== previousTicketUrl) await deleteR2ObjectByPublicUrl(nextTicketUrl)
+      return { ok: false, error: { code: 'CANNOT_EDIT_DEPLETED_SOURCE', message: 'No se puede modificar la fuente de una carga que agotó el tanque.', statusCode: 400 } }
+    }
+  }
+
   const prevSourceType = (prevRow.source_type ?? 'EXTERNAL') as 'EXTERNAL' | 'INTERNAL_TANK'
   const nextSourceType = (data.sourceType ?? prevSourceType) as 'EXTERNAL' | 'INTERNAL_TANK'
   const nextLitersLoaded = data.litersLoaded ?? prevRow.liters_loaded
