@@ -17,7 +17,7 @@ export type ExpenseAdvanceRow = {
 
   employees?: { full_name: string | null } | null
   unit_assemblies?: { economic_number: string | null } | null
-  trips?: { folio: string | null } | null
+  trips?: { folio: string | null; trip_number?: number | null } | null
 }
 
 export type TripExpenseAssignmentKpiRow = {
@@ -61,7 +61,7 @@ export class ExpenseAssignmentMapper {
       createdAt: new Date(row.created_at),
       operatorName: row.employees?.full_name ?? null,
       unitLabel: row.unit_assemblies?.economic_number ?? null,
-      tripFolio: row.trips?.folio ?? null,
+      tripFolio: row.trips?.folio ?? (row.trips?.trip_number ? `VJE-${String(row.trips.trip_number).padStart(6, '0')}` : null),
     }
   }
 
