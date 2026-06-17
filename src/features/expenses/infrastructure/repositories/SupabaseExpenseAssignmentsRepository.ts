@@ -18,7 +18,7 @@ const SELECT_ADVANCES = [
   '*',
   'employees(full_name)',
   'unit_assemblies(economic_number)',
-  'trips(folio)',
+  'trips(folio, trip_number)',
 ].join(', ')
 
 export class SupabaseExpenseAssignmentsRepository implements IExpenseAssignmentsRepository {

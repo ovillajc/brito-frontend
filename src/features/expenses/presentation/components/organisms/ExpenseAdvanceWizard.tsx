@@ -1,11 +1,15 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { HandCoins } from 'lucide-react'
+import { HandCoins, AlertTriangle, Search } from 'lucide-react'
 import { Wizard, type WizardStep } from '@/src/core/presentation/components/organisms/wizard'
+import { Dialog } from '@/src/core/presentation/components/ui/dialog'
+import { Button } from '@/src/core/presentation/components/ui/button'
+import { SearchableSelect } from '@/src/core/presentation/components/molecules/searchable-select'
+import { DateTimePicker24h } from '@/src/core/presentation/components/molecules/date-time-picker-24h'
 import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
@@ -18,7 +22,7 @@ import { useTripsList } from '@/src/features/trips/presentation/hooks/use-trips'
 import type { TripWithRelations } from '@/src/features/trips/domain/entities/trip-entity'
 import { createExpenseAdvanceSchema, type CreateExpenseAdvanceInput } from '@/src/features/expenses/domain/schemas/create-expense-advance.schema'
 import { ADVANCE_METHOD, type ExpenseAdvanceEntity } from '@/src/features/expenses/domain/entities/expense-assignment-entity'
-import { useCreateExpenseAdvance, useUpdateExpenseAdvance } from '@/src/features/expenses/presentation/hooks/use-expense-assignments'
+import { useCreateExpenseAdvance, useUpdateExpenseAdvance, useExpenseAdvances } from '@/src/features/expenses/presentation/hooks/use-expense-assignments'
 import type { z } from 'zod'
 
 type AdvanceFormValues = z.input<typeof createExpenseAdvanceSchema>
@@ -34,6 +38,10 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
   const [activeStep, setActiveStep] = useState(0)
   const createAdvance = useCreateExpenseAdvance()
   const updateAdvance = useUpdateExpenseAdvance()
+  const advancesQuery = useExpenseAdvances()
+  
+  const [duplicateWarning, setDuplicateWarning] = useState<ExpenseAdvanceEntity | null>(null)
+  const hasConfirmedDuplicateRef = useRef(false)
   
   const isView = mode === 'view'
   const isEdit = mode === 'edit'
@@ -68,6 +76,7 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
     watch,
     trigger,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<AdvanceFormValues>({
     resolver: zodResolver(createExpenseAdvanceSchema),
@@ -86,9 +95,13 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
 
   const selectedAssemblyId = watch('unitAssemblyId')
   const selectedOperatorId = watch('operatorId')
+  const assignedAtValue = watch('assignedAt')
 
   useEffect(() => {
     if (!isOpen) return
+    setActiveStep(0)
+    hasConfirmedDuplicateRef.current = false
+    setDuplicateWarning(null)
     if (advanceRow) {
       reset({
         tripId: advanceRow.tripId ?? null,
@@ -159,6 +172,24 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
       const parsed: CreateExpenseAdvanceInput = createExpenseAdvanceSchema.parse(patched)
       parsed.assignedAt = new Date(parsed.assignedAt).toISOString()
       
+      // VALIDATION FOR DUPLICATES
+      if (!hasConfirmedDuplicateRef.current) {
+        const existingAdvances = advancesQuery.data ?? []
+        const duplicates = existingAdvances.filter((a) => {
+          if (isEdit && advanceRow && a.id === advanceRow.id) return false
+          const sameOperator = a.operatorId === parsed.operatorId
+          const sameAmount = a.amount === parsed.amount
+          const timeDiff = Math.abs(new Date(a.assignedAt).getTime() - new Date(parsed.assignedAt).getTime())
+          const within10Hours = timeDiff <= 10 * 60 * 60 * 1000
+          return sameOperator && sameAmount && within10Hours
+        })
+
+        if (duplicates.length > 0) {
+          setDuplicateWarning(duplicates[0])
+          return
+        }
+      }
+      
       if (isEdit && advanceRow) {
         await updateAdvance.mutateAsync({ id: advanceRow.id, data: parsed })
         toast.success('Asignación actualizada')
@@ -178,37 +209,38 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="operatorId">Operador</Label>
-          <select id="operatorId" className={inputClass} disabled={employeesQuery.isLoading || isView} {...register('operatorId')}>
-            <option value="">{employeesQuery.isLoading ? 'Cargando...' : 'Selecciona...'}</option>
-            {operators.map((o) => (
-              <option key={o.id} value={o.id}>{o.fullName}</option>
-            ))}
-          </select>
+          <SearchableSelect
+            options={operators.map(o => ({ value: o.id, label: o.fullName }))}
+            value={selectedOperatorId || null}
+            onChange={(val) => setValue('operatorId', val, { shouldValidate: true })}
+            disabled={employeesQuery.isLoading || isView}
+            isLoading={employeesQuery.isLoading}
+            placeholder="Selecciona un operador..."
+            searchPlaceholder="Buscar por nombre..."
+            error={!!errors.operatorId}
+          />
           {errors.operatorId && <p className={errorClass}>{errors.operatorId.message}</p>}
         </div>
 
         <div className="grid gap-2">
           <Label htmlFor="unitAssemblyId">Unidad asignada (Opcional)</Label>
-          <select
-            id="unitAssemblyId"
-            className={inputClass}
+          <SearchableSelect
+            options={assemblies.map(a => ({ value: a.id, label: `${a.economicNumber} · ${a.employeeName ?? a.employeeId}` }))}
+            value={selectedAssemblyId || null}
+            onChange={(val) => setValue('unitAssemblyId', val, { shouldValidate: true })}
             disabled={assembliesQuery.isLoading || isView}
-            {...register('unitAssemblyId', { setValueAs: (v) => v || null })}
-          >
-            <option value="">{assembliesQuery.isLoading ? 'Cargando...' : 'Selecciona...'}</option>
-            {assemblies.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.economicNumber} · {a.employeeName ?? a.employeeId}
-              </option>
-            ))}
-          </select>
+            isLoading={assembliesQuery.isLoading}
+            placeholder="Selecciona una unidad..."
+            searchPlaceholder="Buscar por número o nombre..."
+            error={!!errors.unitAssemblyId}
+          />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="amount">Monto</Label>
-          <Input id="amount" type="number" step="0.01" className={inputClass} disabled={isView} {...register('amount', { setValueAs: (v) => Number(v) })} />
+          <Input id="amount" type="number" step="0.01" className={inputClass} disabled={isView} onFocus={(e) => e.target.select()} {...register('amount', { setValueAs: (v) => Number(v) })} />
           {errors.amount && <p className={errorClass}>{errors.amount.message}</p>}
         </div>
 
@@ -223,7 +255,12 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
 
         <div className="grid gap-2 sm:col-span-2">
           <Label htmlFor="assignedAt">Fecha y Hora</Label>
-          <Input id="assignedAt" type="datetime-local" className={inputClass} disabled={isView} {...register('assignedAt')} />
+          <DateTimePicker24h 
+            value={assignedAtValue} 
+            onChange={(val) => setValue('assignedAt', val, { shouldValidate: true })} 
+            disabled={isView} 
+            error={!!errors.assignedAt} 
+          />
           {errors.assignedAt && <p className={errorClass}>{errors.assignedAt.message}</p>}
         </div>
       </div>
@@ -280,16 +317,51 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
   ]
 
   return (
-    <Wizard
-      isOpen={isOpen}
-      onClose={handleClose}
-      title={isView ? 'Detalles de Asignación' : isEdit ? 'Editar Asignación' : 'Nueva Asignación'}
-      description={isView ? 'Consulta los detalles de esta salida de dinero.' : isEdit ? 'Modifica los datos de esta asignación.' : 'Registra una salida de dinero para gastos de operación.'}
-      icon={<HandCoins className="size-5" />}
-      steps={steps}
-      activeStep={activeStep}
-      size="lg"
-    />
+    <>
+      <Wizard
+        isOpen={isOpen}
+        onClose={handleClose}
+        title={isView ? 'Detalles de Asignación' : isEdit ? 'Editar Asignación' : 'Nueva Asignación'}
+        description={isView ? 'Consulta los detalles de esta salida de dinero.' : isEdit ? 'Modifica los datos de esta asignación.' : 'Registra una salida de dinero para gastos de operación.'}
+        icon={<HandCoins className="size-5" />}
+        steps={steps}
+        activeStep={activeStep}
+        size="lg"
+      />
+
+      <Dialog
+        isOpen={!!duplicateWarning}
+        onClose={() => setDuplicateWarning(null)}
+        title="Posible duplicado detectado"
+        size="sm"
+      >
+        <div className="p-6 pt-2 flex flex-col items-center text-center">
+          <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-4">
+            <AlertTriangle className="size-6 text-amber-600 dark:text-amber-400" />
+          </div>
+          <p className="text-sm text-stone-600 dark:text-zinc-400 mb-6">
+            Hemos detectado que ya existe una asignación para este operador por la misma cantidad y en un rango de 10 horas. 
+            ¿Estás seguro de que deseas registrarla de nuevo?
+          </p>
+          <div className="flex gap-3 w-full">
+            <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => setDuplicateWarning(null)}>
+              Cancelar
+            </Button>
+            <Button 
+              className="flex-1 rounded-xl h-11 bg-amber-600 hover:bg-amber-700 text-white border-0"
+              onClick={() => {
+                hasConfirmedDuplicateRef.current = true
+                setDuplicateWarning(null)
+                // Usamos un timeout corto para permitir que el modal se cierre antes de ejecutar el submit y evitar bloqueos en el UI
+                setTimeout(() => onFinish(), 50)
+              }}
+            >
+              Sí, registrar
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+    </>
   )
 }
 
