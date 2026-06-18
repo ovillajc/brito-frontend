@@ -16,7 +16,6 @@ import { ChevronDown, Layers, PenLine, Search } from 'lucide-react'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { ActionFeedback } from '@/src/core/presentation/components/molecules/ActionFeedback'
 import { Wizard, WizardStep } from '@/src/core/presentation/components/organisms/wizard'
-import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { createUnitAssemblySchema, CreateUnitAssemblyInput } from '../../../domain/schemas/unit-assembly.schema'
@@ -189,6 +188,22 @@ const UNIT_STATUS_OPTIONS: { label: string; value: UnitStatus }[] = [
   { label: 'En Taller', value: 'in_workshop' },
 ]
 
+const UNIT_ASSEMBLY_FIELD_DICTIONARY: Record<string, string> = {
+  name: 'Nombre de la Unidad',
+  economicNumber: 'Número Económico',
+  description: 'Descripción',
+  employeeId: 'Operador',
+  truckId: 'Tractocamión',
+  trailerId: 'Remolque 1',
+  trailer2Id: 'Remolque 2',
+  clientId: 'Cliente Asignado',
+  companyProfileId: 'Empresa Propietaria',
+  isActive: 'Unidad activa',
+  status: 'Estado Operativo de la Unidad',
+  theoreticalYield: 'Rendimiento Teórico (km/L)',
+  poolRole: 'Rol en Pool',
+  substitutesUnitId: 'Sustituye a Unidad',
+}
 
 /**
  * Wizard multi-paso para crear o editar una Unidad Armada.
@@ -223,7 +238,7 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
     reset,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty, dirtyFields },
   } = useForm<CreateUnitAssemblyInput>({
     resolver: zodResolver(createUnitAssemblySchema),
     defaultValues: {
@@ -418,7 +433,6 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
           </div>
         </div>
       </div>
-      <WizardFooter isFirstStep isLastStep={false} onCancel={handleClose} onNext={goNext} />
     </div>
   )
 
@@ -504,7 +518,6 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
           </div>
         </div>
       </div>
-      <WizardFooter isFirstStep={false} isLastStep={false} onCancel={handleClose} onBack={goBack} onNext={goNext} />
     </div>
   )
 
@@ -545,20 +558,12 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
         </div>
 
       </div>
-      <WizardFooter
-        isFirstStep={false}
-        isLastStep
-        onCancel={handleClose}
-        onBack={goBack}
-        onNext={handleFinish}
-        isSubmitting={isSubmitting}
-      />
     </div>
   )
 
   const steps: WizardStep[] = [
-    { id: '1', title: 'Identificación', content: step1Content },
-    { id: '2', title: 'Vehículos', content: step2Content },
+    { id: '1', title: 'Identificación', content: step1Content, onNext: goNext },
+    { id: '2', title: 'Vehículos', content: step2Content, onNext: goNext },
     { id: '3', title: 'Operador', content: step3Content },
   ]
 
@@ -592,7 +597,14 @@ export function UnitAssemblyWizard({ isOpen, onClose, assembly }: UnitAssemblyWi
           icon={isEdit ? <PenLine className="size-5" /> : <Layers className="size-5" />}
           steps={steps}
           activeStep={activeStep}
+          onStepSelect={setActiveStep}
           size="lg"
+          showFooter
+          onFinish={handleFinish}
+          isSubmitting={isSubmitting}
+          canFastFinish={isEdit && isDirty}
+          dirtyFields={dirtyFields}
+          fieldDictionary={UNIT_ASSEMBLY_FIELD_DICTIONARY}
         />
       )}
     </AnimatePresence>

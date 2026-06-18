@@ -12,7 +12,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { Wizard, type WizardStep } from '@/src/core/presentation/components/organisms/wizard'
-import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { ActionFeedback } from '@/src/core/presentation/components/molecules/ActionFeedback'
@@ -30,6 +29,15 @@ const clientWizardSchema = z.object({
   taxRegime: z.string().optional(),
   companyProfileId: z.string().optional(),
 })
+
+const CLIENT_FIELD_DICTIONARY: Record<string, string> = {
+  tradeName: 'Nombre Comercial',
+  companyName: 'Razón Social',
+  rfc: 'RFC',
+  taxDomicile: 'Domicilio Fiscal',
+  taxRegime: 'Régimen Fiscal',
+  companyProfileId: 'Empresa de Facturación',
+}
 
 type ClientWizardValues = z.infer<typeof clientWizardSchema>
 
@@ -57,7 +65,7 @@ export function ClientWizard({ isOpen, onClose, onSaved, clientData }: ClientWiz
     reset,
     trigger,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty, dirtyFields },
   } = useForm<ClientWizardValues>({
     resolver: zodResolver(clientWizardSchema),
     defaultValues: {
@@ -192,16 +200,6 @@ export function ClientWizard({ isOpen, onClose, onSaved, clientData }: ClientWiz
           {errors.taxDomicile && <p className={errorClass}>{errors.taxDomicile.message}</p>}
         </div>
       </div>
-      <WizardFooter
-        isFirstStep={true}
-        isLastStep={false}
-        onCancel={() => {
-          setSubmissionStatus('idle')
-          setSubmissionError(null)
-          onClose()
-        }}
-        onNext={goNext}
-      />
     </div>
   )
 
@@ -245,18 +243,6 @@ export function ClientWizard({ isOpen, onClose, onSaved, clientData }: ClientWiz
           </div>
         </div>
       </div>
-      <WizardFooter
-        isFirstStep={false}
-        isLastStep={true}
-        onBack={goBack}
-        onNext={handleFinish}
-        onCancel={() => {
-          setSubmissionStatus('idle')
-          setSubmissionError(null)
-          onClose()
-        }}
-        isSubmitting={isSubmitting}
-      />
     </div>
   )
 
@@ -265,6 +251,7 @@ export function ClientWizard({ isOpen, onClose, onSaved, clientData }: ClientWiz
       id: 'general',
       title: 'Datos Generales',
       content: step1,
+      onNext: goNext,
     },
     {
       id: 'summary',
@@ -321,7 +308,14 @@ export function ClientWizard({ isOpen, onClose, onSaved, clientData }: ClientWiz
           icon={<Building2 className="size-5" />}
           steps={steps}
           activeStep={activeStep}
+          onStepSelect={setActiveStep}
           size="lg"
+          showFooter
+          onFinish={handleFinish}
+          isSubmitting={isSubmitting}
+          canFastFinish={isEdit && isDirty}
+          dirtyFields={dirtyFields}
+          fieldDictionary={CLIENT_FIELD_DICTIONARY}
         />
       )}
     </>

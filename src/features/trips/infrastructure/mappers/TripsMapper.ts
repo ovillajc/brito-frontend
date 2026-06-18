@@ -14,6 +14,7 @@ export interface TripRow {
   company_profile_id: string | null
   unit_assembly_id: string | null
   departure_date: string | null
+  actual_departure_date: string | null
   arrival_date_actual: string | null
   status: string | null
   origin: string | null
@@ -82,6 +83,7 @@ export class TripsMapper {
       origin: row.origin,
       destination: row.destination,
       departureDate: row.departure_date ? new Date(row.departure_date) : null,
+      actualDepartureDate: row.actual_departure_date ? new Date(row.actual_departure_date) : null,
       arrivalDateActual: row.arrival_date_actual ? new Date(row.arrival_date_actual) : null,
       status: toTripStatus(row.status),
       monitoredBy: row.monitored_by,
@@ -149,6 +151,7 @@ export class TripsMapper {
       origin: input.origin,
       destination: input.destination,
       departure_date: input.departureDate ? input.departureDate.toISOString() : null,
+      actual_departure_date: input.actualDepartureDate ? input.actualDepartureDate.toISOString() : null,
       unit_assembly_id: input.unitAssemblyId,
       status: input.status ?? 'scheduled',
       trip_number_client: input.tripNumberClient ?? null,

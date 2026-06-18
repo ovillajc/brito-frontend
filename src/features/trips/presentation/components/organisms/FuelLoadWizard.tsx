@@ -1,24 +1,24 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useForm, type DefaultValues } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Fuel, Search } from 'lucide-react'
+import { Fuel, Search, AlertTriangle } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import type { UnitAssemblyEntity } from '@/src/features/fleet/domain/entities'
 import type { TripWithRelations } from '@/src/features/trips/domain/entities/trip-entity'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
+import { Button } from '@/src/core/presentation/components/ui/button'
 import { ActionFeedback } from '@/src/core/presentation/components/molecules/ActionFeedback'
 import { ConfirmDialog } from '@/src/core/presentation/components/molecules/confirm-dialog'
 import { Wizard, type WizardStep } from '@/src/core/presentation/components/organisms/wizard'
-import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { Checkbox } from '@/src/core/presentation/components/ui/checkbox'
 import { FileUploadButton } from '@/src/core/presentation/components/molecules/FileUploadButton'
 import { FUEL_LOAD_SOURCE_TYPE, fuelLoadSchema, type FuelLoadFormValues, type FuelLoadSourceType } from '@/src/features/trips/domain/schemas/fuel-load.schema'
-import { useRegisterFuelLoad, useUpdateFuelLoad } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
+import { useRegisterFuelLoad, useUpdateFuelLoad, useFuelLoadHistory } from '@/src/features/trips/presentation/hooks/use-fuel-metrics'
 import { deleteFuelLoadTicketAction } from '@/src/features/trips/presentation/actions/fuel-metrics.actions'
 import { useTractors, useTrailers } from '@/src/features/fleet/presentation/hooks/use-fleet'
 import type { FuelLoadHistoryRowEntity } from '@/src/features/trips/domain/entities/fuel-metrics-entity'
@@ -100,6 +100,21 @@ const TRIP_STATUS_LABELS: Record<TripWithRelations['trip']['status'], string> = 
   cancelled: 'Cancelado',
 }
 
+const FUEL_LOAD_FIELD_DICTIONARY: Record<string, string> = {
+  tripId: 'Viaje Vinculado',
+  vehicleType: 'Tipo de Vehículo',
+  truckId: 'Tractocamión',
+  trailerId: 'Remolque / Tolva',
+  ticketFolio: 'Folio del Ticket',
+  ticketUrl: 'Ticket o Factura',
+  loadDate: 'Fecha y hora de carga',
+  litersLoaded: 'Litros cargados',
+  pricePerLiter: 'Precio por litro',
+  isFullTankFill: 'Llenado a tanque completo',
+  sourceType: 'Origen (Externo / Base)',
+  odometerAtLoad: 'Odómetro',
+}
+
 export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelLoadWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('idle')
@@ -108,11 +123,14 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
   const [isDeletingTicket, setIsDeletingTicket] = useState(false)
   const [isDepletionPromptOpen, setIsDepletionPromptOpen] = useState(false)
   const [depletionMessage, setDepletionMessage] = useState<string | null>(null)
+  const [duplicateWarning, setDuplicateWarning] = useState<FuelLoadHistoryRowEntity | null>(null)
+  const hasConfirmedDuplicateRef = useRef(false)
 
   const registerFuelLoad = useRegisterFuelLoad()
   const updateFuelLoad = useUpdateFuelLoad()
   const { data: trucks } = useTractors()
   const { data: allTrailers } = useTrailers()
+  const historyQuery = useFuelLoadHistory(200)
 
   const defaultValues = useMemo(() => getFuelLoadDefaultValues(editRow), [editRow])
 
@@ -123,7 +141,7 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
     watch,
     reset,
     setValue,
-    formState: { errors },
+    formState: { errors, isDirty, dirtyFields },
   } = useForm<FuelLoadFormValues>({
     resolver: zodResolver(fuelLoadSchema),
     defaultValues,
@@ -135,6 +153,8 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
     setActiveStep(0)
     setSubmissionStatus('idle')
     setErrorMessage(null)
+    hasConfirmedDuplicateRef.current = false
+    setDuplicateWarning(null)
     reset(defaultValues)
   }, [defaultValues, isOpen, reset])
 
@@ -236,6 +256,35 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
       return
     }
 
+    const payloadTruckId = selectedUnit ? selectedUnit.truckId : (values.vehicleType === 'TRUCK' ? (values.truckId || null) : null)
+    const payloadTrailerId = selectedUnit ? (values.trailerId || null) : (values.vehicleType === 'TRAILER' ? (values.trailerId || null) : null)
+
+    if (!hasConfirmedDuplicateRef.current) {
+      const existingLoads = historyQuery.data ?? []
+      const liters = Number.isFinite(values.litersLoaded) ? values.litersLoaded : 0
+
+      const duplicates = existingLoads.filter((l) => {
+        if (editRow && l.id === editRow.id) return false
+        
+        let sameUnit = false
+        if (values.vehicleType === 'TRUCK' && payloadTruckId && l.truckId === payloadTruckId) sameUnit = true
+        if (values.vehicleType === 'TRAILER' && payloadTrailerId && l.trailerId === payloadTrailerId) sameUnit = true
+        
+        if (!l.loadDate) return false
+        
+        const sameLiters = l.litersLoaded === liters
+        const timeDiff = Math.abs(new Date(l.loadDate).getTime() - loadDate.getTime())
+        const within10Hours = timeDiff <= 10 * 60 * 60 * 1000
+
+        return sameUnit && sameLiters && within10Hours
+      })
+
+      if (duplicates.length > 0) {
+        setDuplicateWarning(duplicates[0])
+        return
+      }
+    }
+
     const isExternal = values.sourceType === FUEL_LOAD_SOURCE_TYPE.External
     const normalizedPricePerLiter =
       isExternal && values.pricePerLiter != null && Number.isFinite(values.pricePerLiter)
@@ -248,13 +297,13 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
 
     const payload = {
       tripId: values.tripId || null,
-      truckId: selectedUnit ? selectedUnit.truckId : (values.vehicleType === 'TRUCK' ? (values.truckId || null) : null),
+      truckId: payloadTruckId,
       operatorId: selectedUnit?.employeeId ?? null,
       ticketFolio: values.ticketFolio,
       ticketUrl: values.ticketUrl ?? null,
       loadDate,
       vehicleType: values.vehicleType ?? 'TRUCK',
-      trailerId: selectedUnit ? (values.trailerId || null) : (values.vehicleType === 'TRAILER' ? (values.trailerId || null) : null),
+      trailerId: payloadTrailerId,
       litersLoaded: Number.isFinite(values.litersLoaded) ? values.litersLoaded : 0,
       pricePerLiter: normalizedPricePerLiter,
       totalCost: normalizedTotalCost,
@@ -476,14 +525,6 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
           </div>
         </div>
       )}
-
-      <WizardFooter
-        isFirstStep
-        isLastStep={false}
-        onCancel={handleClose}
-        onNext={goNext}
-        isSubmitting={isSaving}
-      />
     </div>
   )
 
@@ -549,15 +590,6 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
           </div>
         )}
       </div>
-
-      <WizardFooter
-        isFirstStep={false}
-        isLastStep={false}
-        onCancel={handleClose}
-        onBack={goBack}
-        onNext={goNext}
-        isSubmitting={isSaving}
-      />
     </div>
   )
 
@@ -624,21 +656,12 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
         <Checkbox id="isFullTankFill" {...register('isFullTankFill')} />
         <Label htmlFor="isFullTankFill">Llenado a tanque completo</Label>
       </div>
-
-      <WizardFooter
-        isFirstStep={false}
-        isLastStep
-        onCancel={handleClose}
-        onBack={goBack}
-        onNext={handleFinish}
-        isSubmitting={isSaving}
-      />
     </div>
   )
 
   const steps: WizardStep[] = [
-    { id: '1', title: 'Viaje', content: step1 },
-    { id: '2', title: 'Ticket', content: step2 },
+    { id: '1', title: 'Viaje', content: step1, onNext: goNext },
+    { id: '2', title: 'Ticket', content: step2, onNext: goNext },
     { id: '3', title: 'Litros', content: step3 },
   ]
 
@@ -669,6 +692,37 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
         confirmLabel="Sí, el tanque se agotó"
         cancelLabel="Cancelar"
       />
+      <Dialog
+        isOpen={!!duplicateWarning}
+        onClose={() => setDuplicateWarning(null)}
+        title="Posible duplicado detectado"
+        size="sm"
+      >
+        <div className="p-6 pt-2 flex flex-col items-center text-center">
+          <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-4">
+            <AlertTriangle className="size-6 text-amber-600 dark:text-amber-400" />
+          </div>
+          <p className="text-sm text-stone-600 dark:text-zinc-400 mb-6">
+            Hemos detectado que ya existe una carga de diésel para esta unidad por la misma cantidad de litros y en un rango de 10 horas. 
+            ¿Estás seguro de que deseas registrarla de nuevo?
+          </p>
+          <div className="flex gap-3 w-full">
+            <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => setDuplicateWarning(null)}>
+              Cancelar
+            </Button>
+            <Button 
+              className="flex-1 rounded-xl h-11 bg-amber-600 hover:bg-amber-700 text-white border-0"
+              onClick={() => {
+                hasConfirmedDuplicateRef.current = true
+                setDuplicateWarning(null)
+                setTimeout(() => handleFinish(), 50)
+              }}
+            >
+              Sí, registrar
+            </Button>
+          </div>
+        </div>
+      </Dialog>
       <AnimatePresence mode="wait">
       {submissionStatus !== 'idle' ? (
         <Dialog key="feedback" isOpen={isOpen} onClose={handleClose} size="md">
@@ -697,7 +751,14 @@ export function FuelLoadWizard({ isOpen, onClose, trips, units, editRow }: FuelL
           icon={<Fuel className="size-5" />}
           steps={steps}
           activeStep={activeStep}
+          onStepSelect={setActiveStep}
           size="lg"
+          showFooter
+          onFinish={handleFinish}
+          isSubmitting={isSaving}
+          canFastFinish={!!editRow && isDirty}
+          dirtyFields={dirtyFields}
+          fieldDictionary={FUEL_LOAD_FIELD_DICTIONARY}
         />
       )}
       </AnimatePresence>

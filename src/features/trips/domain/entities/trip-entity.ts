@@ -23,6 +23,7 @@ export interface TripEntity {
   origin: string | null
   destination: string | null
   departureDate: Date | null
+  actualDepartureDate: Date | null
   arrivalDateActual: Date | null
   status: TripStatus
 

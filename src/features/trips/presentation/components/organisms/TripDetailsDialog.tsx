@@ -222,10 +222,11 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
 
               <section>
                 <SectionTitle title="Asignaciones" icon={Truck} />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <DetailItem icon={Truck} label="N° Económico" value={tripRow.unitEconomicNumber} />
                   <DetailItem icon={User} label="Operador" value={tripRow.operatorName} />
-                  <DetailItem icon={Calendar} label="Fecha de Salida" value={tripRow.departureDate ? new Date(tripRow.departureDate).toLocaleString('es-MX', { hour12: false }) : null} />
+                  <DetailItem icon={Calendar} label="Salida Programada" value={tripRow.departureDate ? new Date(tripRow.departureDate).toLocaleString('es-MX', { hour12: false }) : null} />
+                  <DetailItem icon={Calendar} label="Salida Real" value={tripRow.actualDepartureDate ? new Date(tripRow.actualDepartureDate).toLocaleString('es-MX', { hour12: false }) : null} />
                 </div>
               </section>
 

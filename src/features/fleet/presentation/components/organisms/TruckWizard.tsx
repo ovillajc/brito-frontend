@@ -15,7 +15,6 @@ import { Truck, PenLine } from 'lucide-react'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { ActionFeedback } from '@/src/core/presentation/components/molecules/ActionFeedback'
 import { Wizard, WizardStep } from '@/src/core/presentation/components/organisms/wizard'
-import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { createTruckSchema, CreateTruckInput } from '../../../domain/schemas/truck.schema'
@@ -37,6 +36,24 @@ const STATUS_OPTIONS: { label: string; value: vehicleStatus }[] = [
   { label: 'En Taller', value: 'maintenance' },
   { label: 'Asignada', value: 'assigned' },
 ]
+
+const TRUCK_FIELD_DICTIONARY: Record<string, string> = {
+  economicNumber: 'Número Económico',
+  brand: 'Marca',
+  model: 'Modelo',
+  year: 'Año',
+  plates: 'Placas',
+  serialNumber: 'Número de Serie (VIN)',
+  insurancePolicy: 'Póliza de Seguro',
+  companyProfileId: 'Perfil de Compañía',
+  status: 'Estado',
+  engine: 'Motor',
+  tireSize: 'Talla de Llanta',
+  tankCapacity: 'Capacidad de Tanque (L)',
+  vehicleType: 'Tipo de Vehículo',
+  sizeFt: 'Tamaño (Pies)',
+  capacityKg: 'Capacidad de Carga (kg)',
+}
 
 /**
  * Wizard multi-paso para crear o editar un Tractocamión.
@@ -60,7 +77,7 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
     trigger,
     reset,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty, dirtyFields },
   } = useForm<CreateTruckInput>({
     resolver: zodResolver(createTruckSchema),
     defaultValues: {
@@ -232,7 +249,6 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
           {errors.year && <p className="text-xs text-red-500">{errors.year.message}</p>}
         </div>
       </div>
-      <WizardFooter isFirstStep isLastStep={false} onCancel={handleClose} onNext={goNext} />
     </div>
   )
 
@@ -274,7 +290,6 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
           {errors.companyProfileId && <p className="text-xs text-red-500">{errors.companyProfileId.message}</p>}
         </div>
       </div>
-      <WizardFooter isFirstStep={false} isLastStep={false} onCancel={handleClose} onBack={goBack} onNext={goNext} />
     </div>
   )
 
@@ -324,20 +339,12 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
             </div>
           )}
       </div>
-      <WizardFooter
-        isFirstStep={false}
-        isLastStep
-        onCancel={handleClose}
-        onBack={goBack}
-        onNext={handleFinish}
-        isSubmitting={isSubmitting}
-      />
     </div>
   )
 
   const steps: WizardStep[] = [
-    { id: '1', title: 'Unidad', content: step1Content },
-    { id: '2', title: 'Documentación', content: step2Content },
+    { id: '1', title: 'Unidad', content: step1Content, onNext: goNext },
+    { id: '2', title: 'Documentación', content: step2Content, onNext: goNext },
     { id: '3', title: 'Técnico', content: step3Content },
   ]
 
@@ -367,7 +374,14 @@ export function TruckWizard({ isOpen, onClose, truck }: TruckWizardProps) {
           icon={isEdit ? <PenLine className="size-5" /> : <Truck className="size-5" />}
           steps={steps}
           activeStep={activeStep}
+          onStepSelect={setActiveStep}
           size="lg"
+          showFooter
+          onFinish={handleFinish}
+          isSubmitting={isSubmitting}
+          canFastFinish={isEdit && isDirty}
+          dirtyFields={dirtyFields}
+          fieldDictionary={TRUCK_FIELD_DICTIONARY}
         />
       )}
     </AnimatePresence>
