@@ -121,9 +121,10 @@ export function Wizard({
       </div>
 
       {/* ── Stepper ── */}
-      <div className="px-8 py-5 bg-stone-50/60 dark:bg-zinc-900/50 border-b border-stone-100 dark:border-zinc-800">
-        <div className="flex items-start">
-          {steps.map((step, index) => {
+      {steps.length > 1 && (
+        <div className="px-8 py-5 bg-stone-50/60 dark:bg-zinc-900/50 border-b border-stone-100 dark:border-zinc-800">
+          <div className="flex items-start">
+            {steps.map((step, index) => {
             const isCompleted = index < activeStep
             const isActive = index === activeStep
             const isSelectable = typeof onStepSelect === 'function'
@@ -186,6 +187,7 @@ export function Wizard({
           })}
         </div>
       </div>
+      )}
 
       {/* ── Step Content ── */}
       <div className="flex-1 overflow-y-auto px-8 py-6 min-h-[320px] flex flex-col">

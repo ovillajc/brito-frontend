@@ -260,7 +260,25 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
   }
 
   const columns = useMemo((): CrudColumn<TripsTableRowEntity>[] => {
-    return [
+    const selectedClient = filters?.clientId ? clients.find(c => c.id === filters.clientId) : null
+    const isWalmartSelected = !!selectedClient && (
+      selectedClient.tradeName?.toLowerCase().includes('walmart') ||
+      selectedClient.companyName?.toLowerCase().includes('walmart')
+    )
+
+    const isHolcimSelected = !!selectedClient && (
+      selectedClient.tradeName?.toLowerCase().includes('holcim') ||
+      selectedClient.companyName?.toLowerCase().includes('holcim')
+    )
+
+    const normalizedClientLabel = selectedClient ? (selectedClient.tradeName ?? selectedClient.companyName ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "") : ''
+    const isBarichonSelected = [
+      'altopetrum',
+      'solinmar',
+      'soluciones integrales maritimas',
+    ].some((k) => normalizedClientLabel.includes(k))
+
+    const baseColumns: CrudColumn<TripsTableRowEntity>[] = [
       {
         header: 'Viaje',
         cell: (row) => (
@@ -301,10 +319,10 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
           </div>
         ),
       },
-      {
+      ...(selectedClient ? [] : [{
         header: 'Cliente',
-        cell: (row) => (
-          <div className="flex items-center gap-2">
+        cell: (row: TripsTableRowEntity) => (
+          <div className="flex items-center gap-2 min-w-[120px]">
             <div className="p-1.5 rounded bg-stone-100 dark:bg-zinc-800">
               <Briefcase className="size-3 text-stone-500 dark:text-zinc-400" />
             </div>
@@ -313,11 +331,11 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
             </span>
           </div>
         ),
-      },
+      }]),
       {
         header: 'Unidad / Operador',
         cell: (row) => (
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-0.5 min-w-[150px]">
             <span className="text-sm font-semibold text-stone-800 dark:text-zinc-200">
               {row.unitEconomicNumber ?? '—'}
             </span>
@@ -359,11 +377,90 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
         },
       },
     ]
-  }, [canEditRow])
+
+    if (isWalmartSelected) {
+      const walmartColumns: CrudColumn<TripsTableRowEntity>[] = [
+        { header: 'W: Coordinador', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{row.walmartData?.coordinatorName || '—'}</span> },
+        { header: 'W: Ruta Walmart', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{row.walmartData?.route || '—'}</span> },
+        { header: 'W: Tipo Carga', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.cargoType || '—'}</span> },
+        { header: 'W: Carta Porte', cell: (row) => <span className="text-sm font-mono min-w-[100px] inline-block">{row.walmartData?.cartaPorteWalmart || '—'}</span> },
+        { header: 'W: Estatus Walmart', cell: (row) => <span className="text-sm font-semibold text-[#1a5c3a] dark:text-primary-container min-w-[120px] inline-block">{row.walmartData?.statusWalmart || '—'}</span> },
+        { header: 'W: Tiendas', cell: (row) => <span className="text-sm min-w-[80px] inline-block">{row.walmartData?.numStores ?? '—'}</span> },
+        { header: 'W: Temp. Salida', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.departureTemperature || '—'}</span> },
+        { 
+          header: 'W: Hora Salida', 
+          cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.departureTime ? new Date(row.walmartData.departureTime).toLocaleString('es-MX', { hour12: false }) : '—'}</span> 
+        },
+        { header: 'W: STR Num Load', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.strNumLoad || '—'}</span> },
+        { header: 'W: STR Compl. CP', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.strComplementCartaPorte || '—'}</span> },
+        { header: 'W: STR KM Pre-fact', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.strPreinvoiceKm ?? '—'}</span> },
+        { header: 'W: STR KM Recorridos', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.strKmTraveled ?? '—'}</span> },
+        { header: 'W: STR Diesel', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.strDiesel ?? '—'}</span> },
+        { header: 'W: STR Casetas', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.strCasetas ?? '—'}</span> },
+        { header: 'W: STR Total Facturado', cell: (row) => <span className="text-sm min-w-[100px] inline-block font-semibold">{row.walmartData?.strTotalInvoice ?? '—'}</span> },
+        { header: 'W: DHD Num Load', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.dhdNumLoad || '—'}</span> },
+        { header: 'W: DHD Compl. CP', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.dhdComplementCartaPorte || '—'}</span> },
+        { header: 'W: DHD KM Pre-fact', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.dhdPreinvoiceKm ?? '—'}</span> },
+        { header: 'W: DHD KM Recorridos', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.dhdKmTraveled ?? '—'}</span> },
+        { header: 'W: DHD Diesel', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.dhdDiesel ?? '—'}</span> },
+        { header: 'W: DHD Casetas', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.dhdCasetas ?? '—'}</span> },
+        { header: 'W: DHD Total Facturado', cell: (row) => <span className="text-sm min-w-[100px] inline-block font-semibold">{row.walmartData?.dhdTotalInvoice ?? '—'}</span> },
+        { header: 'W: Incidencias', cell: (row) => <span className="text-sm min-w-[200px] inline-block truncate" title={row.walmartData?.incidencias || ''}>{row.walmartData?.incidencias || '—'}</span> },
+      ]
+      return [...baseColumns, ...walmartColumns]
+    }
+
+    if (isHolcimSelected) {
+      const holcimColumns: CrudColumn<TripsTableRowEntity>[] = [
+        { header: 'H: Núm. Viaje', cell: (row) => <span className="text-sm min-w-[100px] inline-block font-mono">{row.tripNumberClient ?? '—'}</span> },
+        { header: 'H: Remisión', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.holcim?.remision as string) || '—'}</span> },
+        { header: 'H: Factura', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.holcim?.factura as string) || '—'}</span> },
+        { header: 'H: Gastos Revisados', cell: (row) => {
+            const exp = (row.clientSpecificData as Record<string, any>)?.holcim?.expensesReviewed
+            const val = typeof exp === 'string' ? exp : (exp === true ? 'Sí' : '—')
+            return <span className="text-sm min-w-[120px] inline-block">{val}</span>
+        } },
+      ]
+      return [...baseColumns, ...holcimColumns]
+    }
+
+    if (isBarichonSelected) {
+      const barichonColumns: CrudColumn<TripsTableRowEntity>[] = [
+        { header: 'B: Núm. Viaje', cell: (row) => <span className="text-sm min-w-[100px] inline-block font-mono">{row.tripNumberClient ?? '—'}</span> },
+        { header: 'B: Ticket', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.ticket as string) || '—'}</span> },
+        { header: 'B: Descarga', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.unloading as string) || '—'}</span> },
+        { header: 'B: Peso Bruto', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.weight?.gross as number) ?? '—'}</span> },
+        { header: 'B: Tara', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.weight?.tare as number) ?? '—'}</span> },
+        { header: 'B: Peso Neto', cell: (row) => <span className="text-sm min-w-[100px] inline-block font-semibold">{((row.clientSpecificData as Record<string, any>)?.barichon?.weight?.net as number) ?? '—'}</span> },
+        { header: 'B: Remisión', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.remision as string) || '—'}</span> },
+        { header: 'B: Factura', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.factura as string) || '—'}</span> },
+        { header: 'B: Material', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.material as string) || '—'}</span> },
+        { header: 'B: PO', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.po as string) || '—'}</span> },
+        { header: 'B: Total', cell: (row) => <span className="text-sm min-w-[100px] inline-block font-semibold">{((row.clientSpecificData as Record<string, any>)?.barichon?.total as number) ?? '—'}</span> },
+        { header: 'B: Gastos Revisados', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.expensesReviewed as string) || '—'}</span> },
+        { header: 'B: Placas Tracto', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.unit?.truckPlates as string) || '—'}</span> },
+        { header: 'B: Placas Tolva', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.unit?.trailerPlates as string) || '—'}</span> },
+        { header: 'B: Placas Tolva 2', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.unit?.trailer2Plates as string) || '—'}</span> },
+      ]
+      return [...baseColumns, ...barichonColumns]
+    }
+
+    return baseColumns
+  }, [canEditRow, filters?.clientId, clients])
+
+  const selectedClient = filters?.clientId ? clients.find(c => c.id === filters.clientId) : null
+  const selectedClientName = selectedClient ? (selectedClient.tradeName ?? selectedClient.companyName ?? '').replace(/\s*\(.*?\)\s*/g, '').trim() : ''
 
   return (
     <>
       <CrudDataTable<TripsTableRowEntity>
+        title={
+          selectedClient ? (
+            <h2 className="text-2xl font-bold text-stone-900 dark:text-zinc-100">
+              Bitácora {selectedClientName}
+            </h2>
+          ) : undefined
+        }
         data={rows}
         isLoading={tripsQuery.isLoading}
         columns={columns}

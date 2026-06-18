@@ -24,8 +24,9 @@
  */
 
 import React, { useState } from 'react'
-import { Edit2, Trash2, Eye, ArrowUp, ArrowDown, ChevronDown } from 'lucide-react'
+import { Edit2, Trash2, Eye, ArrowUp, ArrowDown, ChevronDown, Columns } from 'lucide-react'
 import { toast } from 'sonner'
+import { Wizard } from '@/src/core/presentation/components/organisms/wizard'
 import {
   Table,
   TableHeader,
@@ -224,6 +225,9 @@ interface CrudDataTableProps<T extends { id: string }> {
 
   /** Callback para exportar a Excel. Si no se provee, se usará una exportación genérica automática. */
   onExport?: (rows: T[]) => void
+
+  /** Título opcional a mostrar en la parte superior de la tabla */
+  title?: React.ReactNode
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -253,6 +257,7 @@ export function CrudDataTable<T extends { id: string }>({
   canManage = true,
   pageSize = 10,
   onExport,
+  title,
 }: CrudDataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('')
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -262,6 +267,8 @@ export function CrudDataTable<T extends { id: string }>({
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({})
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [hiddenColumns, setHiddenColumns] = useState<Record<string, boolean>>({})
+  const [isColumnsMenuOpen, setIsColumnsMenuOpen] = useState(false)
 
   // Reset page when search changes
   React.useEffect(() => {
@@ -274,6 +281,10 @@ export function CrudDataTable<T extends { id: string }>({
       col,
     }))
   }, [columns])
+
+  const visibleColumnsWithKeys = React.useMemo(() => {
+    return columnsWithKeys.filter(c => !hiddenColumns[c.key])
+  }, [columnsWithKeys, hiddenColumns])
 
   const getCellFilterValue = React.useCallback(
     (item: T, col: CrudColumn<T>, config?: CrudColumnFilterConfig<T>) => {
@@ -311,7 +322,7 @@ export function CrudDataTable<T extends { id: string }>({
   }, [columnsWithKeys, data, getCellFilterValue])
 
   const filterableColumns = React.useMemo(() => {
-    return columnsWithKeys
+    return visibleColumnsWithKeys
       .map(({ key, col }) => {
         if (col.filter === false) return { key, col, enabled: false as const, config: undefined, mode: 'none' as const }
 
@@ -371,7 +382,7 @@ export function CrudDataTable<T extends { id: string }>({
 
   // Total de columnas + columna de acciones si aplica
   const hasRowActions = !!(onView || _onEdit || _onDelete)
-  const totalCols = columns.length + (hasRowActions ? 1 : 0)
+  const totalCols = visibleColumnsWithKeys.length + (hasRowActions ? 1 : 0)
 
   const searchFilteredData = React.useMemo(() => {
     if (!data) return []
@@ -506,7 +517,7 @@ export function CrudDataTable<T extends { id: string }>({
 
       const exportData = sortedData.map(item => {
         const rowData: Record<string, unknown> = {}
-        columns.forEach(col => {
+        visibleColumnsWithKeys.forEach(({ col }) => {
           if (col.accessor) {
             const accessorValue = col.accessor(item)
             if (typeof accessorValue === 'string' && isUuidLike(accessorValue)) {
@@ -569,6 +580,7 @@ export function CrudDataTable<T extends { id: string }>({
     <div className={`bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-[20px] shadow-sm flex flex-col overflow-hidden ${className ?? ''}`}>
       {/* Toolbar */}
       <div className="p-4 border-b border-stone-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/50">
+        {title && <div className="mb-4">{title}</div>}
         <DataTableToolbar
           searchPlaceholder={searchPlaceholder}
           searchValue={searchFilter ? searchTerm : undefined}
@@ -578,6 +590,16 @@ export function CrudDataTable<T extends { id: string }>({
           actionLabel={canManage ? actionLabel : undefined}
           onAction={_onAction}
           onExport={handleExport}
+          extraActions={
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setIsColumnsMenuOpen(true)}
+            >
+              <Columns className="size-4" />
+              Columnas
+            </Button>
+          }
         />
       </div>
 
@@ -646,7 +668,7 @@ export function CrudDataTable<T extends { id: string }>({
             <Table>
               <TableHeader>
                 <TableRow className="bg-stone-50/50 dark:bg-zinc-900/50">
-                  {columnsWithKeys.map(({ key, col }) => (
+                  {visibleColumnsWithKeys.map(({ key, col }) => (
                     <TableHead
                       key={key}
                       className={`font-bold text-stone-900 dark:text-zinc-100 select-none ${col.headerClassName ?? ''}`}
@@ -665,7 +687,7 @@ export function CrudDataTable<T extends { id: string }>({
                     </TableHead>
                   ))}
                   {hasRowActions && (
-                    <TableHead className="text-right font-bold text-stone-900 dark:text-zinc-100">
+                    <TableHead className="text-right font-bold text-stone-900 dark:text-zinc-100 sticky right-0 bg-stone-50 dark:bg-zinc-900 z-10 w-[120px] shadow-[-4px_0_12px_rgba(0,0,0,0.02)]">
                       Acciones
                     </TableHead>
                   )}
@@ -690,9 +712,9 @@ export function CrudDataTable<T extends { id: string }>({
                       className="hover:bg-stone-50/50 dark:hover:bg-zinc-800/30 transition-colors cursor-pointer group"
                       onClick={() => onView?.(item)}
                     >
-                      {columns.map((col) => (
+                      {visibleColumnsWithKeys.map(({ key, col }) => (
                         <TableCell
-                          key={col.header}
+                          key={key}
                           className={col.className}
                         >
                           {col.cell(item)}
@@ -700,7 +722,7 @@ export function CrudDataTable<T extends { id: string }>({
                       ))}
                       {hasRowActions && (
                         <TableCell
-                          className="text-right"
+                          className="text-right sticky right-0 bg-white dark:bg-zinc-900 group-hover:bg-stone-50 dark:group-hover:bg-zinc-800 transition-colors z-10 shadow-[-4px_0_12px_rgba(0,0,0,0.02)] w-[120px]"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex items-center justify-end gap-1">
@@ -807,6 +829,55 @@ export function CrudDataTable<T extends { id: string }>({
           cancelLabel="No, cancelar"
         />
       )}
+
+      {/* Columns Configuration Wizard */}
+      <Wizard
+        isOpen={isColumnsMenuOpen}
+        onClose={() => setIsColumnsMenuOpen(false)}
+        title="Configurar Columnas"
+        description="Selecciona las columnas que deseas visualizar en la tabla."
+        icon={<Columns className="size-5" />}
+        size="md"
+        showFooter={true}
+        activeStep={0}
+        steps={[
+          {
+            id: 'columns-step',
+            title: 'Visibilidad',
+            nextLabel: 'Aceptar',
+            onNext: () => setIsColumnsMenuOpen(false),
+            content: (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {columnsWithKeys.map(({ key, col }) => (
+                  <label
+                    key={key}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all duration-200 select-none ${
+                      !hiddenColumns[key]
+                        ? 'bg-stone-50 border-[#1a5c3a]/30 shadow-sm dark:bg-zinc-800/80 dark:border-primary-container/30'
+                        : 'bg-white border-stone-200 hover:bg-stone-50/50 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800/50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="size-4.5 rounded border-stone-300 text-[#1a5c3a] focus:ring-[#1a5c3a] dark:border-zinc-600 dark:bg-zinc-900"
+                      checked={!hiddenColumns[key]}
+                      onChange={(e) => {
+                        setHiddenColumns((prev) => ({
+                          ...prev,
+                          [key]: !e.target.checked,
+                        }))
+                      }}
+                    />
+                    <span className={`text-sm font-medium ${!hiddenColumns[key] ? 'text-stone-900 dark:text-zinc-100' : 'text-stone-500 dark:text-zinc-400'}`}>
+                      {col.header}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )
+          }
+        ]}
+      />
     </div>
   )
 }
