@@ -22,6 +22,7 @@ export interface TripUpsertInput {
   origin: string
   destination: string
   departureDate: Date | null
+  actualDepartureDate?: Date | null
   unitAssemblyId: string
   status?: string
   tripNumberClient?: number | null

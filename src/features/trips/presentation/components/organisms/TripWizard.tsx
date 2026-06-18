@@ -16,12 +16,12 @@ import { MapPin, Briefcase, Plus, Trash2, Factory } from 'lucide-react'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { ActionFeedback } from '@/src/core/presentation/components/molecules/ActionFeedback'
 import { Wizard, type WizardStep } from '@/src/core/presentation/components/organisms/wizard'
-import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { Textarea } from '@/src/core/presentation/components/ui/textarea'
 import { ConfirmDialog } from '@/src/core/presentation/components/molecules/confirm-dialog'
+import { DateTimePicker24h } from '@/src/core/presentation/components/molecules/date-time-picker-24h'
 import type { TripsTableRowEntity } from './TripsTable'
 import { TripStatus, UnitAssemblyEntity } from '@/src/features/fleet/domain/entities'
 import { ClientEntity } from '@/src/features/clients/domain/entities'
@@ -29,6 +29,7 @@ import { toast } from 'sonner'
 import { getNextTripNumberClientForMonthAction, upsertTripWithClientDataAction } from '../../actions/trips.actions'
 import { useCompanyProfiles } from '@/src/features/company-profile/presentation/hooks/use-company-profile'
 import { isUnitAssignableForNewTrip } from '@/src/features/trips/domain/rules/is-unit-assignable'
+import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
 
 // ── Schema Zod ────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,7 @@ const tripWizardSchema = z.object({
   forceUnitAssignment: z.boolean().optional(),
   operatorName: z.string().min(1, 'El operador es obligatorio'),
   departureDate: z.string().optional(),
+  actualDepartureDate: z.string().optional(),
   observations: z.string().optional(),
   status: z.enum([
     'scheduled',
@@ -163,7 +165,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
     setValue,
     setError,
     getValues,
-    formState: { errors },
+    formState: { errors, isDirty, dirtyFields },
   } = useForm<TripWizardValues>({
     resolver: zodResolver(tripWizardSchema),
     defaultValues: {
@@ -174,6 +176,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
       forceUnitAssignment: false,
       operatorName: '',
       departureDate: '',
+      actualDepartureDate: '',
       observations: '',
       tripNumberClient: '',
       holcimExpensesReviewed: '',
@@ -232,6 +235,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
 
   const selectedUnitNumber = watch('unitEconomicNumber')
   const departureDateValue = watch('departureDate')
+  const actualDepartureDateValue = watch('actualDepartureDate')
   const selectedUnit = useMemo(
     () => units.find(u => u.economicNumber === selectedUnitNumber) ?? null,
     [units, selectedUnitNumber]
@@ -330,6 +334,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
         forceUnitAssignment: false,
         operatorName: tripRow.operatorName ?? '',
         departureDate: tripRow.departureDate ? tripRow.departureDate.substring(0, 16) : '', // yyyy-MM-ddThh:mm
+        actualDepartureDate: tripRow.actualDepartureDate ? tripRow.actualDepartureDate.substring(0, 16) : '',
         observations: tripRow.observations ?? '',
 
         tripNumberClient: tripRow.tripNumberClient ?? '',
@@ -587,6 +592,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
       }
 
       const departureDate = data.departureDate ? new Date(data.departureDate) : null
+      const actualDepartureDate = data.actualDepartureDate ? new Date(data.actualDepartureDate) : null
 
       const clientSpecificDataBase = isEdit ? (tripRow?.clientSpecificData ?? null) : null
       const clientSpecificData =
@@ -658,6 +664,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
           origin: data.origin,
           destination: data.destination,
           departureDate,
+          actualDepartureDate,
           unitAssemblyId,
           status: data.status as TripStatus,
           tripNumberClient,
@@ -846,10 +853,24 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
           </div>
         </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="departureDate">Fecha de Salida Programada</Label>
-          <Input id="departureDate" type="datetime-local" {...register('departureDate')} />
-        </div>
+          <div className="space-y-1">
+            <Label htmlFor="departureDate">Fecha de Salida Programada</Label>
+            <DateTimePicker24h 
+              value={(departureDateValue as string) || ''} 
+              onChange={(val) => setValue('departureDate', val, { shouldValidate: true, shouldDirty: true })} 
+              error={!!errors.departureDate} 
+            />
+            {errors.departureDate && <p className={errorClass}>{errors.departureDate.message}</p>}
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="actualDepartureDate">Fecha de Salida Real</Label>
+            <DateTimePicker24h 
+              value={(actualDepartureDateValue as string) || ''} 
+              onChange={(val) => setValue('actualDepartureDate', val, { shouldValidate: true, shouldDirty: true })} 
+              error={!!errors.actualDepartureDate} 
+            />
+            {errors.actualDepartureDate && <p className={errorClass}>{errors.actualDepartureDate.message}</p>}
+          </div>
 
         <div className="grid gap-2">
           <Label htmlFor="status">Estado del Viaje</Label>
@@ -870,14 +891,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
         </div>
 
       </div>
-      <WizardFooter
-        isFirstStep
-        isLastStep={!isBarichon && !isWalmart && !isHolcim}
-        onCancel={handleClose}
-        onNext={(isBarichon || isWalmart || isHolcim) ? goNext : handleFinish}
-        isSubmitting={isSubmitting}
-      />
-    </div>
+      </div>
   )
 
   const barichonGrossValue = watch('barichonGrossWeight') ?? ''
@@ -1012,14 +1026,6 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
         </div>
       </div>
 
-      <WizardFooter
-        isFirstStep={false}
-        isLastStep={!isWalmart && !isHolcim}
-        onCancel={handleClose}
-        onBack={goBack}
-        onNext={(!isWalmart && !isHolcim) ? handleFinish : goNext}
-        isSubmitting={isSubmitting}
-      />
     </div>
   )
   const step2Holcim = (
@@ -1064,15 +1070,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
         </div>
       </div>
 
-      <WizardFooter
-        isFirstStep={false}
-        isLastStep
-        onCancel={handleClose}
-        onBack={goBack}
-        onNext={handleFinish}
-        isSubmitting={isSubmitting}
-      />
-    </div>
+      </div>
   )
 
   // Step 2 — Datos Walmart
@@ -1137,11 +1135,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="walmartDepartureTime">Fecha (Walmart)</Label>
-            <Input id="walmartDepartureTime" type="datetime-local" {...register('walmartDepartureTime')} />
-          </div>
+        <div className="grid grid-cols-1 gap-4">
           <div className="grid gap-2">
             <Label htmlFor="walmartDestinationCities">Ciudades de destino</Label>
             <Input id="walmartDestinationCities" placeholder="Ej. Monterrey, Saltillo..." {...register('walmartDestinationCities')} />
@@ -1296,8 +1290,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
         />
       </div>
 
-      <WizardFooter isFirstStep={false} isLastStep={false} onCancel={handleClose} onBack={goBack} onNext={goNext} />
-    </div>
+      </div>
   )
 
   // Step 3 — Bitácora DETTES (Walmart)
@@ -1353,30 +1346,33 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
         )}
       </div>
 
-      <WizardFooter isFirstStep={false} isLastStep onCancel={handleClose} onBack={goBack} onNext={handleFinish} isSubmitting={isSubmitting} />
-    </div>
+      </div>
   )
 
-  const walmartSteps: WizardStep[] = [
-    { id: '2', title: 'Operativa Walmart', content: step2Walmart },
-    { id: '3', title: 'Log DETTES', content: step3Dettes },
-  ]
-
-  const holcimSteps: WizardStep[] = [
-    { id: 'holcim', title: 'Operativa Holcim', content: step2Holcim },
-  ]
-
-  const barichonSteps: WizardStep[] = [
-    { id: 'barichon', title: 'Bitácora Barichon', content: step2Barichon },
-  ]
-
-  const steps = useMemo(() => {
-    const s: WizardStep[] = [{ id: 'base', title: 'Datos Base', content: step1 }]
-    if (isBarichon) s.push(...barichonSteps)
-    if (isWalmart) return [...s, ...walmartSteps.map((w, idx) => ({ ...w, id: idx === 0 ? 'walmart' : 'dettes' }))]
-    if (isHolcim) return [...s, ...holcimSteps]
-    return s
-  }, [isBarichon, isHolcim, isWalmart, step1, step2Barichon, step2Walmart, step3Dettes, step2Holcim])
+  const steps: WizardStep[] = useMemo(() => {
+    const base: WizardStep[] = [
+      { 
+        id: 'step1', 
+        title: 'Datos Generales', 
+        content: step1,
+        onNext: async () => {
+          const ok = await trigger(['clientId', 'origin', 'destination', 'unitEconomicNumber', 'operatorName', 'departureDate', 'actualDepartureDate', 'status'])
+          if (ok) goNext()
+        }
+      },
+    ]
+    if (isBarichon) {
+      base.push({ id: 'step2-b', title: 'Barichón', content: step2Barichon, onNext: handleFinish })
+    } else if (isHolcim) {
+      base.push({ id: 'step2-h', title: 'Holcim', content: step2Holcim, onNext: handleFinish })
+    } else if (isWalmart) {
+      base.push(
+        { id: 'step2-w', title: 'Walmart Base', content: step2Walmart, onNext: goNext },
+        { id: 'step3-w', title: 'Dettes', content: step3Dettes, onNext: handleFinish }
+      )
+    }
+    return base
+  }, [step1, step2Barichon, step2Holcim, step2Walmart, step3Dettes, isBarichon, isHolcim, isWalmart, trigger])
 
   useEffect(() => {
     if (!isOpen) return
@@ -1403,8 +1399,6 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
                 : (submissionError ?? 'No pudimos completar la operación en este momento.')}
               primaryActionLabel="Finalizar"
               onPrimaryAction={handleClose}
-              secondaryActionLabel={submissionStatus === 'success' && !isEdit ? 'Crear otro' : undefined}
-              onSecondaryAction={!isEdit ? handleReset : undefined}
             />
           </Dialog>
         ) : (
@@ -1417,7 +1411,14 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
             icon={<MapPin className="size-5" />}
             steps={steps}
             activeStep={activeStep}
+            onStepSelect={setActiveStep}
             size="lg"
+            showFooter
+            onFinish={handleFinish}
+            isSubmitting={isSubmitting}
+            canFastFinish={isEdit && isDirty}
+            dirtyFields={dirtyFields}
+            fieldDictionary={TRIP_FIELD_DICTIONARY}
           />
         )}
       </AnimatePresence>
@@ -1433,8 +1434,8 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
           setIsUnitOverrideDialogOpen(false)
           setPendingUnitEconomicNumber(null)
           if (!next) return
-          setValue('unitEconomicNumber', next, { shouldValidate: true })
-          setValue('forceUnitAssignment', true, { shouldValidate: false })
+          setValue('unitEconomicNumber', next, { shouldValidate: true, shouldDirty: true })
+          setValue('forceUnitAssignment', true, { shouldValidate: false, shouldDirty: true })
           lastConfirmedUnitNumberRef.current = next
         }}
         title="Unidad no disponible"
@@ -1460,6 +1461,57 @@ function formatHolcimTripLabel(date: Date, tripNumberClient: number) {
 
 function dataOrEmpty(value: string | null | undefined) {
   return value && value.trim().length > 0 ? value : '—'
+}
+
+const TRIP_FIELD_DICTIONARY: Record<string, string> = {
+  clientId: 'Cliente',
+  origin: 'Origen',
+  destination: 'Destino',
+  unitEconomicNumber: 'Unidad',
+  operatorName: 'Operador',
+  departureDate: 'Fecha de Salida Programada',
+  actualDepartureDate: 'Fecha de Salida Real',
+  observations: 'Observaciones',
+  tripNumberClient: 'N° Viaje (Cliente)',
+  status: 'Estado del Viaje',
+  route: 'Ruta',
+  walmartCargoType: 'Tipo de Carga (Walmart)',
+  cartaPorteWalmart: 'Carta Porte (Walmart)',
+  numStores: 'Número de Tiendas',
+  walmartDepartureTemperature: 'Temperatura (Walmart)',
+  walmartDepartureTime: 'Hora de Salida (Walmart)',
+  walmartDestinationCities: 'Ciudades Destino',
+  walmartIncidencias: 'Incidencias (Walmart)',
+  dettesLog: 'Registros DETTES',
+  strNumLoad: 'Número de Carga (STR)',
+  dhdNumLoad: 'Número de Carga (DHD)',
+  strComplementCartaPorte: 'Complemento Carta Porte (STR)',
+  dhdComplementCartaPorte: 'Complemento Carta Porte (DHD)',
+  strPreinvoiceKm: 'Km Pre-factura (STR)',
+  dhdPreinvoiceKm: 'Km Pre-factura (DHD)',
+  strKmTraveled: 'Km Recorridos (STR)',
+  dhdKmTraveled: 'Km Recorridos (DHD)',
+  strDiesel: 'Diesel (STR)',
+  dhdDiesel: 'Diesel (DHD)',
+  strCasetas: 'Casetas (STR)',
+  dhdCasetas: 'Casetas (DHD)',
+  strTotalInvoice: 'Total Factura (STR)',
+  dhdTotalInvoice: 'Total Factura (DHD)',
+  holcimExpensesReviewed: 'Gastos Revisados (Holcim)',
+  holcimRemision: 'Remisión (Holcim)',
+  holcimFactura: 'Factura (Holcim)',
+  barichonExpensesReviewed: 'Gastos Revisados (Barichón)',
+  barichonTicket: 'Ticket (Barichón)',
+  barichonGrossWeight: 'Peso Bruto (Barichón)',
+  barichonTareWeight: 'Tara (Barichón)',
+  barichonUnloading: 'Maniobra (Barichón)',
+  barichonRemision: 'Remisión (Barichón)',
+  barichonMaterial: 'Material (Barichón)',
+  barichonFactura: 'Factura (Barichón)',
+  barichonPo: 'PO (Barichón)',
+  barichonTotal: 'Total (Barichón)',
+  coordinatorName: 'Coordinador',
+  forceUnitAssignment: 'Asignación Forzada de Unidad',
 }
 
 function normalizeText(value: string) {

@@ -9,7 +9,6 @@ import { Layers } from 'lucide-react'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { ActionFeedback } from '@/src/core/presentation/components/molecules/ActionFeedback'
 import { Wizard, type WizardStep } from '@/src/core/presentation/components/organisms/wizard'
-import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { usePoolMutations } from '@/src/features/fleet/presentation/hooks/use-pools'
@@ -96,15 +95,6 @@ export function ClientPoolWizard({ isOpen, onClose, clientId, clientLabel }: Cli
               <Input id="description" placeholder="Ej. Dedicado a CEDIS MTY" {...register('description')} />
             </div>
           </div>
-
-          <WizardFooter
-            isFirstStep
-            isLastStep
-            onCancel={handleClose}
-            onNext={handleFinish}
-            isSubmitting={createPool.isPending}
-            isNextDisabled={createPool.isPending}
-          />
         </div>
       ),
     },
@@ -136,6 +126,9 @@ export function ClientPoolWizard({ isOpen, onClose, clientId, clientLabel }: Cli
           steps={steps}
           activeStep={0}
           size="lg"
+          showFooter
+          onFinish={handleFinish}
+          isSubmitting={createPool.isPending}
         />
       )}
     </AnimatePresence>

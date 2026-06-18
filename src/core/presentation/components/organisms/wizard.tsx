@@ -8,12 +8,17 @@ import React from 'react'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 import { Check, X, Users } from 'lucide-react'
+import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
+import { ConfirmDialog } from '@/src/core/presentation/components/molecules/confirm-dialog'
 
 export interface WizardStep {
   id: string
   title: string
   description?: string
   content: React.ReactNode
+  onNext?: () => void | Promise<void>
+  onBack?: () => void | Promise<void>
+  nextLabel?: string
 }
 
 export interface WizardProps {
@@ -28,6 +33,12 @@ export interface WizardProps {
   onStepSelect?: (stepIndex: number) => void
   className?: string
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
+  showFooter?: boolean
+  onFinish?: () => void | Promise<void>
+  isSubmitting?: boolean
+  canFastFinish?: boolean
+  dirtyFields?: Record<string, unknown>
+  fieldDictionary?: Record<string, string>
 }
 
 export function Wizard({
@@ -41,7 +52,39 @@ export function Wizard({
   onStepSelect,
   className,
   size = 'lg',
+  showFooter = false,
+  onFinish,
+  isSubmitting = false,
+  canFastFinish = false,
+  dirtyFields = {},
+  fieldDictionary = {},
 }: WizardProps) {
+  const [showFastFinishConfirm, setShowFastFinishConfirm] = React.useState(false)
+
+  const isFirstStep = activeStep === 0
+  const isLastStep = activeStep === steps.length - 1
+  const currentStep = steps[activeStep]
+
+  const handleNext = async () => {
+    if (currentStep?.onNext) {
+      await currentStep.onNext()
+    } else {
+      if (isLastStep) {
+        if (onFinish) await onFinish()
+      } else {
+        onStepSelect?.(activeStep + 1)
+      }
+    }
+  }
+
+  const handleBack = async () => {
+    if (currentStep?.onBack) {
+      await currentStep.onBack()
+    } else {
+      if (!isFirstStep) onStepSelect?.(activeStep - 1)
+    }
+  }
+
   return (
     <Dialog
       isOpen={isOpen}
@@ -145,9 +188,43 @@ export function Wizard({
       </div>
 
       {/* ── Step Content ── */}
-      <div className="flex-1 overflow-y-auto px-8 py-6 min-h-[320px]">
-        {steps[activeStep]?.content}
+      <div className="flex-1 overflow-y-auto px-8 py-6 min-h-[320px] flex flex-col">
+        <div className="flex-1">
+          {steps[activeStep]?.content}
+        </div>
+        {showFooter && (
+          <div className="mt-auto">
+            <WizardFooter
+              isFirstStep={isFirstStep}
+              isLastStep={isLastStep}
+              onCancel={onClose}
+              onNext={handleNext}
+              onBack={isFirstStep ? undefined : handleBack}
+              isSubmitting={isSubmitting}
+              canFastFinish={canFastFinish}
+              onFastFinish={() => setShowFastFinishConfirm(true)}
+              nextLabel={currentStep?.nextLabel}
+            />
+          </div>
+        )}
       </div>
+
+      {showFooter && (
+        <ConfirmDialog
+          isOpen={showFastFinishConfirm}
+          onClose={() => setShowFastFinishConfirm(false)}
+          onConfirm={async () => {
+            setShowFastFinishConfirm(false)
+            if (onFinish) await onFinish()
+          }}
+          title="Guardar Cambios"
+          description={`Has modificado los siguientes campos:\n${Object.keys(dirtyFields)
+            .map(k => '• ' + (fieldDictionary[k] || k))
+            .join('\n')}\n\n¿Deseas guardar los cambios ahora?`}
+          confirmLabel="Sí, Guardar"
+          cancelLabel="Cancelar"
+        />
+      )}
     </Dialog>
   )
 }

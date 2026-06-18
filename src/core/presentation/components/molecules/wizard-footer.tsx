@@ -12,6 +12,8 @@ export interface WizardFooterProps {
   isLastStep: boolean
   isNextDisabled?: boolean
   isSubmitting?: boolean
+  canFastFinish?: boolean
+  onFastFinish?: WizardFooterHandler
   nextLabel?: string
   backLabel?: string
   cancelLabel?: string
@@ -25,6 +27,8 @@ export function WizardFooter({
   isLastStep,
   isNextDisabled = false,
   isSubmitting = false,
+  canFastFinish = false,
+  onFastFinish,
   nextLabel = 'Siguiente',
   backLabel = 'Regresar',
   cancelLabel = 'Cancelar'
@@ -67,6 +71,17 @@ export function WizardFooter({
     }
   }
 
+  const handleFastFinish = async () => {
+    if (!onFastFinish) return
+    if (isBusy) return
+    setIsLocalSubmitting(true)
+    try {
+      await onFastFinish()
+    } finally {
+      setIsLocalSubmitting(false)
+    }
+  }
+
   return (
     <div className="flex items-center justify-between pt-6 mt-6 border-t border-outline-variant/30">
       <div>
@@ -100,15 +115,32 @@ export function WizardFooter({
             Finalizar
           </Button>
         ) : (
-          <Button 
-            variant="orange" 
-            onClick={handleNext} 
-            disabled={isNextBlocked}
-            className="min-w-[120px]"
-          >
-            {nextLabel}
-            <ArrowRight className="size-4 ml-2" />
-          </Button>
+          <>
+            {canFastFinish && onFastFinish && (
+              <Button 
+                variant="green" 
+                onClick={handleFastFinish} 
+                disabled={isBusy}
+                className="min-w-[120px]"
+              >
+                {isBusy ? (
+                  <span className="flex items-center justify-center size-4 rounded-full border-2 border-white/30 border-t-white animate-spin mr-2" />
+                ) : (
+                  <Check className="size-4 mr-2" />
+                )}
+                Guardar Cambios
+              </Button>
+            )}
+            <Button 
+              variant="orange" 
+              onClick={handleNext} 
+              disabled={isNextBlocked}
+              className="min-w-[120px]"
+            >
+              {nextLabel}
+              <ArrowRight className="size-4 ml-2" />
+            </Button>
+          </>
         )}
       </div>
     </div>

@@ -38,6 +38,7 @@ export interface TripsTableRowEntity {
   origin: string
   destination: string
   departureDate: string | null
+  actualDepartureDate: string | null
   status: TripStatus
   unitAssemblyId: string | null
   unitEconomicNumber: string | null
@@ -108,6 +109,7 @@ function mapToRowEntity(item: TripWithRelations): TripsTableRowEntity {
     origin: item.trip.origin ?? '',
     destination: item.trip.destination ?? '',
     departureDate: item.trip.departureDate ? item.trip.departureDate.toISOString() : null,
+    actualDepartureDate: item.trip.actualDepartureDate ? item.trip.actualDepartureDate.toISOString() : null,
     status: item.trip.status,
     unitAssemblyId: item.trip.unitAssemblyId,
     unitEconomicNumber: item.unitEconomicNumber,

@@ -10,9 +10,9 @@ import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { SearchableSelect } from '@/src/core/presentation/components/molecules/searchable-select'
 import { DateTimePicker24h } from '@/src/core/presentation/components/molecules/date-time-picker-24h'
-import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
+import { ConfirmDialog } from '@/src/core/presentation/components/molecules/confirm-dialog'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 import { useQuery } from '@tanstack/react-query'
 import { getEmployeesAction } from '@/src/features/hr/presentation/actions/employee.actions'
@@ -77,7 +77,7 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
     trigger,
     reset,
     setValue,
-    formState: { errors },
+    formState: { errors, isDirty, dirtyFields },
   } = useForm<AdvanceFormValues>({
     resolver: zodResolver(createExpenseAdvanceSchema),
     defaultValues: {
@@ -257,15 +257,13 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
           <Label htmlFor="assignedAt">Fecha y Hora</Label>
           <DateTimePicker24h 
             value={assignedAtValue} 
-            onChange={(val) => setValue('assignedAt', val, { shouldValidate: true })} 
+            onChange={(val) => setValue('assignedAt', val, { shouldValidate: true, shouldDirty: true })} 
             disabled={isView} 
             error={!!errors.assignedAt} 
           />
           {errors.assignedAt && <p className={errorClass}>{errors.assignedAt.message}</p>}
         </div>
       </div>
-
-      <WizardFooter isFirstStep isLastStep={false} onCancel={handleClose} onNext={goNext} />
     </div>
   )
 
@@ -298,22 +296,12 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
           {...register('notes', { setValueAs: (v) => (typeof v === 'string' ? (v.trim() === '' ? null : v.trim()) : null) })}
         />
       </div>
-
-      <WizardFooter
-        isFirstStep={false}
-        isLastStep
-        onCancel={handleClose}
-        onBack={() => setActiveStep(0)}
-        onNext={isView ? handleClose : onFinish}
-        nextLabel={isView ? 'Cerrar' : undefined}
-        isSubmitting={createAdvance.isPending || updateAdvance.isPending}
-      />
     </div>
   )
 
   const steps: WizardStep[] = [
-    { id: 'adv-1', title: 'Asignación', content: step1 },
-    { id: 'adv-2', title: 'Vínculo', content: step2 },
+    { id: 'adv-1', title: 'Asignación', content: step1, onNext: goNext },
+    { id: 'adv-2', title: 'Vínculo', content: step2, onNext: isView ? handleClose : onFinish, nextLabel: isView ? 'Cerrar' : undefined },
   ]
 
   return (
@@ -326,7 +314,14 @@ export function ExpenseAdvanceWizard({ isOpen, onClose, advanceRow, mode = 'crea
         icon={<HandCoins className="size-5" />}
         steps={steps}
         activeStep={activeStep}
+        onStepSelect={setActiveStep}
         size="lg"
+        showFooter
+        onFinish={onFinish}
+        isSubmitting={createAdvance.isPending || updateAdvance.isPending}
+        canFastFinish={isEdit && isDirty}
+        dirtyFields={dirtyFields}
+        fieldDictionary={EXPENSE_FIELD_DICTIONARY}
       />
 
       <Dialog
@@ -369,5 +364,15 @@ function formatTripFolio(t: TripWithRelations) {
   if (t.trip.folio) return t.trip.folio
   if (t.trip.tripNumber !== null) return `VJE-${String(t.trip.tripNumber).padStart(6, '0')}`
   return t.trip.id
+}
+
+const EXPENSE_FIELD_DICTIONARY: Record<string, string> = {
+  tripId: 'Viaje',
+  unitAssemblyId: 'Unidad (Ensamblado)',
+  operatorId: 'Operador',
+  amount: 'Monto',
+  method: 'Método de Pago',
+  assignedAt: 'Fecha y Hora',
+  notes: 'Notas',
 }
 

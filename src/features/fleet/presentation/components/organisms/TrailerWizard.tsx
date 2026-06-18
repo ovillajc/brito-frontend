@@ -15,7 +15,6 @@ import { Disc3, PenLine } from 'lucide-react'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { ActionFeedback } from '@/src/core/presentation/components/molecules/ActionFeedback'
 import { Wizard, WizardStep } from '@/src/core/presentation/components/organisms/wizard'
-import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { createTrailerSchema, CreateTrailerInput } from '../../../domain/schemas/trailer.schema'
@@ -40,6 +39,21 @@ const STATUS_OPTIONS: { label: string; value: vehicleStatus }[] = [
   { label: 'Asignada', value: 'assigned' },
 ]
 
+const TRAILER_FIELD_DICTIONARY: Record<string, string> = {
+  economicNumber: 'Número Económico',
+  plates: 'Placas',
+  serialNumber: 'Número de Serie (VIN)',
+  insurancePolicy: 'Póliza de Seguro',
+  companyProfileId: 'Perfil de Compañía',
+  trailerModelId: 'Modelo de Remolque',
+  status: 'Estado',
+  sizeFt: 'Tamaño Efectivo (Pies)',
+  continuousRefrigeratedYield: 'Refrigerado (Contínuo)',
+  continuousFrozenYield: 'Congelado (Contínuo)',
+  ssRefrigeratedYield: 'Refrigerado (Start/Stop)',
+  ssFrozenYield: 'Congelado (Start/Stop)',
+}
+
 /**
  * Wizard multi-paso para crear o editar un Remolque.
  */
@@ -60,7 +74,7 @@ export function TrailerWizard({ isOpen, onClose, trailer }: TrailerWizardProps) 
     handleSubmit,
     trigger,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty, dirtyFields },
   } = useForm<CreateTrailerInput>({
     resolver: zodResolver(createTrailerSchema),
     defaultValues: {
@@ -206,7 +220,6 @@ export function TrailerWizard({ isOpen, onClose, trailer }: TrailerWizardProps) 
           {errors.trailerModelId && <p className="text-xs text-red-500">{errors.trailerModelId.message}</p>}
         </div>
       </div>
-      <WizardFooter isFirstStep isLastStep={false} onCancel={handleClose} onNext={goNext} />
     </div>
   )
 
@@ -248,7 +261,6 @@ export function TrailerWizard({ isOpen, onClose, trailer }: TrailerWizardProps) 
           {errors.companyProfileId && <p className="text-xs text-red-500">{errors.companyProfileId.message}</p>}
         </div>
       </div>
-      <WizardFooter isFirstStep={false} isLastStep={false} onCancel={handleClose} onBack={goBack} onNext={goNext} />
     </div>
   )
 
@@ -292,20 +304,12 @@ export function TrailerWizard({ isOpen, onClose, trailer }: TrailerWizardProps) 
           </div>
         </div>
       </div>
-      <WizardFooter
-        isFirstStep={false}
-        isLastStep
-        onCancel={handleClose}
-        onBack={goBack}
-        onNext={handleFinish}
-        isSubmitting={isSubmitting}
-      />
     </div>
   )
 
   const steps: WizardStep[] = [
-    { id: '1', title: 'Unidad', content: step1Content },
-    { id: '2', title: 'Documentación', content: step2Content },
+    { id: '1', title: 'Unidad', content: step1Content, onNext: goNext },
+    { id: '2', title: 'Documentación', content: step2Content, onNext: goNext },
     { id: '3', title: 'Especificaciones', content: step3Content },
   ]
 
@@ -335,9 +339,17 @@ export function TrailerWizard({ isOpen, onClose, trailer }: TrailerWizardProps) 
           icon={isEdit ? <PenLine className="size-5" /> : <Disc3 className="size-5" />}
           steps={steps}
           activeStep={activeStep}
+          onStepSelect={setActiveStep}
           size="lg"
+          showFooter
+          onFinish={handleFinish}
+          isSubmitting={isSubmitting}
+          canFastFinish={isEdit && isDirty}
+          dirtyFields={dirtyFields}
+          fieldDictionary={TRAILER_FIELD_DICTIONARY}
         />
       )}
     </AnimatePresence>
   )
 }
+  
