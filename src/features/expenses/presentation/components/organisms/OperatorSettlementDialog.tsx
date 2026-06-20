@@ -13,9 +13,13 @@ import {
   useExpenseAdvances,
   useLinkExpenseToSettlement,
   useUnlinkExpenseFromSettlement,
+  useTripExpenseAssignmentKpis,
 } from '@/src/features/expenses/presentation/hooks/use-expense-assignments'
 import { toast } from 'sonner'
 import { ExpenseWizard } from './ExpenseForm'
+import { SegmentedControl } from '@/src/core/presentation/components/ui/segmented-control'
+import { TripSettlementCard } from './TripSettlementCard'
+import type { TripExpenseAssignmentKpiEntity } from '@/src/features/expenses/domain/entities/expense-assignment-entity'
 
 const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 })
 const fmt = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' })
@@ -28,6 +32,8 @@ interface OperatorSettlementDialogProps {
   children?: React.ReactNode
   /** Gastos sin settlement_id para el panel "vincular existente" */
   unlinkedExpenses?: { id: string; description: string; amount: number; expenseDate?: string }[]
+  /** Callback para abrir la liquidación de un viaje específico */
+  onSelectTrip?: (trip: TripExpenseAssignmentKpiEntity) => void
 }
 
 export function OperatorSettlementDialog({
@@ -36,22 +42,35 @@ export function OperatorSettlementDialog({
   settlement,
   children,
   unlinkedExpenses = [],
+  onSelectTrip,
 }: OperatorSettlementDialogProps) {
   const closeSettlement = useCloseOperatorSettlement()
   const linkExpense = useLinkExpenseToSettlement()
   const unlinkExpense = useUnlinkExpenseFromSettlement()
   const advancesQuery = useExpenseAdvances()
   const advances = advancesQuery.data ?? []
+  const tripKpisQuery = useTripExpenseAssignmentKpis()
 
   const [notes, setNotes] = useState('')
   const [showLinkPanel, setShowLinkPanel] = useState(false)
   const [isExpenseWizardOpen, setIsExpenseWizardOpen] = useState(false)
+  const [mode, setMode] = useState<'general' | 'trip'>('general')
 
   // Adelantos del operador en el período del ajuste
   const settlementAdvances = useMemo(() => {
     if (!settlement) return []
     return advances.filter((a) => a.operatorId === settlement.operatorId)
   }, [advances, settlement])
+
+  // Viajes del operador
+  const operatorTrips = useMemo(() => {
+    if (!settlement) return []
+    return (tripKpisQuery.data ?? []).filter(
+      (t) => t.operatorId === settlement.operatorId
+    )
+  }, [tripKpisQuery.data, settlement])
+
+  const pendingTrips = useMemo(() => operatorTrips.filter((t) => !t.isSettled), [operatorTrips])
 
   const handleClose = () => {
     setNotes('')
@@ -135,8 +154,21 @@ export function OperatorSettlementDialog({
           )}
         </div>
 
-        {/* Resumen financiero + adelantos */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="flex justify-center mb-4">
+          <SegmentedControl
+            options={[
+              { value: 'general', label: 'De manera general' },
+              { value: 'trip', label: 'Por viaje' },
+            ]}
+            value={mode}
+            onChange={(val) => setMode(val as 'general' | 'trip')}
+          />
+        </div>
+
+        {mode === 'general' ? (
+          <>
+            {/* Resumen financiero + adelantos */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Card balance */}
           <div className="p-4 rounded-2xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
             <p className="text-sm font-semibold text-stone-900 dark:text-zinc-100">Resumen</p>
@@ -182,6 +214,34 @@ export function OperatorSettlementDialog({
             </div>
           </div>
         </div>
+
+        {/* Viajes pendientes */}
+        {pendingTrips.length > 0 && (
+          <div className="p-4 rounded-2xl border border-stone-200 dark:border-zinc-800 bg-amber-50/50 dark:bg-amber-900/10">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="size-5 text-amber-600 dark:text-amber-500" />
+              <p className="text-sm font-semibold text-stone-900 dark:text-zinc-100">
+                Viajes con liquidación pendiente ({pendingTrips.length})
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {pendingTrips.map((t) => {
+                const tripLabel = t.tripNumber != null
+                  ? `VJE-${String(t.tripNumber).padStart(6, '0')}`
+                  : (t.folio ?? `VJE-${t.tripId.slice(0, 8)}`)
+                return (
+                  <div key={t.tripId} className="p-3 rounded-xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center">
+                    <div>
+                      <p className="text-xs font-bold text-stone-900 dark:text-zinc-100">{tripLabel}</p>
+                      <p className="text-[11px] text-stone-500 dark:text-zinc-500 mt-0.5">Balance: {money.format(t.balanceAmount)}</p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] bg-stone-50 dark:bg-zinc-800">Por liquidar</Badge>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Gastos vinculados + paneles */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -305,6 +365,37 @@ export function OperatorSettlementDialog({
             )}
           </div>
         </div>
+        </>
+        ) : (
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-amber-600 dark:text-amber-500" />
+              <p className="text-sm font-semibold text-stone-900 dark:text-zinc-100">
+                Viajes del Operador ({operatorTrips.length})
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-6">
+              {operatorTrips.length === 0 ? (
+                <div className="col-span-full p-6 rounded-2xl border border-stone-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/40 flex flex-col items-center justify-center text-stone-500 dark:text-zinc-500">
+                  <p>No hay viajes registrados para este operador en este período.</p>
+                </div>
+              ) : (
+                operatorTrips.map((t) => {
+                  const advance = advances.find(a => a.tripId === t.tripId)
+                  return (
+                    <TripSettlementCard
+                      key={t.tripId}
+                      advance={advance ?? ({ id: '', amount: t.assignedAmount, operatorId: t.operatorId ?? '', operatorName: settlement.operatorName, tripId: t.tripId, tripFolio: t.folio, assignedAt: settlement.openedAt.toISOString(), method: 'transfer', notes: null } as any)}
+                      canManage={!isClosed}
+                      onClick={() => onSelectTrip?.(t)}
+                    />
+                  )
+                })
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Wizard para crear un nuevo gasto desde el dialog */}
