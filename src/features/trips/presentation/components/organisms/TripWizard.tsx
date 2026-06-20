@@ -246,7 +246,8 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
     'solinmar',
     'soluciones integrales maritimas',
   ].some((k) => normalizedClientLabel.includes(k))
-  const isBarichon = isBarichonClient
+  // Cualquier cliente que no sea Holcim ni Walmart se tratará con el flujo de "Barichón"
+  const isBarichon = !isHolcim && !isWalmart
 
   useEffect(() => {
     if (selectedUnitNumber && !isEdit) {

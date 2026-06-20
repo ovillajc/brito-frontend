@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { HandCoins, Plus, Trash2, Download, Search, ChevronLeft, ChevronRight, Unlink } from 'lucide-react'
+import { HandCoins, Plus, Trash2, Download, Search, ChevronLeft, ChevronRight, Unlink, User, Truck } from 'lucide-react'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { Input } from '@/src/core/presentation/components/ui/input'
@@ -10,14 +10,20 @@ import {
   useDeleteOperatorSettlement,
   useReopenOperatorSettlement,
   useUnlinkExpenseFromSettlement,
+  useExpenseAdvances,
+  useTripExpenseAssignmentKpis,
 } from '../../hooks/use-expense-assignments'
 import { useExpenses } from '../../hooks/use-expenses'
 import { GetExpenses } from '../../../application/GetExpenses'
 import { SupabaseExpensesRepository } from '../../../infrastructure/repositories/SupabaseExpensesRepository'
 import type { OperatorSettlementKpiEntity } from '../../../domain/entities/operator-settlement-entity'
+import type { TripExpenseAssignmentKpiEntity } from '../../../domain/entities/expense-assignment-entity'
 import type { ExpenseEntity } from '../../../domain/entities/expense-entity'
 import { OperatorSettlementDialog } from './OperatorSettlementDialog'
+import { TripSettlementDialog } from './TripSettlementDialog'
 import { OperatorSettlementCard } from './OperatorSettlementCard'
+import { TripSettlementCard } from './TripSettlementCard'
+import { SegmentedControl } from '@/src/core/presentation/components/ui/segmented-control'
 import * as XLSX from 'xlsx'
 import { getEmployeesAction } from '@/src/features/hr/presentation/actions/employee.actions'
 import { useQuery } from '@tanstack/react-query'
@@ -38,8 +44,13 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
   const deleteSettlementMutation = useDeleteOperatorSettlement()
   const reopenSettlementMutation = useReopenOperatorSettlement()
   const unlinkExpenseMutation = useUnlinkExpenseFromSettlement()
+  const advancesQuery = useExpenseAdvances()
+  const tripKpisQuery = useTripExpenseAssignmentKpis()
+
+  const [activeSubTab, setActiveSubTab] = useState<'operator' | 'trip'>('operator')
 
   const [selectedSettlement, setSelectedSettlement] = useState<OperatorSettlementKpiEntity | null>(null)
+  const [selectedTripKpi, setSelectedTripKpi] = useState<TripExpenseAssignmentKpiEntity | null>(null)
   const [isSettlementOpen, setIsSettlementOpen] = useState(false)
   const [settlementToDelete, setSettlementToDelete] = useState<OperatorSettlementKpiEntity | null>(null)
   const [isCreateSettlementOpen, setIsCreateSettlementOpen] = useState(false)
@@ -51,9 +62,12 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
   }, [kpis, selectedSettlement])
 
   const linkedExpensesQuery = useExpenses(
-    { settlementId: activeSettlement?.settlementId },
-    { enabled: !!activeSettlement }
+    activeSettlement ? { settlementId: activeSettlement.settlementId, limit: 100 } : undefined
   )
+  const tripExpensesQuery = useExpenses(
+    selectedTripKpi ? { tripId: selectedTripKpi.tripId, limit: 100 } : undefined
+  )
+  const tripExpenses = tripExpensesQuery.data ?? []
 
   const unlinkedExpensesQuery = useExpenses(
     { onlyUnlinked: true, operatorId: activeSettlement?.operatorId },
@@ -237,50 +251,88 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
     }
   }
 
+  const linkedAdvances = useMemo(() => {
+    let advances = (advancesQuery.data ?? []).filter((a) => !!a.tripId)
+    if (normalizedSettlementSearch) {
+      advances = advances.filter((a) => {
+        const search = normalizedSettlementSearch
+        return (
+          a.operatorName?.toLowerCase().includes(search) ||
+          a.tripFolio?.toLowerCase().includes(search) ||
+          a.operatorId?.toLowerCase().includes(search)
+        )
+      })
+    }
+    return advances
+  }, [advancesQuery.data, normalizedSettlementSearch])
+
   return (
-    <>
-      <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-bold text-stone-900 dark:text-zinc-100">Cuentas pendientes</h2>
-            <p className="text-sm text-stone-500 dark:text-zinc-500">
-              Ajustes de cuentas abiertos por operador.
-            </p>
+    <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {/* Cabecera unificada */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-2">
+        <div>
+          <h2 className="text-base font-bold text-stone-900 dark:text-zinc-100">
+            {activeSubTab === 'operator' ? 'Ajustes por Operador' : 'Ajustes por Viaje'}
+          </h2>
+          <p className="text-sm text-stone-500 dark:text-zinc-500">
+            {activeSubTab === 'operator' 
+              ? 'Ajustes de cuentas abiertos y cerrados por operador.' 
+              : 'Ajustes de cuentas específicos para un viaje.'}
+          </p>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-2">
+          <SegmentedControl
+            value={activeSubTab}
+            onChange={(v) => setActiveSubTab(v)}
+            options={[
+              { value: 'operator', label: 'Operador', icon: User },
+              { value: 'trip', label: 'Viaje', icon: Truck },
+            ]}
+          />
+          
+          <div className="relative w-full sm:w-56 ml-0 sm:ml-2">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
+            <Input
+              value={settlementSearch}
+              onChange={(e) => {
+                setSettlementSearch(e.target.value)
+                setOpenSettlementsPage(1)
+                setClosedSettlementsPage(1)
+              }}
+              placeholder={activeSubTab === 'operator' ? "Buscar operador..." : "Buscar operador o viaje..."}
+              className="h-9 rounded-xl border-stone-200 pl-9 dark:border-zinc-800"
+            />
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <div className="relative w-full sm:w-56">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
-              <Input
-                value={settlementSearch}
-                onChange={(e) => {
-                  setSettlementSearch(e.target.value)
-                  setOpenSettlementsPage(1)
-                  setClosedSettlementsPage(1)
-                }}
-                placeholder="Buscar operador..."
-                className="h-9 rounded-xl border-stone-200 pl-9 dark:border-zinc-800"
-              />
-            </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExportExcel}
+            className="gap-1 rounded-xl bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-800 text-stone-700 dark:text-zinc-300"
+          >
+            <Download className="size-4" /> Exportar
+          </Button>
+          {canManage && (
             <Button
               size="sm"
-              variant="outline"
-              onClick={handleExportExcel}
-              className="gap-1 rounded-xl bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-800 text-stone-700 dark:text-zinc-300"
+              onClick={() => setIsCreateSettlementOpen(true)}
+              className="gap-1 rounded-xl bg-[#1a5c3a] hover:bg-[#1a5c3a]/90 text-white"
             >
-              <Download className="size-4" /> Exportar
+              <Plus className="size-4" /> Nuevo Ajuste
             </Button>
-            {canManage && (
-              <Button
-                size="sm"
-                onClick={() => setIsCreateSettlementOpen(true)}
-                className="gap-1 rounded-xl bg-[#1a5c3a] hover:bg-[#1a5c3a]/90 text-white"
-              >
-                <Plus className="size-4" /> Nuevo Ajuste
-              </Button>
-            )}
+          )}
+        </div>
+      </div>
+
+      {activeSubTab === 'operator' && (
+        <>
+          {/* Cuentas abiertas */}
+          <div className="flex items-center justify-between mt-2">
+            <div>
+              <h3 className="text-sm font-bold text-stone-900 dark:text-zinc-100">Cuentas pendientes</h3>
+            </div>
             <Badge variant="secondary">{filteredOpenSettlements.length}/{openSettlements.length}</Badge>
           </div>
-        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-6">
           {filteredOpenSettlements.length === 0 ? (
@@ -413,13 +465,92 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
             </div>
           </div>
         )}
-      </div>
+      </>
+    )}
+
+    {activeSubTab === 'trip' && (
+        <>
+          <div className="flex items-center justify-between mt-2">
+            <div>
+              <h3 className="text-sm font-bold text-stone-900 dark:text-zinc-100">Viajes con asignación</h3>
+            </div>
+            <Badge variant="secondary">{linkedAdvances.length}</Badge>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-6">
+            {linkedAdvances.length === 0 ? (
+              <div className="col-span-full p-6 rounded-2xl border border-stone-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/40 flex flex-col items-center justify-center text-stone-500 dark:text-zinc-500">
+                <Truck className="h-8 w-8 mb-2 opacity-20" />
+                <p>No hay cuentas por viaje pendientes de ajustar.</p>
+              </div>
+            ) : (
+              linkedAdvances.map((k) => (
+                <TripSettlementCard
+                  key={k.id}
+                  advance={k}
+                  canManage={canManage}
+                  onClick={() => {
+                    if (!k.tripId) return
+                    const foundKpi = tripKpisQuery.data?.find((t) => t.tripId === k.tripId)
+                    if (foundKpi) {
+                      setSelectedTripKpi(foundKpi)
+                    } else {
+                      toast.error('No se encontró el viaje asociado')
+                    }
+                  }}
+                />
+              ))
+            )}
+          </div>
+        </>
+      )}
+
+      <TripSettlementDialog
+        isOpen={!!selectedTripKpi}
+        onClose={() => setSelectedTripKpi(null)}
+        trip={selectedTripKpi}
+      >
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {tripExpensesQuery.isLoading ? (
+            <p className="text-sm text-stone-500 dark:text-zinc-500 p-4 text-center">Cargando gastos...</p>
+          ) : tripExpenses.length === 0 ? (
+            <p className="text-sm text-stone-500 dark:text-zinc-500 p-4 text-center">
+              No hay gastos vinculados a este viaje.
+            </p>
+          ) : (
+            tripExpenses.map((exp: ExpenseEntity) => (
+              <div
+                key={exp.id}
+                className="flex items-center justify-between p-3 rounded-xl border border-stone-200 dark:border-zinc-700 bg-stone-50/50 dark:bg-zinc-800/50"
+              >
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-stone-900 dark:text-zinc-100 truncate max-w-[200px]">
+                    {exp.description}
+                  </span>
+                  <span className="text-[11px] text-stone-500 dark:text-zinc-500">
+                    {exp.categoryName} · {exp.expenseDate ? new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' }).format(new Date(exp.expenseDate)) : '—'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-bold text-stone-900 dark:text-zinc-100">
+                    {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(exp.amount)}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </TripSettlementDialog>
 
       <OperatorSettlementDialog
         isOpen={isSettlementOpen}
         onClose={() => { setIsSettlementOpen(false); setSelectedSettlement(null) }}
         settlement={activeSettlement}
         unlinkedExpenses={unlinkedExpensesFormatted}
+        onSelectTrip={(trip) => {
+          setIsSettlementOpen(false);
+          setSelectedTripKpi(trip);
+        }}
       >
         {activeSettlement && (
           <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -552,6 +683,6 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }
