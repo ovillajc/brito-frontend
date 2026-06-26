@@ -13,6 +13,8 @@ export interface OperatorSettlementEntity {
   closedAt: Date | null
   createdAt: Date
   updatedAt: Date | null
+  /** Saldo previo al sistema: positivo = operador debe a empresa; negativo = empresa debe al operador */
+  previousBalance: number
 }
 
 export interface OperatorSettlementKpiEntity {
@@ -27,7 +29,10 @@ export interface OperatorSettlementKpiEntity {
   createdAt: Date
   assignedAmount: number
   spentAmount: number
+  /** Balance de asignaciones (assigned - spent + previousBalance) */
   balanceAmount: number
+  /** Saldo previo al sistema: positivo = operador debe a empresa; negativo = empresa debe al operador */
+  previousBalance: number
   isSettled: boolean
   expenseCount: number
   advanceCount: number

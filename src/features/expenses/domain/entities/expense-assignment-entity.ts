@@ -33,6 +33,7 @@ export interface TripExpenseAssignmentKpiEntity {
   tripStatus: string
   unitAssemblyId: string | null
   operatorId: string | null
+  operatorName?: string | null
   assignedAmount: number
   spentAmount: number
   balanceAmount: number

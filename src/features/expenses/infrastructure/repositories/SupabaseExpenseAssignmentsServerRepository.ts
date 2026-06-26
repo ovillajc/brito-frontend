@@ -148,6 +148,36 @@ export class SupabaseExpenseAssignmentsServerRepository implements IExpenseAssig
     }
   }
 
+  async deleteTripSettlement(tripId: string): Promise<Either<Failure, void>> {
+    try {
+      const supabase = await createClient()
+      const { error } = await supabase
+        .from('expense_trip_settlements')
+        .delete()
+        .eq('trip_id', tripId)
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: undefined }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al eliminar comprobación' } }
+    }
+  }
+
+  async unlinkExpenseFromTrip(expenseId: string): Promise<Either<Failure, void>> {
+    try {
+      const supabase = await createClient()
+      const { error } = await supabase
+        .from('expenses')
+        .update({ trip_id: null })
+        .eq('id', expenseId)
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: undefined }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al desvincular gasto del viaje' } }
+    }
+  }
+
   // ── Ajuste de cuentas por Operador (nuevo flujo) ──────────────────────────
   async listOperatorSettlementKpis(limit: number, onlyOpen?: boolean): Promise<Either<Failure, OperatorSettlementKpiEntity[]>> {
     try {
@@ -179,6 +209,7 @@ export class SupabaseExpenseAssignmentsServerRepository implements IExpenseAssig
           receipt_url: input.receiptUrl ?? null,
           settled_by: settledBy,
           status: 'open',
+          previous_balance: input.previousBalance ?? 0,
         })
         .select('*')
         .single()
@@ -227,6 +258,7 @@ export class SupabaseExpenseAssignmentsServerRepository implements IExpenseAssig
           receiptUrl: data.receipt_url,
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at),
+          previousBalance: Number((data as Record<string, unknown>).previous_balance ?? 0),
         },
       }
     } catch {
@@ -269,6 +301,7 @@ export class SupabaseExpenseAssignmentsServerRepository implements IExpenseAssig
           receiptUrl: data.receipt_url,
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at),
+          previousBalance: Number((data as Record<string, unknown>).previous_balance ?? 0),
         },
       }
     } catch {

@@ -27,6 +27,7 @@ export type TripExpenseAssignmentKpiRow = {
   trip_status: string
   unit_assembly_id: string | null
   operator_id: string | null
+  operator_name?: string | null
   assigned_amount: number | null
   spent_amount: number | null
   balance_amount: number | null
@@ -73,6 +74,7 @@ export class ExpenseAssignmentMapper {
       tripStatus: row.trip_status,
       unitAssemblyId: row.unit_assembly_id,
       operatorId: row.operator_id,
+      operatorName: row.operator_name ?? null,
       assignedAmount: Number(row.assigned_amount ?? 0),
       spentAmount: Number(row.spent_amount ?? 0),
       balanceAmount: Number(row.balance_amount ?? 0),

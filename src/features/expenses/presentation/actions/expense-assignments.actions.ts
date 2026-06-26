@@ -7,6 +7,7 @@ import { SupabaseExpenseAssignmentsServerRepository } from '@/src/features/expen
 import { CreateExpenseAdvance } from '@/src/features/expenses/application/CreateExpenseAdvance'
 import { LinkExpenseAdvanceToTrip } from '@/src/features/expenses/application/LinkExpenseAdvanceToTrip'
 import { CreateTripSettlement } from '@/src/features/expenses/application/CreateTripSettlement'
+import { DeleteTripSettlement } from '@/src/features/expenses/application/DeleteTripSettlement'
 import { UpdateExpenseAdvance } from '@/src/features/expenses/application/UpdateExpenseAdvance'
 import { DeleteExpenseAdvance } from '@/src/features/expenses/application/DeleteExpenseAdvance'
 import { CreateOperatorSettlement } from '@/src/features/expenses/application/CreateOperatorSettlement'
@@ -79,6 +80,25 @@ export async function createTripSettlementAction(
       await deleteR2ObjectByPublicUrl(input.receiptUrl)
     }
   }
+  return result
+}
+
+export async function deleteTripSettlementAction(
+  tripId: string
+): Promise<Either<Failure, void>> {
+  const result = await DeleteTripSettlement(repo, tripId)
+  if (result.ok) {
+    revalidatePath('/expenses/assignments')
+  }
+  return result
+}
+
+export async function unlinkExpenseFromTripAction(
+  expenseId: string
+): Promise<Either<Failure, void>> {
+  const { UnlinkExpenseFromTrip } = await import('@/src/features/expenses/application/UnlinkExpenseFromTrip')
+  const result = await UnlinkExpenseFromTrip(repo, expenseId)
+  if (result.ok) revalidatePath('/expenses/assignments')
   return result
 }
 

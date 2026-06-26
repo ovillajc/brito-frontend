@@ -88,6 +88,12 @@ export class SupabaseExpenseAssignmentsRepository implements IExpenseAssignments
   async createSettlement(_i: CreateTripSettlementInput, _b: string | null): Promise<Either<Failure, TripExpenseSettlementEntity>> {
     return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
   }
+  async deleteTripSettlement(_tripId: string): Promise<Either<Failure, void>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
+  }
+  async unlinkExpenseFromTrip(_expenseId: string): Promise<Either<Failure, void>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
+  }
   async createOperatorSettlement(_i: CreateOperatorSettlementInput, _b: string | null): Promise<Either<Failure, OperatorSettlementEntity>> {
     return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
   }

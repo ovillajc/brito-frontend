@@ -26,6 +26,7 @@
 import React, { useState } from 'react'
 import { Edit2, Trash2, Eye, ArrowUp, ArrowDown, ChevronDown, Columns } from 'lucide-react'
 import { toast } from 'sonner'
+import { cn } from '@/src/core/infrastructure/utils/cn'
 import { Wizard } from '@/src/core/presentation/components/organisms/wizard'
 import {
   Table,
@@ -150,6 +151,16 @@ export interface CrudColumn<T> {
   sortable?: boolean
 }
 
+export interface CrudRowAction<T> {
+  label: string | ((item: T) => string)
+  icon: React.ReactNode | ((item: T) => React.ReactNode)
+  onClick: (item: T) => void
+  variant?: 'ghost' | 'outline'
+  className?: string | ((item: T) => string)
+  isVisible?: (item: T) => boolean
+  disabled?: (item: T) => boolean
+}
+
 /** Configuración del estado vacío cuando no hay datos. */
 export interface EmptyStateConfig {
   /** Componente de icono de Lucide a mostrar. */
@@ -226,8 +237,57 @@ interface CrudDataTableProps<T extends { id: string }> {
   /** Callback para exportar a Excel. Si no se provee, se usará una exportación genérica automática. */
   onExport?: (rows: T[]) => void
 
+  /** Acciones personalizadas por fila adicionales o en reemplazo de las estándar. */
+  rowActions?: CrudRowAction<T>[]
+
   /** Título opcional a mostrar en la parte superior de la tabla */
   title?: React.ReactNode
+}
+
+interface ActionIconButtonProps {
+  label: string
+  children: React.ReactNode
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void
+  variant?: 'ghost' | 'outline'
+  className?: string
+  disabled?: boolean
+}
+
+function ActionIconButton({
+  label,
+  children,
+  onClick,
+  variant = 'ghost',
+  className,
+  disabled = false,
+}: ActionIconButtonProps) {
+  return (
+    <div className="relative group/action">
+      <Button
+        variant={variant}
+        size="icon"
+        className={className}
+        disabled={disabled}
+        title={label}
+        aria-label={label}
+        onClick={onClick}
+      >
+        {children}
+      </Button>
+      <span
+        className={cn(
+          'pointer-events-none absolute bottom-full right-0 mb-2 whitespace-nowrap rounded-md',
+          'bg-stone-900 px-2 py-1 text-[10px] font-medium text-white shadow-md',
+          'opacity-0 translate-y-1 transition-all duration-150',
+          'group-hover/action:opacity-100 group-hover/action:translate-y-0',
+          'group-focus-within/action:opacity-100 group-focus-within/action:translate-y-0',
+          'dark:bg-zinc-100 dark:text-zinc-900'
+        )}
+      >
+        {label}
+      </span>
+    </div>
+  )
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -257,6 +317,7 @@ export function CrudDataTable<T extends { id: string }>({
   canManage = true,
   pageSize = 10,
   onExport,
+  rowActions,
   title,
 }: CrudDataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('')
@@ -356,7 +417,7 @@ export function CrudDataTable<T extends { id: string }>({
         return { key, col, enabled: false as const, config: undefined, mode: 'none' as const }
       })
       .filter((c) => c.enabled)
-  }, [autoSelectOptionsByKey, columnsWithKeys, data])
+  }, [autoSelectOptionsByKey, data, visibleColumnsWithKeys])
 
   React.useEffect(() => {
     setColumnFilters((prev) => {
@@ -381,7 +442,8 @@ export function CrudDataTable<T extends { id: string }>({
   const _onDelete = canManage ? onDelete : undefined
 
   // Total de columnas + columna de acciones si aplica
-  const hasRowActions = !!(onView || _onEdit || _onDelete)
+  const hasCustomRowActions = !!rowActions?.length
+  const hasRowActions = !!(onView || _onEdit || _onDelete || hasCustomRowActions)
   const totalCols = visibleColumnsWithKeys.length + (hasRowActions ? 1 : 0)
 
   const searchFilteredData = React.useMemo(() => {
@@ -575,33 +637,42 @@ export function CrudDataTable<T extends { id: string }>({
   }
 
   const EmptyIcon = emptyState.icon
+  const showToolbar =
+    !!title ||
+    !!searchFilter ||
+    filterableColumns.length > 0 ||
+    !!onExport ||
+    !!actionLabel ||
+    !!_onAction
 
   return (
     <div className={`bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-[20px] shadow-sm flex flex-col overflow-hidden ${className ?? ''}`}>
       {/* Toolbar */}
-      <div className="p-4 border-b border-stone-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/50">
-        {title && <div className="mb-4">{title}</div>}
-        <DataTableToolbar
-          searchPlaceholder={searchPlaceholder}
-          searchValue={searchFilter ? searchTerm : undefined}
-          onSearchChange={searchFilter ? setSearchTerm : undefined}
-          onFiltersClick={filterableColumns.length > 0 ? () => setAreColumnFiltersVisible((prev) => !prev) : undefined}
-          filtersCount={activeColumnFiltersCount}
-          actionLabel={canManage ? actionLabel : undefined}
-          onAction={_onAction}
-          onExport={handleExport}
-          extraActions={
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={() => setIsColumnsMenuOpen(true)}
-            >
-              <Columns className="size-4" />
-              Columnas
-            </Button>
-          }
-        />
-      </div>
+      {showToolbar ? (
+        <div className="p-4 border-b border-stone-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/50">
+          {title && <div className="mb-4">{title}</div>}
+          <DataTableToolbar
+            searchPlaceholder={searchPlaceholder}
+            searchValue={searchFilter ? searchTerm : undefined}
+            onSearchChange={searchFilter ? setSearchTerm : undefined}
+            onFiltersClick={filterableColumns.length > 0 ? () => setAreColumnFiltersVisible((prev) => !prev) : undefined}
+            filtersCount={activeColumnFiltersCount}
+            actionLabel={canManage ? actionLabel : undefined}
+            onAction={_onAction}
+            onExport={handleExport}
+            extraActions={
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => setIsColumnsMenuOpen(true)}
+              >
+                <Columns className="size-4" />
+                Columnas
+              </Button>
+            }
+          />
+        </div>
+      ) : null}
 
       {areColumnFiltersVisible && filterableColumns.length > 0 ? (
         <div className="border-b border-stone-200 dark:border-zinc-800 bg-stone-50/30 dark:bg-zinc-900/30 px-4 py-3">
@@ -727,9 +798,8 @@ export function CrudDataTable<T extends { id: string }>({
                         >
                           <div className="flex items-center justify-end gap-1">
                             {onView && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
+                              <ActionIconButton
+                                label="Ver detalle"
                                 className="size-8 text-stone-400 hover:text-stone-900 dark:hover:text-zinc-100"
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -737,12 +807,11 @@ export function CrudDataTable<T extends { id: string }>({
                                 }}
                               >
                                 <Eye className="size-3.5" />
-                              </Button>
+                              </ActionIconButton>
                             )}
                             {_onEdit && (!canEdit || canEdit(item)) && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
+                              <ActionIconButton
+                                label="Editar"
                                 className="size-8 text-stone-400 hover:text-stone-900 dark:hover:text-zinc-100"
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -750,12 +819,11 @@ export function CrudDataTable<T extends { id: string }>({
                                 }}
                               >
                                 <Edit2 className="size-3.5" />
-                              </Button>
+                              </ActionIconButton>
                             )}
                             {_onDelete && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
+                              <ActionIconButton
+                                label="Eliminar"
                                 className="size-8 text-stone-400 hover:text-red-600 dark:hover:text-red-400"
                                 disabled={isDeleting && pendingDeleteId === item.id}
                                 onClick={(e) => {
@@ -770,8 +838,31 @@ export function CrudDataTable<T extends { id: string }>({
                                       : ''
                                   }`}
                                 />
-                              </Button>
+                              </ActionIconButton>
                             )}
+                            {rowActions?.map((action, index) => {
+                              if (action.isVisible && !action.isVisible(item)) return null
+                              const label = typeof action.label === 'function' ? action.label(item) : action.label
+                              const icon = typeof action.icon === 'function' ? action.icon(item) : action.icon
+                              const customClassName =
+                                typeof action.className === 'function' ? action.className(item) : action.className
+
+                              return (
+                                <ActionIconButton
+                                  key={`${item.id}-${index}-${label}`}
+                                  label={label}
+                                  variant={action.variant ?? 'ghost'}
+                                  className={`size-8 ${customClassName ?? ''}`}
+                                  disabled={action.disabled?.(item) ?? false}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    action.onClick(item)
+                                  }}
+                                >
+                                  {icon}
+                                </ActionIconButton>
+                              )
+                            })}
                           </div>
                         </TableCell>
                       )}

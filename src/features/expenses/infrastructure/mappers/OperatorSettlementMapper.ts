@@ -11,6 +11,7 @@ export type OperatorSettlementRow = {
   closed_at: string | null
   created_at: string
   updated_at: string | null
+  previous_balance: number | null
 }
 
 export type OperatorSettlementKpiRow = {
@@ -23,6 +24,7 @@ export type OperatorSettlementKpiRow = {
   opened_at: string
   closed_at: string | null
   created_at: string
+  previous_balance: number | null
   assigned_amount: number | null
   spent_amount: number | null
   balance_amount: number | null
@@ -44,6 +46,7 @@ export class OperatorSettlementMapper {
       closedAt: row.closed_at ? new Date(row.closed_at) : null,
       createdAt: new Date(row.created_at),
       updatedAt: row.updated_at ? new Date(row.updated_at) : null,
+      previousBalance: Number(row.previous_balance ?? 0),
     }
   }
 
@@ -58,6 +61,7 @@ export class OperatorSettlementMapper {
       openedAt: new Date(row.opened_at),
       closedAt: row.closed_at ? new Date(row.closed_at) : null,
       createdAt: new Date(row.created_at),
+      previousBalance: Number(row.previous_balance ?? 0),
       assignedAmount: Number(row.assigned_amount ?? 0),
       spentAmount: Number(row.spent_amount ?? 0),
       balanceAmount: Number(row.balance_amount ?? 0),
