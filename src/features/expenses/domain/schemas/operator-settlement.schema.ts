@@ -4,6 +4,8 @@ export const createOperatorSettlementSchema = z.object({
   operatorId: z.string().uuid('Se requiere un operador válido'),
   notes: z.string().trim().nullable().optional(),
   receiptUrl: z.string().url().nullable().optional(),
+  /** Saldo previo: positivo = operador debe a empresa, negativo = empresa debe al operador */
+  previousBalance: z.coerce.number().default(0),
 })
 
 export type CreateOperatorSettlementInput = z.infer<typeof createOperatorSettlementSchema>

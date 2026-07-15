@@ -21,6 +21,8 @@ export interface IExpenseAssignmentsRepository {
   // ── KPIs por viaje (legacy) ────────────────────────────────────────────
   listTripKpis(limit: number): Promise<Either<Failure, TripExpenseAssignmentKpiEntity[]>>
   createSettlement(input: CreateTripSettlementInput, settledBy: string | null): Promise<Either<Failure, TripExpenseSettlementEntity>>
+  deleteTripSettlement(tripId: string): Promise<Either<Failure, void>>
+  unlinkExpenseFromTrip(expenseId: string): Promise<Either<Failure, void>>
 
   // ── Ajuste de cuentas por Operador (nuevo flujo) ───────────────────────
   listOperatorSettlementKpis(limit: number, onlyOpen?: boolean): Promise<Either<Failure, OperatorSettlementKpiEntity[]>>

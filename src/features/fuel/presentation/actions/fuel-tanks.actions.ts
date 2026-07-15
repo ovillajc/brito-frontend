@@ -179,6 +179,7 @@ export async function registerFuelTankPurchaseAction(
       expense_date: input.purchasedAt.toISOString(),
       description: input.description ?? 'Compra diésel (tanque)',
       receipt_url: null,
+      is_settleable: false,
       is_ai_classified: false,
       created_by: null,
     })

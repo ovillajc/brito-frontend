@@ -8,6 +8,8 @@ import { GetOperatorSettlementKpis } from '../../application/GetOperatorSettleme
 import {
   createExpenseAdvanceAction,
   createTripSettlementAction,
+  deleteTripSettlementAction,
+  unlinkExpenseFromTripAction,
   linkExpenseAdvanceToTripAction,
   updateExpenseAdvanceAction,
   deleteExpenseAdvanceAction,
@@ -129,6 +131,35 @@ export function useCreateTripSettlement() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['expenses', 'trip-assignment-kpis'] })
+    },
+  })
+}
+
+export function useDeleteTripSettlement() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (tripId: string) => {
+      const result = await deleteTripSettlementAction(tripId)
+      if (!result.ok) throw new Error(result.error.message)
+      return result.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses', 'trip-assignment-kpis'] })
+    },
+  })
+}
+
+export function useUnlinkExpenseFromTrip() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (expenseId: string) => {
+      const result = await unlinkExpenseFromTripAction(expenseId)
+      if (!result.ok) throw new Error(result.error.message)
+      return result.data
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['expenses'] })
+      await qc.invalidateQueries({ queryKey: ['expenses', 'trip-assignment-kpis'] })
     },
   })
 }

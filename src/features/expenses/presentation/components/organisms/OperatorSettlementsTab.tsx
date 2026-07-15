@@ -1,15 +1,18 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { HandCoins, Plus, Trash2, Download, Search, ChevronLeft, ChevronRight, Unlink, User, Truck } from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
+import { HandCoins, Trash2, Download, Search, ChevronLeft, ChevronRight, Unlink, User, Truck, Eye, RotateCcw } from 'lucide-react'
+import { cn } from '@/src/core/infrastructure/utils/cn'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { Input } from '@/src/core/presentation/components/ui/input'
+import { CrudDataTable, type CrudColumn, type CrudRowAction } from '@/src/core/presentation/components/organisms/CrudDataTable'
 import {
   useCreateOperatorSettlement,
   useDeleteOperatorSettlement,
   useReopenOperatorSettlement,
   useUnlinkExpenseFromSettlement,
+  useUnlinkExpenseFromTrip,
   useExpenseAdvances,
   useTripExpenseAssignmentKpis,
 } from '../../hooks/use-expense-assignments'
@@ -22,7 +25,7 @@ import type { ExpenseEntity } from '../../../domain/entities/expense-entity'
 import { OperatorSettlementDialog } from './OperatorSettlementDialog'
 import { TripSettlementDialog } from './TripSettlementDialog'
 import { OperatorSettlementCard } from './OperatorSettlementCard'
-import { TripSettlementCard } from './TripSettlementCard'
+import { AssignedTripsGrid } from './AssignedTripsGrid'
 import { SegmentedControl } from '@/src/core/presentation/components/ui/segmented-control'
 import * as XLSX from 'xlsx'
 import { getEmployeesAction } from '@/src/features/hr/presentation/actions/employee.actions'
@@ -34,6 +37,13 @@ const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN
 const fmtDate = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' })
 const SETTLEMENTS_PER_PAGE = 6
 
+function normalizeText(value: string | null | undefined) {
+  return (value ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
 interface OperatorSettlementsTabProps {
   canManage: boolean
   kpis: OperatorSettlementKpiEntity[]
@@ -44,6 +54,7 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
   const deleteSettlementMutation = useDeleteOperatorSettlement()
   const reopenSettlementMutation = useReopenOperatorSettlement()
   const unlinkExpenseMutation = useUnlinkExpenseFromSettlement()
+  const unlinkFromTripMutation = useUnlinkExpenseFromTrip()
   const advancesQuery = useExpenseAdvances()
   const tripKpisQuery = useTripExpenseAssignmentKpis()
 
@@ -55,6 +66,7 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
   const [settlementToDelete, setSettlementToDelete] = useState<OperatorSettlementKpiEntity | null>(null)
   const [isCreateSettlementOpen, setIsCreateSettlementOpen] = useState(false)
   const [newSettlementOperatorId, setNewSettlementOperatorId] = useState('')
+  const [newSettlementPreviousBalance, setNewSettlementPreviousBalance] = useState<string>('')
 
   const activeSettlement = useMemo(() => {
     if (!selectedSettlement) return null
@@ -77,9 +89,15 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
   const unlinkedExpensesFormatted = useMemo(() => {
     return (unlinkedExpensesQuery.data ?? []).map((exp: ExpenseEntity) => ({
       id: exp.id,
+      tripId: exp.tripId,
+      isFuelTankPurchase:
+        normalizeText(exp.categoryName) === 'combustible' &&
+        normalizeText(exp.description).includes('diesel') &&
+        normalizeText(exp.description).includes('tanque'),
       description: exp.description ?? 'Sin descripción',
       amount: exp.amount,
       expenseDate: exp.expenseDate ? fmtDate.format(new Date(exp.expenseDate)) : undefined,
+      rawExpenseDate: exp.expenseDate,
     }))
   }, [unlinkedExpensesQuery.data])
 
@@ -89,7 +107,6 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
   const closedSettlements = useMemo(() => kpis.filter((k) => k.status === 'closed'), [kpis])
   const [settlementSearch, setSettlementSearch] = useState('')
   const [openSettlementsPage, setOpenSettlementsPage] = useState(1)
-  const [closedSettlementsPage, setClosedSettlementsPage] = useState(1)
 
   const employeesQuery = useQuery({
     queryKey: ['expenses', 'assignments', 'employees'],
@@ -105,6 +122,18 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
     return (employeesQuery.data ?? []).filter((e) => e.isOperator && e.isActive)
   }, [employeesQuery.data])
 
+  const operatorNames = useMemo(() => {
+    return Object.fromEntries(
+      (employeesQuery.data ?? []).map((employee) => [employee.id, employee.fullName])
+    )
+  }, [employeesQuery.data])
+
+  const getOperatorLabel = useCallback((settlement: OperatorSettlementKpiEntity) => {
+    if (settlement.operatorName) return settlement.operatorName
+    if (settlement.operatorId && operatorNames[settlement.operatorId]) return operatorNames[settlement.operatorId]
+    return settlement.operatorId
+  }, [operatorNames])
+
   const normalizedSettlementSearch = settlementSearch.trim().toLowerCase()
 
   const filteredOpenSettlements = useMemo(() => {
@@ -116,39 +145,32 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
 
   const filteredClosedSettlements = useMemo(() => {
     if (!normalizedSettlementSearch) return closedSettlements
-    return closedSettlements.filter((k) =>
-      (k.operatorName ?? k.operatorId).toLowerCase().includes(normalizedSettlementSearch)
-    )
-  }, [normalizedSettlementSearch, closedSettlements])
+    return closedSettlements.filter((k) => getOperatorLabel(k).toLowerCase().includes(normalizedSettlementSearch))
+  }, [normalizedSettlementSearch, closedSettlements, getOperatorLabel])
 
   const openSettlementsPageCount = Math.max(1, Math.ceil(filteredOpenSettlements.length / SETTLEMENTS_PER_PAGE))
-  const closedSettlementsPageCount = Math.max(1, Math.ceil(filteredClosedSettlements.length / SETTLEMENTS_PER_PAGE))
 
   const safeOpenSettlementsPage = Math.min(openSettlementsPage, openSettlementsPageCount)
-  const safeClosedSettlementsPage = Math.min(closedSettlementsPage, closedSettlementsPageCount)
 
   const paginatedOpenSettlements = useMemo(() => {
     const start = (safeOpenSettlementsPage - 1) * SETTLEMENTS_PER_PAGE
     return filteredOpenSettlements.slice(start, start + SETTLEMENTS_PER_PAGE)
   }, [filteredOpenSettlements, safeOpenSettlementsPage])
 
-  const paginatedClosedSettlements = useMemo(() => {
-    const start = (safeClosedSettlementsPage - 1) * SETTLEMENTS_PER_PAGE
-    return filteredClosedSettlements.slice(start, start + SETTLEMENTS_PER_PAGE)
-  }, [filteredClosedSettlements, safeClosedSettlementsPage])
-
-  const openSettlementDialog = (s: OperatorSettlementKpiEntity) => {
+  const openSettlementDialog = useCallback((s: OperatorSettlementKpiEntity) => {
     setSelectedSettlement(s)
     setIsSettlementOpen(true)
-  }
+  }, [])
 
   const handleCreateSettlement = async (operatorId: string) => {
     if (!operatorId) return
     try {
-      await createSettlement.mutateAsync({ operatorId })
+      const previousBalance = parseFloat(newSettlementPreviousBalance) || 0
+      await createSettlement.mutateAsync({ operatorId, previousBalance })
       toast.success('Ajuste de cuentas creado')
       setIsCreateSettlementOpen(false)
       setNewSettlementOperatorId('')
+      setNewSettlementPreviousBalance('')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al crear ajuste')
     }
@@ -165,14 +187,14 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
     }
   }
 
-  const handleReopenSettlement = async (k: OperatorSettlementKpiEntity) => {
+  const handleReopenSettlement = useCallback(async (k: OperatorSettlementKpiEntity) => {
     try {
       await reopenSettlementMutation.mutateAsync({ settlementId: k.settlementId })
       toast.success('Ajuste de cuentas reabierto')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al reabrir ajuste')
     }
-  }
+  }, [reopenSettlementMutation])
 
   const handleExportExcel = () => {
     const dataToExport = [...openSettlements, ...closedSettlements]
@@ -200,7 +222,7 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
     XLSX.writeFile(workbook, `Ajustes_Cuentas_Operadores_${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
-  const handleExportIndividualSettlement = async (k: OperatorSettlementKpiEntity) => {
+  const handleExportIndividualSettlement = useCallback(async (k: OperatorSettlementKpiEntity) => {
     try {
       toast.info('Generando Excel, por favor espera...')
       const expensesRepo = new SupabaseExpensesRepository()
@@ -249,7 +271,7 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al generar excel del ajuste')
     }
-  }
+  }, [])
 
   const linkedAdvances = useMemo(() => {
     let advances = (advancesQuery.data ?? []).filter((a) => !!a.tripId)
@@ -265,6 +287,129 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
     }
     return advances
   }, [advancesQuery.data, normalizedSettlementSearch])
+
+  type ClosedSettlementRow = OperatorSettlementKpiEntity & { id: string }
+
+  const closedSettlementRows = useMemo<ClosedSettlementRow[]>(() => {
+    return filteredClosedSettlements.map((settlement) => ({
+      ...settlement,
+      id: settlement.settlementId,
+    }))
+  }, [filteredClosedSettlements])
+
+  const closedSettlementOperatorOptions = useMemo(() => {
+    const labels = Array.from(new Set(closedSettlementRows.map((row) => getOperatorLabel(row))))
+    return labels
+      .filter((label) => label.trim().length > 0)
+      .sort((a, b) => a.localeCompare(b, 'es-MX'))
+      .map((label) => ({ label, value: label }))
+  }, [closedSettlementRows, getOperatorLabel])
+
+  const closedSettlementColumns = useMemo<CrudColumn<ClosedSettlementRow>[]>(() => {
+    return [
+      {
+        header: 'Operador',
+        filter: {
+          type: 'select',
+          options: closedSettlementOperatorOptions,
+          placeholder: 'Todos',
+          getValue: (row) => getOperatorLabel(row),
+        },
+        accessor: (row) => getOperatorLabel(row),
+        cell: (row) => (
+          <button
+            type="button"
+            onClick={() => openSettlementDialog(row)}
+            className="font-semibold text-stone-900 hover:text-[#1a5c3a] dark:text-zinc-100 dark:hover:text-emerald-400 transition-colors"
+          >
+            {getOperatorLabel(row)}
+          </button>
+        ),
+      },
+      {
+        header: 'Apertura',
+        accessor: (row) => row.openedAt.getTime(),
+        sortable: true,
+        filter: false,
+        cell: (row) => <span className="text-stone-600 dark:text-zinc-300">{fmtDate.format(row.openedAt)}</span>,
+      },
+      {
+        header: 'Cierre',
+        accessor: (row) => row.closedAt?.getTime() ?? 0,
+        sortable: true,
+        filter: false,
+        cell: (row) => <span className="text-stone-600 dark:text-zinc-300">{row.closedAt ? fmtDate.format(row.closedAt) : '—'}</span>,
+      },
+      {
+        header: 'Asignado',
+        accessor: (row) => row.assignedAmount,
+        sortable: true,
+        filter: false,
+        headerClassName: 'text-right',
+        className: 'text-right font-medium',
+        cell: (row) => money.format(row.assignedAmount),
+      },
+      {
+        header: 'Comprobado',
+        accessor: (row) => row.spentAmount,
+        sortable: true,
+        filter: false,
+        headerClassName: 'text-right',
+        className: 'text-right font-medium',
+        cell: (row) => money.format(row.spentAmount),
+      },
+      {
+        header: 'Balance',
+        accessor: (row) => row.balanceAmount,
+        sortable: true,
+        filter: false,
+        headerClassName: 'text-right',
+        className: 'text-right font-bold',
+        cell: (row) => {
+          const balanceTone =
+            row.balanceAmount > 0
+              ? 'text-emerald-700 dark:text-emerald-400'
+              : row.balanceAmount < 0
+                ? 'text-amber-700 dark:text-amber-400'
+                : 'text-stone-600 dark:text-zinc-300'
+
+          return <span className={balanceTone}>{money.format(row.balanceAmount)}</span>
+        },
+      },
+      {
+        header: 'Gastos',
+        accessor: (row) => row.expenseCount,
+        sortable: true,
+        filter: false,
+        headerClassName: 'text-right',
+        className: 'text-right font-medium',
+        cell: (row) => row.expenseCount,
+      },
+    ]
+  }, [closedSettlementOperatorOptions, getOperatorLabel, openSettlementDialog])
+
+  const closedSettlementRowActions = useMemo<CrudRowAction<ClosedSettlementRow>[]>(() => {
+    return [
+      {
+        label: 'Ver ajuste',
+        icon: <Eye className="size-4" />,
+        variant: 'outline',
+        onClick: (row) => openSettlementDialog(row),
+      },
+      {
+        label: 'Exportar ajuste',
+        icon: <Download className="size-4" />,
+        onClick: (row) => handleExportIndividualSettlement(row),
+      },
+      {
+        label: 'Reabrir ajuste',
+        icon: <RotateCcw className="size-4" />,
+        className: 'text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300',
+        isVisible: () => canManage,
+        onClick: (row) => handleReopenSettlement(row),
+      },
+    ]
+  }, [canManage, handleExportIndividualSettlement, handleReopenSettlement, openSettlementDialog])
 
   return (
     <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -298,7 +443,6 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
               onChange={(e) => {
                 setSettlementSearch(e.target.value)
                 setOpenSettlementsPage(1)
-                setClosedSettlementsPage(1)
               }}
               placeholder={activeSubTab === 'operator' ? "Buscar operador..." : "Buscar operador o viaje..."}
               className="h-9 rounded-xl border-stone-200 pl-9 dark:border-zinc-800"
@@ -312,15 +456,6 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
           >
             <Download className="size-4" /> Exportar
           </Button>
-          {canManage && (
-            <Button
-              size="sm"
-              onClick={() => setIsCreateSettlementOpen(true)}
-              className="gap-1 rounded-xl bg-[#1a5c3a] hover:bg-[#1a5c3a]/90 text-white"
-            >
-              <Plus className="size-4" /> Nuevo Ajuste
-            </Button>
-          )}
         </div>
       </div>
 
@@ -402,107 +537,45 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
           <Badge variant="secondary">{filteredClosedSettlements.length}/{closedSettlements.length}</Badge>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-6">
-          {filteredClosedSettlements.length === 0 ? (
-            <div className="col-span-full p-6 rounded-2xl border border-stone-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/40 text-sm text-stone-600 dark:text-zinc-400">
-              {normalizedSettlementSearch ? 'No hay cuentas cerradas para el operador buscado.' : 'No hay cuentas cerradas recientemente.'}
-            </div>
-          ) : (
-            paginatedClosedSettlements.map((k) => (
-              <OperatorSettlementCard
-                key={k.settlementId}
-                settlement={k}
-                canManage={canManage}
-                isClosed={true}
-                onClick={() => openSettlementDialog(k)}
-                onDelete={(e) => {
-                  e.stopPropagation()
-                  setSettlementToDelete(k)
-                }}
-                onReopen={(e) => {
-                  e.stopPropagation()
-                  handleReopenSettlement(k)
-                }}
-                onExport={(e) => {
-                  e.stopPropagation()
-                  handleExportIndividualSettlement(k)
-                }}
-              />
-            ))
-          )}
-        </div>
-
-        {filteredClosedSettlements.length > SETTLEMENTS_PER_PAGE && (
-          <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
-            <p className="text-xs text-stone-500 dark:text-zinc-400">
-              Mostrando {(safeClosedSettlementsPage - 1) * SETTLEMENTS_PER_PAGE + 1}-
-              {Math.min(safeClosedSettlementsPage * SETTLEMENTS_PER_PAGE, filteredClosedSettlements.length)} de {filteredClosedSettlements.length} ajustes cerrados
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 rounded-lg"
-                disabled={safeClosedSettlementsPage <= 1}
-                onClick={() => setClosedSettlementsPage((page) => Math.max(1, page - 1))}
-              >
-                <ChevronLeft className="size-4" />
-                Anterior
-              </Button>
-              <span className="min-w-20 text-center text-xs font-medium text-stone-600 dark:text-zinc-300">
-                {safeClosedSettlementsPage} / {closedSettlementsPageCount}
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 rounded-lg"
-                disabled={safeClosedSettlementsPage >= closedSettlementsPageCount}
-                onClick={() => setClosedSettlementsPage((page) => Math.min(closedSettlementsPageCount, page + 1))}
-              >
-                Siguiente
-                <ChevronRight className="size-4" />
-              </Button>
-            </div>
-          </div>
-        )}
+        <CrudDataTable<ClosedSettlementRow>
+          data={closedSettlementRows}
+          isLoading={false}
+          columns={closedSettlementColumns}
+          rowActions={closedSettlementRowActions}
+          pageSize={SETTLEMENTS_PER_PAGE}
+          searchPlaceholder="Buscar operador..."
+          searchFilter={(row, term) =>
+            [
+              getOperatorLabel(row),
+              fmtDate.format(row.openedAt),
+              row.closedAt ? fmtDate.format(row.closedAt) : '',
+            ].some((value) => value.toLowerCase().includes(term))
+          }
+          emptyState={{
+            icon: HandCoins,
+            title: normalizedSettlementSearch ? 'Sin resultados' : 'Sin cuentas cerradas',
+            description: normalizedSettlementSearch
+              ? 'No hay cuentas cerradas para el operador buscado.'
+              : 'No hay cuentas cerradas recientemente.',
+          }}
+        />
       </>
     )}
 
     {activeSubTab === 'trip' && (
-        <>
-          <div className="flex items-center justify-between mt-2">
-            <div>
-              <h3 className="text-sm font-bold text-stone-900 dark:text-zinc-100">Viajes con asignación</h3>
-            </div>
-            <Badge variant="secondary">{linkedAdvances.length}</Badge>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-6">
-            {linkedAdvances.length === 0 ? (
-              <div className="col-span-full p-6 rounded-2xl border border-stone-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/40 flex flex-col items-center justify-center text-stone-500 dark:text-zinc-500">
-                <Truck className="h-8 w-8 mb-2 opacity-20" />
-                <p>No hay cuentas por viaje pendientes de ajustar.</p>
-              </div>
-            ) : (
-              linkedAdvances.map((k) => (
-                <TripSettlementCard
-                  key={k.id}
-                  advance={k}
-                  canManage={canManage}
-                  onClick={() => {
-                    if (!k.tripId) return
-                    const foundKpi = tripKpisQuery.data?.find((t) => t.tripId === k.tripId)
-                    if (foundKpi) {
-                      setSelectedTripKpi(foundKpi)
-                    } else {
-                      toast.error('No se encontró el viaje asociado')
-                    }
-                  }}
-                />
-              ))
-            )}
-          </div>
-        </>
+        <AssignedTripsGrid
+          linkedAdvances={linkedAdvances}
+          canManage={canManage}
+          tripKpisData={tripKpisQuery.data}
+          operatorSettlements={kpis}
+          operatorNames={operatorNames}
+          searchQuery={settlementSearch}
+          onSelectTripKpi={setSelectedTripKpi}
+          onSelectOperatorSettlement={(settlement) => {
+            setSelectedSettlement(settlement)
+            setIsSettlementOpen(true)
+          }}
+        />
       )}
 
       <TripSettlementDialog
@@ -535,6 +608,23 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
                   <span className="font-bold text-stone-900 dark:text-zinc-100">
                     {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(exp.amount)}
                   </span>
+                  {!selectedTripKpi?.isSettled && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                      onClick={async () => {
+                        try {
+                          await unlinkFromTripMutation.mutateAsync(exp.id)
+                          toast.success('Gasto desvinculado del viaje')
+                        } catch (e) {
+                          toast.error(e instanceof Error ? e.message : 'Error al desvincular')
+                        }
+                      }}
+                    >
+                      <Unlink className="size-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))
@@ -547,10 +637,6 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
         onClose={() => { setIsSettlementOpen(false); setSelectedSettlement(null) }}
         settlement={activeSettlement}
         unlinkedExpenses={unlinkedExpensesFormatted}
-        onSelectTrip={(trip) => {
-          setIsSettlementOpen(false);
-          setSelectedTripKpi(trip);
-        }}
       >
         {activeSettlement && (
           <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -607,22 +693,60 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
             <div className="p-6">
               <h3 className="text-lg font-bold text-stone-900 dark:text-zinc-100 mb-1">Nuevo Ajuste de Cuentas</h3>
               <p className="text-sm text-stone-500 dark:text-zinc-400 mb-6">
-                Selecciona el operador al que deseas abrirle un nuevo ajuste de cuentas.
+                Selecciona el operador y captura el saldo previo si existe un adeudo anterior al sistema.
               </p>
               
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-stone-900 dark:text-zinc-100">Operador</label>
-                <select
-                  className="w-full h-12 rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006d37]/30 disabled:opacity-50"
-                  value={newSettlementOperatorId}
-                  onChange={(e) => setNewSettlementOperatorId(e.target.value)}
-                  disabled={employeesQuery.isLoading || createSettlement.isPending}
-                >
-                  <option value="">{employeesQuery.isLoading ? 'Cargando operadores...' : 'Selecciona un operador...'}</option>
-                  {operators.map((op) => (
-                    <option key={op.id} value={op.id}>{op.fullName}</option>
-                  ))}
-                </select>
+              <div className="space-y-4">
+                {/* Operador */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-stone-900 dark:text-zinc-100">Operador</label>
+                  <select
+                    className="w-full h-12 rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006d37]/30 disabled:opacity-50"
+                    value={newSettlementOperatorId}
+                    onChange={(e) => setNewSettlementOperatorId(e.target.value)}
+                    disabled={employeesQuery.isLoading || createSettlement.isPending}
+                  >
+                    <option value="">{employeesQuery.isLoading ? 'Cargando operadores...' : 'Selecciona un operador...'}</option>
+                    {operators.map((op) => (
+                      <option key={op.id} value={op.id}>{op.fullName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Saldo previo */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-stone-900 dark:text-zinc-100">
+                    Saldo previo ($MXN) <span className="text-stone-400 font-normal">(Opcional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={newSettlementPreviousBalance}
+                    onChange={(e) => setNewSettlementPreviousBalance(e.target.value)}
+                    disabled={createSettlement.isPending}
+                    className="w-full h-12 rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/20 disabled:opacity-50"
+                  />
+                  {/* Indicador visual del signo */}
+                  {newSettlementPreviousBalance && !isNaN(parseFloat(newSettlementPreviousBalance)) && parseFloat(newSettlementPreviousBalance) !== 0 && (
+                    <div className={cn(
+                      'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border',
+                      parseFloat(newSettlementPreviousBalance) > 0
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-300'
+                        : 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300'
+                    )}>
+                      <span className="text-base">{parseFloat(newSettlementPreviousBalance) > 0 ? '📥' : '📤'}</span>
+                      <span>
+                        {parseFloat(newSettlementPreviousBalance) > 0
+                          ? `El operador le debe ${money.format(Math.abs(parseFloat(newSettlementPreviousBalance)))} a la empresa`
+                          : `La empresa le debe ${money.format(Math.abs(parseFloat(newSettlementPreviousBalance)))} al operador`}
+                      </span>
+                    </div>
+                  )}
+                  <p className="text-[11px] text-stone-400 dark:text-zinc-500">
+                    Positivo (+) = operador debe a la empresa · Negativo (−) = empresa debe al operador
+                  </p>
+                </div>
               </div>
 
               <div className="flex items-center gap-3 mt-8">
@@ -632,6 +756,7 @@ export function OperatorSettlementsTab({ canManage, kpis }: OperatorSettlementsT
                   onClick={() => {
                     setIsCreateSettlementOpen(false)
                     setNewSettlementOperatorId('')
+                    setNewSettlementPreviousBalance('')
                   }}
                   disabled={createSettlement.isPending}
                 >
