@@ -28,6 +28,7 @@ import {
   User as UserIcon,
   ChevronUp,
   BarChart3,
+  Activity,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/src/core/infrastructure/utils/cn'
@@ -69,6 +70,7 @@ const MAIN_MODULES: NavItem[] = [
   { label: 'Facturación', icon: FileText, href: '/billing', requiredPermission: 'billing:view' },
   { label: 'Logística', icon: Package, href: '/logistics', requiredPermission: 'trips:view_all' },
   { label: 'Tracking', icon: Navigation, href: '/tracking', requiredPermissions: ['tracking:manage', 'trips:view_all'] },
+  { label: 'Operaciones', icon: Activity, href: '/operations' },
 ]
 
 const ADMIN_MODULES: NavItem[] = [
