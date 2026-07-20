@@ -98,10 +98,10 @@ export function StayWizard({ isOpen, onClose }: StayWizardProps) {
   }, [isOpen, reset])
 
   const inputClass = cn(
-    'h-10 rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#006d37]/30'
+    'flex h-12 w-full rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/20 transition-colors'
   )
 
-  const errorClass = 'text-xs text-red-600 mt-1'
+  const errorClass = 'text-xs text-red-500 mt-1'
 
   const operators = useMemo(() => {
     return (employeesQuery.data ?? []).filter((e) => e.isOperator && e.isActive)

@@ -33,6 +33,11 @@ export interface TripEntity {
   lastScan: Date | null
   observations: string | null
 
+  /** Ingreso total del viaje (trips.total_income) */
+  totalIncome: number
+  /** Km pre-factura (trips.preinvoice_km) */
+  preinvoiceKm: number | null
+
   clientSpecificData: Record<string, unknown> | null
 
   createdAt: Date
@@ -45,6 +50,17 @@ export interface TripWithRelations {
   unitEconomicNumber: string | null
   operatorName: string | null
   isFullAssembly: boolean
+  // Datos de la unidad para Carta Porte
+  truckPlates: string | null
+  truckYear: number | null
+  truckBrand: string | null
+  truckModel: string | null
+  truckInsurancePolicy: string | null
+  trailerPlates: string | null
+  trailerEconomicNumber: string | null
+  // Datos del operador para Carta Porte
+  operatorRfc: string | null
+  operatorLicenseNumber: string | null
   walmartData?: {
     coordinatorName: string | null
     route: string | null

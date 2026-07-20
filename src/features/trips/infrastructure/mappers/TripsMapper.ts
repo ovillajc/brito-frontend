@@ -24,6 +24,8 @@ export interface TripRow {
   trip_number_client: number | null
   last_scan: string | null
   observations: string | null
+  total_income: number | null
+  preinvoice_km: number | null
   client_specific_data: Record<string, unknown> | null
   created_at: string
   updated_at: string
@@ -31,7 +33,26 @@ export interface TripRow {
 
 export interface TripListRow extends TripRow {
   clients?: { trade_name: string | null; company_name: string | null } | null
-  unit_assemblies?: { economic_number: string | null; trailer2_id: string | null; employees?: { full_name: string | null } | null } | null
+  unit_assemblies?: {
+    economic_number: string | null
+    trailer2_id: string | null
+    employees?: {
+      full_name: string | null
+      rfc: string | null
+      driver_details?: { license_number: string | null } | null
+    } | null
+    trucks?: {
+      plates: string | null
+      year: number | null
+      brand: string | null
+      model: string | null
+      insurance_policy: string | null
+    } | null
+    trailers?: {
+      plates: string | null
+      economic_number: string | null
+    } | null
+  } | null
   walmart_trip_data?: { 
     coordinator_name: string | null
     route: string | null
@@ -91,6 +112,8 @@ export class TripsMapper {
       tripNumberClient: row.trip_number_client,
       lastScan: row.last_scan ? new Date(row.last_scan) : null,
       observations: row.observations,
+      totalIncome: (row.total_income as number | null) ?? 0,
+      preinvoiceKm: (row.preinvoice_km as number | null) ?? null,
       clientSpecificData: row.client_specific_data,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
@@ -109,6 +132,15 @@ export class TripsMapper {
       unitEconomicNumber,
       operatorName,
       isFullAssembly,
+      truckPlates: row.unit_assemblies?.trucks?.plates ?? null,
+      truckYear: row.unit_assemblies?.trucks?.year ?? null,
+      truckBrand: row.unit_assemblies?.trucks?.brand ?? null,
+      truckModel: row.unit_assemblies?.trucks?.model ?? null,
+      truckInsurancePolicy: row.unit_assemblies?.trucks?.insurance_policy ?? null,
+      trailerPlates: row.unit_assemblies?.trailers?.plates ?? null,
+      trailerEconomicNumber: row.unit_assemblies?.trailers?.economic_number ?? null,
+      operatorRfc: row.unit_assemblies?.employees?.rfc ?? null,
+      operatorLicenseNumber: row.unit_assemblies?.employees?.driver_details?.license_number ?? null,
       walmartData: row.walmart_trip_data
         ? {
             coordinatorName: row.walmart_trip_data.coordinator_name ?? null,
