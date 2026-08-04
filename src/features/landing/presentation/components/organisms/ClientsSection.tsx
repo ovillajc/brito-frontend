@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { Building2, Calendar, Truck } from 'lucide-react'
 
@@ -13,6 +14,7 @@ const FEATURED_CLIENTS = [
     sector: 'Servicios Petroleros',
     since: 2014,
     color: 'green' as const,
+    logo: '/assets/images/logos/baker-logo.svg',
   },
   {
     name: 'Servicios Integrales GSM',
@@ -22,6 +24,7 @@ const FEATURED_CLIENTS = [
     sector: 'Servicios de Energía',
     since: 2016,
     color: 'orange' as const,
+    logo: '/assets/images/logos/gsm-logo.png'
   },
   {
     name: 'Prodexa',
@@ -40,6 +43,7 @@ const FEATURED_CLIENTS = [
     sector: 'Energía / Petróleo',
     since: 2018,
     color: 'orange' as const,
+    logo: '/assets/images/logos/altopetrum-logo.jpg'
   },
   {
     name: 'Global Maya Fluidos',
@@ -49,6 +53,7 @@ const FEATURED_CLIENTS = [
     sector: 'Sector Energético',
     since: 2019,
     color: 'green' as const,
+    logo: '/assets/images/logos/maya-logo.jpeg'
   },
   {
     name: 'Solinmar Thechdrill Fluid Systems',
@@ -58,6 +63,7 @@ const FEATURED_CLIENTS = [
     sector: 'Petróleo y Gas',
     since: 2017,
     color: 'orange' as const,
+    logo: '/assets/images/logos/solinmar-logo.jpeg'
   },
   {
     name: 'MIMySSA',
@@ -76,6 +82,7 @@ const FEATURED_CLIENTS = [
     sector: 'Retail',
     since: 2024,
     color: 'orange' as const,
+    logo: '/assets/images/logos/walmart-logo.webp'
   },
 ]
 
@@ -149,17 +156,23 @@ export const ClientsSection = () => {
                 {client.sector}
               </span>
 
-              {/* Company initial */}
+              {/* Company initial or logo */}
               <div className="flex items-start gap-4 mb-4">
-                <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-lg shrink-0 ${
-                    client.color === 'green' ? 'bg-[#1a5c3a]' : 'bg-[#e07020]'
-                  }`}
-                >
-                  {client.name.charAt(0)}
-                </div>
+                {client.logo ? (
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-white border border-stone-200 overflow-hidden relative">
+                    <Image src={client.logo} alt={`Logo de ${client.name}`} fill className="object-contain p-2" />
+                  </div>
+                ) : (
+                  <div
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-lg shrink-0 ${
+                      client.color === 'green' ? 'bg-[#1a5c3a]' : 'bg-[#e07020]'
+                    }`}
+                  >
+                    {client.name.charAt(0)}
+                  </div>
+                )}
                 <div>
-                  <h3 className="font-black text-stone-900 leading-tight text-lg max-w-[180px] line-clamp-2" title={client.name}>{client.name}</h3>
+                  <h3 className="font-black text-stone-900 leading-tight text-lg max-w-45 line-clamp-2" title={client.name}>{client.name}</h3>
                   <p className="text-xs text-stone-500 flex items-center gap-1 mt-1">
                     <Building2 className="w-3 h-3" />
                     {client.location}

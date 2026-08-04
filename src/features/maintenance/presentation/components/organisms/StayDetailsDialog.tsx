@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/src/core/presentatio
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { Button } from '@/src/core/presentation/components/ui/button'
 import { Separator } from '@/src/core/presentation/components/ui/separator'
-import type { WorkshopStayKpiEntity, WorkshopWorkOrderEntity, WorkOrderPartEntity } from '@/src/features/maintenance/domain/entities/maintenance-entity'
+import type { WorkshopStayReplicaEntity, WorkshopWorkOrderEntity, WorkOrderPartEntity } from '@/src/features/maintenance/domain/entities/maintenance-entity'
 import { useCloseWorkshopStay, useMaintenanceCatalogs, useStayWorkOrders, useWorkOrderParts } from '@/src/features/maintenance/presentation/hooks/use-maintenance'
 import { WorkOrderWizard } from './WorkOrderWizard'
 import { WorkOrderPartWizard } from './WorkOrderPartWizard'
@@ -20,7 +20,7 @@ import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
 interface StayDetailsDialogProps {
   isOpen: boolean
   onClose: () => void
-  stay: WorkshopStayKpiEntity | null
+  stay: WorkshopStayReplicaEntity | null
 }
 
 function DetailItem({ icon: Icon, label, value, className = '' }: { icon: React.ElementType, label: string, value: React.ReactNode, className?: string }) {
@@ -88,11 +88,11 @@ export function StayDetailsDialog({ isOpen, onClose, stay }: StayDetailsDialogPr
                   {stay.folio}
                 </h2>
                 <Badge variant="secondary" className="bg-white/20 text-white hover:bg-white/30 border-none">
-                  {stay.status === 'open' ? 'Abierta' : 'Cerrada'}
+                  {stay.exitedAt === null ? 'Abierta' : 'Cerrada'}
                 </Badge>
               </div>
               <p className="text-sm text-white/80 mt-0.5">
-                {stay.unitLabel}
+                {stay.economicNumber ? `No. Eco: ${stay.economicNumber} - ${stay.vehicleType}` : stay.vehicleType}
               </p>
             </div>
           </div>
@@ -147,7 +147,7 @@ export function StayDetailsDialog({ isOpen, onClose, stay }: StayDetailsDialogPr
                 </div>
               </section>
 
-              {stay.status === 'open' && canManage && (
+              {stay.exitedAt === null && canManage && (
                 <>
                   <Separator className="bg-stone-100 dark:bg-zinc-800" />
                   <div className="flex justify-end">
@@ -175,7 +175,7 @@ export function StayDetailsDialog({ isOpen, onClose, stay }: StayDetailsDialogPr
                       <PenTool className="size-4 text-[#006d37]" />
                       Órdenes
                     </h3>
-                    {canManage && stay.status === 'open' && (
+                    {canManage && stay.exitedAt === null && (
                       <Button size="sm" variant="ghost" className="h-8 text-xs font-semibold text-[#006d37]" onClick={() => setIsWorkOrderWizardOpen(true)}>
                         + Nueva Orden
                       </Button>
@@ -222,7 +222,7 @@ export function StayDetailsDialog({ isOpen, onClose, stay }: StayDetailsDialogPr
                       <Layers className="size-4 text-[#006d37]" />
                       Refacciones
                     </h3>
-                    {canManage && stay.status === 'open' && selectedWorkOrder && (
+                    {canManage && stay.exitedAt === null && selectedWorkOrder && (
                       <Button size="sm" variant="ghost" className="h-8 text-xs font-semibold text-[#006d37]" onClick={() => setIsPartWizardOpen(true)}>
                         + Agregar
                       </Button>
@@ -257,7 +257,7 @@ export function StayDetailsDialog({ isOpen, onClose, stay }: StayDetailsDialogPr
                               Cant: <strong className="text-stone-700">{p.quantity}</strong>
                             </span>
                             <span className="text-[11px] text-stone-500">
-                              Unitario: <strong className="text-stone-700">{money.format(p.unitCost)}</strong>
+                              Unitario: <strong className="text-stone-700">{money.format(p.unitPrice)}</strong>
                             </span>
                           </div>
                         </div>

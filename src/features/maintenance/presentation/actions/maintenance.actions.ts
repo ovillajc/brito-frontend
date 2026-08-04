@@ -49,3 +49,54 @@ export async function createWorkOrderPartAction(input: CreateWorkOrderPartInput)
   return result
 }
 
+export async function updateWorkshopStayAction(stayId: string, input: Partial<CreateWorkshopStayInput>): Promise<Either<Failure, void>> {
+  const profileId = await getCurrentProfileId()
+  const repo = new SupabaseMaintenanceServerRepository()
+  const { UpdateWorkshopStay } = await import('@/src/features/maintenance/application/UpdateWorkshopStay')
+  const result = await UpdateWorkshopStay(repo, stayId, input, profileId)
+  if (result.ok) revalidatePath('/maintenance')
+  return result
+}
+
+export async function updateWorkOrderAction(workOrderId: string, input: Partial<CreateWorkOrderInput>): Promise<Either<Failure, void>> {
+  const profileId = await getCurrentProfileId()
+  const repo = new SupabaseMaintenanceServerRepository()
+  const { UpdateWorkOrder } = await import('@/src/features/maintenance/application/UpdateWorkOrder')
+  const result = await UpdateWorkOrder(repo, workOrderId, input, profileId)
+  if (result.ok) revalidatePath('/maintenance')
+  return result
+}
+
+export async function updateWorkOrderPartAction(partId: string, input: Partial<CreateWorkOrderPartInput>): Promise<Either<Failure, void>> {
+  const profileId = await getCurrentProfileId()
+  const repo = new SupabaseMaintenanceServerRepository()
+  const { UpdateWorkOrderPart } = await import('@/src/features/maintenance/application/UpdateWorkOrderPart')
+  const result = await UpdateWorkOrderPart(repo, partId, input, profileId)
+  if (result.ok) revalidatePath('/maintenance')
+  return result
+}
+
+export async function deleteWorkshopStayAction(stayId: string): Promise<Either<Failure, void>> {
+  const repo = new SupabaseMaintenanceServerRepository()
+  const { DeleteWorkshopStay } = await import('@/src/features/maintenance/application/DeleteWorkshopStay')
+  const result = await DeleteWorkshopStay(repo, stayId)
+  if (result.ok) revalidatePath('/maintenance')
+  return result
+}
+
+export async function deleteWorkOrderAction(workOrderId: string): Promise<Either<Failure, void>> {
+  const repo = new SupabaseMaintenanceServerRepository()
+  const { DeleteWorkOrder } = await import('@/src/features/maintenance/application/DeleteWorkOrder')
+  const result = await DeleteWorkOrder(repo, workOrderId)
+  if (result.ok) revalidatePath('/maintenance')
+  return result
+}
+
+export async function deleteWorkOrderPartAction(partId: string): Promise<Either<Failure, void>> {
+  const repo = new SupabaseMaintenanceServerRepository()
+  const { DeleteWorkOrderPart } = await import('@/src/features/maintenance/application/DeleteWorkOrderPart')
+  const result = await DeleteWorkOrderPart(repo, partId)
+  if (result.ok) revalidatePath('/maintenance')
+  return result
+}
+

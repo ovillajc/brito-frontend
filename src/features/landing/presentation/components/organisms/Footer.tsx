@@ -86,9 +86,9 @@ export const Footer = () => {
               </li>
               <li>
                 <p className="text-[10px] font-bold text-stone-500 uppercase tracking-widest mb-1">Logística y Tráfico</p>
-                <a href="tel:9361103979" className="flex items-center gap-2 hover:text-white transition-colors">
+                <a href="tel:9371108139" className="flex items-center gap-2 hover:text-white transition-colors">
                   <Phone className="w-4 h-4 text-[#e07020]" />
-                  936-110-3979
+                  9371108139
                 </a>
               </li>
               <li>

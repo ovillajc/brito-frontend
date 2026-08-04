@@ -40,6 +40,17 @@ export interface MaintenanceProviderEntity {
   isActive: boolean
 }
 
+export interface MeasurementUnitEntity {
+  id: string
+  name: string
+  isActive: boolean
+}
+
+export interface InventoryItemEntity {
+  id: string
+  name: string
+}
+
 export interface WorkshopStayEntity {
   id: string
   folio: string
@@ -109,3 +120,77 @@ export interface WorkOrderPartEntity {
   createdAt: Date
 }
 
+export interface WorkshopStayReplicaEntity {
+  id: string
+  sequentialNumber: number
+  folio: string
+  enteredAt: Date
+  exitedAt: Date | null
+  daysInShop: number | null
+  reason: string
+  totalCost: number
+  economicNumber: string | null
+  vehicleType: VehicleType
+  plates: string | null
+  deliveredByEmployeeName: string | null
+  deliveredByEmployeeId: string | null
+  receivedByProfileName: string | null
+  pickedUpByEmployeeName: string | null
+  pickedUpByEmployeeId: string | null
+  kmAtEntry: number | null
+  kmLastService: number | null
+  lastClientName: string | null
+  lastDestination: string | null
+  lastTripStartDate: Date | null
+  lastTripId: string | null
+  notes: string | null
+}
+
+export interface WorkshopWorkOrderReplicaEntity {
+  id: string
+  stayId: string
+  stayFolio: string
+  workOrderFolio: string
+  stayEnteredAt: Date
+  startedAt: Date
+  finishedAt: Date | null
+  daysInWork: number | null
+  status: WorkOrderStatus
+  totalCost: number
+  locationType: string | null
+  unitEconomicNumber: string | null
+  unitPlates: string | null
+  stayReason: string | null
+  maintenanceTypeName: string | null
+  mechanicalCategoryName: string | null
+  failureLocation: string | null
+  vehicleActivityAtFailure: string | null
+  specialistEmployeeName: string | null
+  supervisorProfileName: string | null
+  description: string
+  details: string | null
+}
+
+export interface WorkOrderPartReplicaEntity {
+  id: string
+  workOrderId: string
+  stayFolio: string
+  stayEnteredAt: Date
+  workOrderFolio: string
+  unitEconomicNumber: string | null
+  unitPlates: string | null
+  stayReason: string | null
+  maintenanceTypeName: string | null
+  mechanicalCategoryName: string | null
+  description: string
+  providerName: string | null
+  brand: string | null
+  unitName: string | null
+  unitPrice: number
+  quantity: number
+  discount: number
+  taxRate: number
+  totalWithTax: number
+  paidBy: string | null
+  notes: string | null
+}

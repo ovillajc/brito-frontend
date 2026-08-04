@@ -9,6 +9,8 @@ export const createWorkshopStaySchema = z.object({
   enteredAt: z.string().min(1, 'La fecha de ingreso es requerida'),
   reason: z.string().min(1, 'El motivo es requerido'),
   kmAtEntry: z.coerce.number().nonnegative().nullable().default(null),
+  kmLastService: z.coerce.number().nonnegative().nullable().default(null),
+  lastTripStartDate: z.string().nullable().default(null),
   deliveredByEmployeeId: z.string().uuid().nullable().default(null),
   pickedUpByEmployeeId: z.string().uuid().nullable().default(null),
   lastTripId: z.string().uuid().nullable().default(null),

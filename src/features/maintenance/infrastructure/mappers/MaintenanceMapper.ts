@@ -8,6 +8,11 @@ import type {
   WorkshopStayKpiEntity,
   WorkshopWorkOrderEntity,
   WorkOrderStatus,
+  WorkshopStayReplicaEntity,
+  WorkshopWorkOrderReplicaEntity,
+  WorkOrderPartReplicaEntity,
+  MeasurementUnitEntity,
+  InventoryItemEntity
 } from '../../domain/entities/maintenance-entity'
 
 export type WorkshopStayKpiRow = {
@@ -63,6 +68,8 @@ export type WorkOrderPartRow = {
 export type MaintenanceTypeRow = { id: string; name: string; is_active: boolean }
 export type MechanicalCategoryRow = { id: string; name: string; is_active: boolean }
 export type MaintenanceProviderRow = { id: string; name: string; provider_type: ProviderType; is_active: boolean }
+export type MeasurementUnitRow = { id: string; name: string; is_active: boolean }
+export type InventoryItemRow = { id: string; name: string }
 
 export class MaintenanceMapper {
   static stayKpiToDomain(row: WorkshopStayKpiRow): WorkshopStayKpiEntity {
@@ -90,6 +97,14 @@ export class MaintenanceMapper {
 
   static providerToDomain(row: MaintenanceProviderRow): MaintenanceProviderEntity {
     return { id: row.id, name: row.name, providerType: row.provider_type, isActive: row.is_active }
+  }
+
+  static measurementUnitToDomain(row: MeasurementUnitRow): MeasurementUnitEntity {
+    return { id: row.id, name: row.name, isActive: row.is_active }
+  }
+
+  static inventoryItemToDomain(row: InventoryItemRow): InventoryItemEntity {
+    return { id: row.id, name: row.name }
   }
 
   static workOrderToDomain(row: WorkOrderRow): WorkshopWorkOrderEntity {
@@ -134,5 +149,123 @@ export class MaintenanceMapper {
       createdAt: new Date(row.created_at),
     }
   }
-}
+  static stayReplicaToDomain(row: any): WorkshopStayReplicaEntity {
+    const exitedAt = row.exited_at ? new Date(row.exited_at) : null;
+    const enteredAt = new Date(row.entered_at);
+    let daysInShop = null;
+    if (exitedAt) {
+      daysInShop = Number(((exitedAt.getTime() - enteredAt.getTime()) / (1000 * 60 * 60 * 24)).toFixed(2));
+    }
 
+    const totalCost = (row.workshop_work_orders ?? []).reduce((acc: number, wo: any) => {
+      const woTotal = (wo.work_order_parts ?? []).reduce((partAcc: number, p: any) => partAcc + (Number(p.total) || 0), 0)
+      return acc + woTotal
+    }, 0)
+
+    const truck = row.trucks;
+    const trailer = row.trailers;
+    const unitEconomicNumber = truck?.economic_number || trailer?.economic_number || null;
+    const unitPlates = truck?.plates || trailer?.plates || null;
+    
+    return {
+      id: row.id,
+      sequentialNumber: row.sequential_number,
+      folio: row.folio,
+      enteredAt,
+      exitedAt,
+      daysInShop,
+      reason: row.reason,
+      totalCost,
+      economicNumber: unitEconomicNumber,
+      vehicleType: row.vehicle_type,
+      plates: unitPlates,
+      deliveredByEmployeeName: row.delivered_by_employee?.full_name || null,
+      deliveredByEmployeeId: row.delivered_by_employee_id || null,
+      receivedByProfileName: row.received_by_profile?.full_name || null,
+      pickedUpByEmployeeName: row.picked_up_by_employee?.full_name || null,
+      pickedUpByEmployeeId: row.picked_up_by_employee_id || null,
+      kmAtEntry: row.km_at_entry,
+      kmLastService: row.km_last_service || null,
+      lastClientName: row.last_trip?.clients?.company_name || null,
+      lastDestination: row.last_trip?.destination || null,
+      lastTripStartDate: row.last_trip_start_date ? new Date(row.last_trip_start_date) : (row.last_trip?.departure_date ? new Date(row.last_trip.departure_date) : null),
+      lastTripId: row.last_trip_id || null,
+      notes: row.notes
+    }
+  }
+
+  static workOrderReplicaToDomain(row: any): WorkshopWorkOrderReplicaEntity {
+    const startedAt = new Date(row.started_at);
+    const finishedAt = row.finished_at ? new Date(row.finished_at) : null;
+    let daysInWork = null;
+    if (finishedAt) {
+      daysInWork = Number(((finishedAt.getTime() - startedAt.getTime()) / (1000 * 60 * 60 * 24)).toFixed(2));
+    }
+
+    const totalCost = (row.work_order_parts ?? []).reduce((acc: number, p: any) => acc + (Number(p.total) || 0), 0);
+    
+    const stay = row.workshop_stays;
+    const truck = stay?.trucks;
+    const trailer = stay?.trailers;
+    const unitEconomicNumber = truck?.economic_number || trailer?.economic_number || null;
+    const unitPlates = truck?.plates || trailer?.plates || null;
+
+    return {
+      id: row.id,
+      stayId: row.stay_id,
+      stayFolio: stay?.folio || '',
+      workOrderFolio: row.folio,
+      stayEnteredAt: stay?.entered_at ? new Date(stay.entered_at) : new Date(),
+      startedAt,
+      finishedAt,
+      daysInWork,
+      status: row.status,
+      totalCost,
+      locationType: row.location_type,
+      unitEconomicNumber,
+      unitPlates,
+      stayReason: stay?.reason || null,
+      maintenanceTypeName: row.maintenance_types?.name || null,
+      mechanicalCategoryName: row.mechanical_categories?.name || null,
+      failureLocation: row.failure_location,
+      vehicleActivityAtFailure: row.vehicle_activity_at_failure,
+      specialistEmployeeName: row.specialist_employee?.full_name || null,
+      supervisorProfileName: row.supervisor_profile?.full_name || null,
+      description: row.description,
+      details: row.details
+    }
+  }
+
+  static partReplicaToDomain(row: any): WorkOrderPartReplicaEntity {
+    const wo = row.workshop_work_orders;
+    const stay = wo?.workshop_stays;
+    const truck = stay?.trucks;
+    const trailer = stay?.trailers;
+    const unitEconomicNumber = truck?.economic_number || trailer?.economic_number || null;
+    const unitPlates = truck?.plates || trailer?.plates || null;
+
+    return {
+      id: row.id,
+      workOrderId: row.work_order_id,
+      stayFolio: stay?.folio || '',
+      stayEnteredAt: stay?.entered_at ? new Date(stay.entered_at) : new Date(),
+      workOrderFolio: wo?.folio || '',
+      unitEconomicNumber,
+      unitPlates,
+      stayReason: stay?.reason || null,
+      maintenanceTypeName: wo?.maintenance_types?.name || null,
+      mechanicalCategoryName: wo?.mechanical_categories?.name || null,
+      description: row.description,
+      providerName: row.maintenance_providers?.name || null,
+      brand: row.brand,
+      unitName: row.measurement_units?.name || null,
+      unitPrice: row.unit_price,
+      quantity: row.quantity,
+      discount: row.discount,
+      taxRate: row.tax_rate,
+      totalWithTax: row.total,
+      paidBy: row.paid_by,
+      notes: row.notes
+    }
+  }
+}

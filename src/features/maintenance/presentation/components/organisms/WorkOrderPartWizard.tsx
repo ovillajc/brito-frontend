@@ -12,10 +12,9 @@ import { Label } from '@/src/core/presentation/components/ui/label'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 import type { MaintenanceCatalogsEntity } from '@/src/features/maintenance/domain/repositories/i-maintenance-repository'
 import { createWorkOrderPartSchema, type CreateWorkOrderPartInput } from '@/src/features/maintenance/domain/schemas/create-part.schema'
-import { useCreateWorkOrderPart } from '@/src/features/maintenance/presentation/hooks/use-maintenance'
+import { useCreateWorkOrderPart, useUpdateWorkOrderPart, useMeasurementUnits, useInventoryItems } from '@/src/features/maintenance/presentation/hooks/use-maintenance'
+import type { WorkOrderPartReplicaEntity } from '@/src/features/maintenance/domain/entities/maintenance-entity'
 import type { z } from 'zod'
-import { useQuery } from '@tanstack/react-query'
-import { createClient } from '@/src/core/lib/supabase/client'
 
 type PartFormValues = z.input<typeof createWorkOrderPartSchema>
 
@@ -24,43 +23,30 @@ interface WorkOrderPartWizardProps {
   onClose: () => void
   workOrderId: string | null
   catalogs: MaintenanceCatalogsEntity | null
+  initialData?: WorkOrderPartReplicaEntity | null
 }
 
 type MeasurementUnitRow = { id: string; name: string; is_active: boolean }
 type InventoryItemRow = { id: string; name: string }
 
-export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs }: WorkOrderPartWizardProps) {
+export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs, initialData }: WorkOrderPartWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
   const createPart = useCreateWorkOrderPart()
+  const updatePart = useUpdateWorkOrderPart()
+  const isEditing = !!initialData
 
-  const unitsQuery = useQuery({
-    queryKey: ['maintenance', 'measurement-units'],
-    queryFn: async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('measurement_units')
-        .select('id, name, is_active')
-        .eq('is_active', true)
-        .order('name')
-      if (error) throw new Error(error.message)
-      return data as MeasurementUnitRow[]
-    },
-    staleTime: 1000 * 60 * 10,
-  })
+  const unitsQuery = useMeasurementUnits()
+  const inventoryQuery = useInventoryItems()
 
-  const inventoryQuery = useQuery({
-    queryKey: ['maintenance', 'inventory-items'],
-    queryFn: async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('inventory_items')
-        .select('id, name')
-        .order('name')
-      if (error) throw new Error(error.message)
-      return data as InventoryItemRow[]
-    },
-    staleTime: 1000 * 60 * 10,
-  })
+  const matchingProviderId = useMemo(() => {
+    if (!initialData || !catalogs || !initialData.providerName) return null
+    return (catalogs.providers ?? []).find((p) => p.name === initialData.providerName)?.id ?? null
+  }, [initialData, catalogs])
+
+  const matchingUnitId = useMemo(() => {
+    if (!initialData || !unitsQuery.data || !initialData.unitName) return null
+    return (unitsQuery.data ?? []).find((u) => u.name === initialData.unitName)?.id ?? null
+  }, [initialData, unitsQuery.data])
 
   const {
     register,
@@ -87,19 +73,34 @@ export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs }: 
 
   useEffect(() => {
     if (!isOpen) return
-    reset({
-      workOrderId: workOrderId ?? '',
-      providerId: null,
-      inventoryItemId: null,
-      description: '',
-      brand: null,
-      unitId: null,
-      quantity: 1,
-      unitPrice: 0,
-      discount: 0,
-      taxRate: 0.16,
-    })
-  }, [isOpen, reset, workOrderId])
+    if (initialData) {
+      reset({
+        workOrderId: workOrderId ?? initialData.workOrderId ?? '',
+        providerId: matchingProviderId,
+        inventoryItemId: null,
+        description: initialData.description,
+        brand: initialData.brand,
+        unitId: matchingUnitId,
+        quantity: initialData.quantity,
+        unitPrice: initialData.unitPrice,
+        discount: initialData.discount,
+        taxRate: initialData.taxRate,
+      })
+    } else {
+      reset({
+        workOrderId: workOrderId ?? '',
+        providerId: null,
+        inventoryItemId: null,
+        description: '',
+        brand: null,
+        unitId: null,
+        quantity: 1,
+        unitPrice: 0,
+        discount: 0,
+        taxRate: 0.16,
+      })
+    }
+  }, [isOpen, reset, workOrderId, initialData, matchingProviderId, matchingUnitId])
 
   const inputClass = cn(
     'flex h-12 w-full rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/20 transition-colors'
@@ -118,20 +119,31 @@ export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs }: 
 
   const handleClose = () => onClose()
 
-  const onFinish = handleSubmit(async (vals) => {
-    try {
-      if (!workOrderId) {
-        toast.error('Selecciona una orden de trabajo')
-        return
+  const onFinish = handleSubmit(
+    async (vals) => {
+      try {
+        if (!workOrderId && !isEditing) {
+          toast.error('Selecciona una orden de trabajo')
+          return
+        }
+        const actualWorkOrderId = workOrderId || (initialData?.workOrderId ?? '');
+        const parsed: CreateWorkOrderPartInput = createWorkOrderPartSchema.parse({ ...vals, workOrderId: actualWorkOrderId })
+        if (isEditing && initialData) {
+          await updatePart.mutateAsync({ id: initialData.id, data: parsed })
+        } else {
+          await createPart.mutateAsync(parsed)
+        }
+        toast.success(isEditing ? 'Refacción actualizada' : 'Refacción registrada')
+        handleClose()
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Error al guardar refacción')
       }
-      const parsed: CreateWorkOrderPartInput = createWorkOrderPartSchema.parse({ ...vals, workOrderId })
-      await createPart.mutateAsync(parsed)
-      toast.success('Refacción registrada')
-      handleClose()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al registrar refacción')
+    },
+    (errors) => {
+      console.error('[WorkOrderPartWizard] Validation errors:', errors)
+      toast.error('Por favor, corrige los errores de validación antes de continuar.')
     }
-  })
+  )
 
   const step1 = (
     <div className="flex flex-col gap-6 pt-2">
@@ -265,8 +277,8 @@ export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs }: 
     <Wizard
       isOpen={isOpen}
       onClose={handleClose}
-      title="Nueva Refacción"
-      description="Registra materiales y costos asociados a una orden."
+      title={isEditing ? 'Editar Refacción' : 'Nueva Refacción'}
+      description={isEditing ? 'Modifica los detalles de la refacción seleccionada.' : 'Registra materiales y costos asociados a una orden.'}
       icon={<PackagePlus className="size-5" />}
       steps={steps}
       activeStep={activeStep}

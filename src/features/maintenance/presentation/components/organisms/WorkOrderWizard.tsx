@@ -16,7 +16,8 @@ import type { EmployeeEntity } from '@/src/features/hr/domain/entities'
 import type { MaintenanceCatalogsEntity } from '@/src/features/maintenance/domain/repositories/i-maintenance-repository'
 import { createWorkOrderSchema, type CreateWorkOrderInput } from '@/src/features/maintenance/domain/schemas/create-work-order.schema'
 import { WORK_ORDER_STATUS } from '@/src/features/maintenance/domain/entities/maintenance-entity'
-import { useCreateWorkOrder } from '@/src/features/maintenance/presentation/hooks/use-maintenance'
+import { useCreateWorkOrder, useUpdateWorkOrder } from '@/src/features/maintenance/presentation/hooks/use-maintenance'
+import type { WorkshopWorkOrderReplicaEntity } from '@/src/features/maintenance/domain/entities/maintenance-entity'
 import type { z } from 'zod'
 
 type WorkOrderFormValues = z.input<typeof createWorkOrderSchema>
@@ -26,6 +27,7 @@ interface WorkOrderWizardProps {
   onClose: () => void
   stayId: string
   catalogs: MaintenanceCatalogsEntity | null
+  initialData?: WorkshopWorkOrderReplicaEntity | null
 }
 
 function generateWorkOrderFolio() {
@@ -33,9 +35,21 @@ function generateWorkOrderFolio() {
   return `${num}-Trabajo`
 }
 
-export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs }: WorkOrderWizardProps) {
+export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData }: WorkOrderWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
   const createWorkOrder = useCreateWorkOrder()
+  const updateWorkOrder = useUpdateWorkOrder()
+  const isEditing = !!initialData
+
+  const matchingMaintenanceTypeId = useMemo(() => {
+    if (!initialData || !catalogs || !initialData.maintenanceTypeName) return null
+    return (catalogs.maintenanceTypes ?? []).find((t) => t.name === initialData.maintenanceTypeName)?.id ?? null
+  }, [initialData, catalogs])
+
+  const matchingMechanicalCategoryId = useMemo(() => {
+    if (!initialData || !catalogs || !initialData.mechanicalCategoryName) return null
+    return (catalogs.mechanicalCategories ?? []).find((c) => c.name === initialData.mechanicalCategoryName)?.id ?? null
+  }, [initialData, catalogs])
 
   const employeesQuery = useQuery({
     queryKey: ['maintenance', 'employees'],
@@ -75,19 +89,34 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs }: WorkOrder
 
   useEffect(() => {
     if (!isOpen) return
-    reset({
-      stayId,
-      folio: generateWorkOrderFolio(),
-      maintenanceTypeId: null,
-      mechanicalCategoryId: null,
-      startedAt: new Date().toISOString().slice(0, 10),
-      finishedAt: null,
-      status: WORK_ORDER_STATUS.Open,
-      specialistEmployeeId: null,
-      description: '',
-      details: null,
-    })
-  }, [isOpen, reset, stayId])
+    if (initialData) {
+      reset({
+        stayId,
+        folio: initialData.workOrderFolio,
+        maintenanceTypeId: matchingMaintenanceTypeId,
+        mechanicalCategoryId: matchingMechanicalCategoryId,
+        startedAt: new Date(initialData.startedAt).toISOString().slice(0, 10),
+        finishedAt: initialData.finishedAt ? new Date(initialData.finishedAt).toISOString().slice(0, 10) : null,
+        status: initialData.status,
+        specialistEmployeeId: null, // Not mapped in replica
+        description: initialData.description,
+        details: initialData.details,
+      })
+    } else {
+      reset({
+        stayId,
+        folio: generateWorkOrderFolio(),
+        maintenanceTypeId: null,
+        mechanicalCategoryId: null,
+        startedAt: new Date().toISOString().slice(0, 10),
+        finishedAt: null,
+        status: WORK_ORDER_STATUS.Open,
+        specialistEmployeeId: null,
+        description: '',
+        details: null,
+      })
+    }
+  }, [isOpen, reset, stayId, initialData, matchingMaintenanceTypeId, matchingMechanicalCategoryId])
 
   const inputClass = cn(
     'flex h-12 w-full rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/20 transition-colors'
@@ -102,16 +131,26 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs }: WorkOrder
 
   const handleClose = () => onClose()
 
-  const onFinish = handleSubmit(async (vals) => {
-    try {
-      const parsed: CreateWorkOrderInput = createWorkOrderSchema.parse(vals)
-      await createWorkOrder.mutateAsync(parsed)
-      toast.success('Orden de trabajo creada')
-      handleClose()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al crear orden')
+  const onFinish = handleSubmit(
+    async (vals) => {
+      try {
+        const parsed: CreateWorkOrderInput = createWorkOrderSchema.parse(vals)
+        if (isEditing && initialData) {
+          await updateWorkOrder.mutateAsync({ id: initialData.id, data: parsed })
+        } else {
+          await createWorkOrder.mutateAsync(parsed)
+        }
+        toast.success(isEditing ? 'Orden de trabajo actualizada' : 'Orden de trabajo creada')
+        handleClose()
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Error al guardar orden')
+      }
+    },
+    (errors) => {
+      console.error('[WorkOrderWizard] Validation errors:', errors)
+      toast.error('Por favor, corrige los errores de validación antes de continuar.')
     }
-  })
+  )
 
   const step1 = (
     <div className="flex flex-col gap-6 pt-2">
@@ -233,8 +272,8 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs }: WorkOrder
     <Wizard
       isOpen={isOpen}
       onClose={handleClose}
-      title="Nueva Orden de Trabajo"
-      description="Registra una actividad dentro de la estancia."
+      title={isEditing ? 'Editar Orden de Trabajo' : 'Nueva Orden de Trabajo'}
+      description={isEditing ? 'Modifica los detalles de la orden de trabajo seleccionada.' : 'Registra una actividad dentro de la estancia.'}
       icon={<ClipboardList className="size-5" />}
       steps={steps}
       activeStep={activeStep}

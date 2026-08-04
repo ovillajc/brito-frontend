@@ -1,13 +1,21 @@
 import { createClient } from '@/src/core/lib/supabase/server'
 import type { Either, Failure } from '@/src/core/domain/either'
-import type { IMaintenanceRepository, MaintenanceCatalogsEntity, MaintenanceListFilters } from '../../domain/repositories/i-maintenance-repository'
-import type { WorkOrderPartEntity, WorkshopStayKpiEntity, WorkshopWorkOrderEntity } from '../../domain/entities/maintenance-entity'
+import type { IMaintenanceRepository, MaintenanceCatalogsEntity, MaintenanceListFilters, PaginatedResult } from '../../domain/repositories/i-maintenance-repository'
+import type { WorkOrderPartEntity, WorkshopStayKpiEntity, WorkshopWorkOrderEntity, WorkshopStayReplicaEntity, WorkshopWorkOrderReplicaEntity, WorkOrderPartReplicaEntity, MeasurementUnitEntity, InventoryItemEntity } from '../../domain/entities/maintenance-entity'
 import type { CreateWorkshopStayInput } from '../../domain/schemas/create-stay.schema'
 import type { CreateWorkOrderInput } from '../../domain/schemas/create-work-order.schema'
 import type { CreateWorkOrderPartInput } from '../../domain/schemas/create-part.schema'
 
 export class SupabaseMaintenanceServerRepository implements IMaintenanceRepository {
-  async listStays(_filters?: MaintenanceListFilters): Promise<Either<Failure, WorkshopStayKpiEntity[]>> {
+  async listStays(_filters?: MaintenanceListFilters): Promise<Either<Failure, PaginatedResult<WorkshopStayReplicaEntity>>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en servidor' } }
+  }
+
+  async listAllWorkOrders(_filters?: MaintenanceListFilters): Promise<Either<Failure, PaginatedResult<WorkshopWorkOrderReplicaEntity>>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en servidor' } }
+  }
+
+  async listAllWorkOrderParts(_filters?: MaintenanceListFilters): Promise<Either<Failure, PaginatedResult<WorkOrderPartReplicaEntity>>> {
     return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en servidor' } }
   }
 
@@ -23,6 +31,14 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
     return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en servidor' } }
   }
 
+  async getMeasurementUnits(): Promise<Either<Failure, MeasurementUnitEntity[]>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en servidor' } }
+  }
+
+  async getInventoryItems(): Promise<Either<Failure, InventoryItemEntity[]>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en servidor' } }
+  }
+
   async createStay(input: CreateWorkshopStayInput, createdBy: string | null): Promise<Either<Failure, void>> {
     try {
       const supabase = await createClient()
@@ -34,15 +50,21 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
         entered_at: new Date(input.enteredAt).toISOString(),
         reason: input.reason,
         km_at_entry: input.kmAtEntry,
+        km_last_service: input.kmLastService,
+        last_trip_start_date: input.lastTripStartDate ? new Date(input.lastTripStartDate).toISOString() : null,
         delivered_by_employee_id: input.deliveredByEmployeeId,
         picked_up_by_employee_id: input.pickedUpByEmployeeId,
         last_trip_id: input.lastTripId,
         created_by: createdBy,
       })
 
-      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      if (error) {
+        console.error('DB_ERROR in createStay:', error)
+        return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      }
       return { ok: true, data: undefined }
-    } catch {
+    } catch (err) {
+      console.error('UNEXPECTED in createStay:', err)
       return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al crear la estancia' } }
     }
   }
@@ -87,6 +109,60 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
     }
   }
 
+  async updateStay(stayId: string, input: Partial<CreateWorkshopStayInput>, updatedBy: string | null): Promise<Either<Failure, void>> {
+    try {
+      const supabase = await createClient()
+      const updateData: Record<string, any> = {}
+      if (input.folio !== undefined) updateData.folio = input.folio
+      if (input.vehicleType !== undefined) updateData.vehicle_type = input.vehicleType
+      if (input.truckId !== undefined) updateData.truck_id = input.truckId
+      if (input.trailerId !== undefined) updateData.trailer_id = input.trailerId
+      if (input.enteredAt !== undefined) updateData.entered_at = new Date(input.enteredAt).toISOString()
+      if (input.reason !== undefined) updateData.reason = input.reason
+      if (input.kmAtEntry !== undefined) updateData.km_at_entry = input.kmAtEntry
+      if (input.kmLastService !== undefined) updateData.km_last_service = input.kmLastService
+      if (input.lastTripStartDate !== undefined) updateData.last_trip_start_date = input.lastTripStartDate ? new Date(input.lastTripStartDate).toISOString() : null
+      if (input.deliveredByEmployeeId !== undefined) updateData.delivered_by_employee_id = input.deliveredByEmployeeId
+      if (input.pickedUpByEmployeeId !== undefined) updateData.picked_up_by_employee_id = input.pickedUpByEmployeeId
+      if (input.lastTripId !== undefined) updateData.last_trip_id = input.lastTripId
+
+      console.log('[SupabaseMaintenanceServerRepository] updateStay executing with id:', stayId, 'data:', updateData)
+
+      const { data, error } = await supabase.from('workshop_stays').update(updateData).eq('id', stayId).select()
+
+      console.log('[SupabaseMaintenanceServerRepository] updateStay result:', { data, error })
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: undefined }
+    } catch (err) {
+      console.error('[SupabaseMaintenanceServerRepository] updateStay exception:', err)
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al actualizar la estancia' } }
+    }
+  }
+
+  async updateWorkOrder(workOrderId: string, input: Partial<CreateWorkOrderInput>, updatedBy: string | null): Promise<Either<Failure, void>> {
+    try {
+      const supabase = await createClient()
+      const updateData: Record<string, any> = {}
+      if (input.folio !== undefined) updateData.folio = input.folio
+      if (input.maintenanceTypeId !== undefined) updateData.maintenance_type_id = input.maintenanceTypeId
+      if (input.mechanicalCategoryId !== undefined) updateData.mechanical_category_id = input.mechanicalCategoryId
+      if (input.startedAt !== undefined) updateData.started_at = new Date(input.startedAt).toISOString()
+      if (input.status !== undefined) updateData.status = input.status
+      if (input.specialistEmployeeId !== undefined) updateData.specialist_employee_id = input.specialistEmployeeId
+      if (input.supervisorProfileId !== undefined) updateData.supervisor_profile_id = input.supervisorProfileId
+      if (input.description !== undefined) updateData.description = input.description
+      if (input.details !== undefined) updateData.details = input.details
+
+      const { error } = await supabase.from('workshop_work_orders').update(updateData).eq('id', workOrderId)
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: undefined }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al actualizar la orden de trabajo' } }
+    }
+  }
+
   async createWorkOrderPart(input: CreateWorkOrderPartInput, createdBy: string | null): Promise<Either<Failure, void>> {
     try {
       const supabase = await createClient()
@@ -108,6 +184,62 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
       return { ok: true, data: undefined }
     } catch {
       return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al crear la refacción' } }
+    }
+  }
+
+  async updateWorkOrderPart(partId: string, input: Partial<CreateWorkOrderPartInput>, updatedBy: string | null): Promise<Either<Failure, void>> {
+    try {
+      const supabase = await createClient()
+      const updateData: Record<string, any> = {}
+      if (input.providerId !== undefined) updateData.provider_id = input.providerId
+      if (input.inventoryItemId !== undefined) updateData.inventory_item_id = input.inventoryItemId
+      if (input.description !== undefined) updateData.description = input.description
+      if (input.brand !== undefined) updateData.brand = input.brand
+      if (input.unitId !== undefined) updateData.unit_id = input.unitId
+      if (input.quantity !== undefined) updateData.quantity = input.quantity
+      if (input.unitPrice !== undefined) updateData.unit_price = input.unitPrice
+      if (input.discount !== undefined) updateData.discount = input.discount
+      if (input.taxRate !== undefined) updateData.tax_rate = input.taxRate
+
+      const { error } = await supabase.from('work_order_parts').update(updateData).eq('id', partId)
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: undefined }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al actualizar la refacción' } }
+    }
+  }
+
+  async deleteStay(stayId: string): Promise<Either<Failure, void>> {
+    try {
+      const supabase = await createClient()
+      const { error } = await supabase.from('workshop_stays').delete().eq('id', stayId)
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: undefined }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al eliminar la estancia' } }
+    }
+  }
+
+  async deleteWorkOrder(workOrderId: string): Promise<Either<Failure, void>> {
+    try {
+      const supabase = await createClient()
+      const { error } = await supabase.from('workshop_work_orders').delete().eq('id', workOrderId)
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: undefined }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al eliminar la orden de trabajo' } }
+    }
+  }
+
+  async deleteWorkOrderPart(partId: string): Promise<Either<Failure, void>> {
+    try {
+      const supabase = await createClient()
+      const { error } = await supabase.from('work_order_parts').delete().eq('id', partId)
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: undefined }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al eliminar la refacción' } }
     }
   }
 }

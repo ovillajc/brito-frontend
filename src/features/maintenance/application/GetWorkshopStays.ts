@@ -1,11 +1,11 @@
 import type { Either, Failure } from '@/src/core/domain/either'
-import type { IMaintenanceRepository, MaintenanceListFilters } from '../domain/repositories/i-maintenance-repository'
-import type { WorkshopStayKpiEntity } from '../domain/entities/maintenance-entity'
+import type { IMaintenanceRepository, MaintenanceListFilters, PaginatedResult } from '../domain/repositories/i-maintenance-repository'
+import type { WorkshopStayReplicaEntity } from '../domain/entities/maintenance-entity'
 
 export async function GetWorkshopStays(
   repo: IMaintenanceRepository,
   filters?: MaintenanceListFilters
-): Promise<Either<Failure, WorkshopStayKpiEntity[]>> {
+): Promise<Either<Failure, PaginatedResult<WorkshopStayReplicaEntity>>> {
   try {
     return await repo.listStays(filters)
   } catch {

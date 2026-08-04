@@ -15,6 +15,7 @@ export const createWorkOrderSchema = z.object({
     WORK_ORDER_STATUS.OnHold,
   ]),
   specialistEmployeeId: z.string().uuid().nullable().default(null),
+  supervisorProfileId: z.string().uuid().nullable().default(null),
   description: z.string().min(1, 'La descripción es requerida'),
   details: z.string().trim().nullable().default(null),
 })

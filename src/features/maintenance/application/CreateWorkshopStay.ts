@@ -9,8 +9,10 @@ export async function CreateWorkshopStay(
 ): Promise<Either<Failure, void>> {
   try {
     return await repo.createStay(input, createdBy)
-  } catch {
-    return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al crear la estancia' } }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Error inesperado al crear la estancia'
+    console.error('[CreateWorkshopStay] Unexpected error:', err)
+    return { ok: false, error: { code: 'UNEXPECTED', message } }
   }
 }
 
