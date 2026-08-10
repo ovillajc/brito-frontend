@@ -63,9 +63,9 @@ const MAIN_MODULES: NavItem[] = [
   },
   { label: 'QHSE', icon: ShieldCheck, href: '/qhse', requiredPermission: 'qhse:view' },
   { label: 'Combustible', icon: Fuel, href: '/fuel', requiredPermission: 'fuel:view' },
-  { label: 'Mantenimiento', icon: Wrench, href: '/maintenance', requiredPermission: 'maintenance:view' },
+  { label: 'Mantenimiento', icon: Wrench, href: '/maintenance', requiredPermissions: ['maintenance:view', 'maintenance:manage'] },
   { label: 'Gastos', icon: Wallet, href: '/expenses', requiredPermissions: ['expenses:manage', 'expenses:create', 'expenses:view'] },
-  { label: 'Inventario', icon: Package, href: '/inventory', requiredPermission: 'inventory:view' },
+  { label: 'Inventario', icon: Package, href: '/inventory', requiredPermissions: ['inventory:view', 'inventory:manage'] },
   { label: 'Directorio', icon: Users, href: '/directory' },
   { label: 'Facturación', icon: FileText, href: '/billing', requiredPermission: 'billing:view' },
   { label: 'Logística', icon: Package, href: '/logistics', requiredPermission: 'trips:view_all' },
@@ -123,7 +123,11 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
   const isWalmartOpsManagerRole = user?.roles.some(
     r => r.name === 'gerente_operaciones_walmart' || r.name === 'gerente operaciones walmart'
   )
+  const isMaintenanceRole = user?.roles.some(r => r.name === 'jefe_mantenimiento')
+  const isInventoryRole = user?.roles.some(r => r.name === 'almacen')
+
   const isSuperUser = user?.permissions.includes('all_access') || user?.permissions.includes('view_all')
+  const isRestrictedMaintenanceOrInventory = (isMaintenanceRole || isInventoryRole) && !isSuperUser
   const isRestrictedMonitoring = isMonitoringRole && !isSuperUser
   const isRestrictedWalmartCoordinator =
     !!isWalmartCoordinatorRole &&
@@ -138,7 +142,7 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
   const homeHref =
     isRestrictedMonitoring || isRestrictedWalmartCoordinator || isRestrictedLogisticsBoss || isRestrictedQhseSupervisor
       ? '/trips/list'
-      : (isRestrictedExpenseController ? '/expenses' : '/dashboard')
+      : (isRestrictedExpenseController ? '/expenses' : (isRestrictedMaintenanceOrInventory ? (isMaintenanceRole ? '/maintenance' : '/inventory') : '/dashboard'))
   const tripsHref = isRestrictedWalmartCoordinator
     ? '/trips/list'
     : (isRestrictedLogisticsBoss ? '/trips/list' : ((isFinanceSupportRole || isRestrictedExpenseController) ? '/trips/fuel/load' : '/trips'))
@@ -147,6 +151,7 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
     if (isRestrictedQhseSupervisor && !['/trips', '/qhse'].includes(item.href)) return false
     if (isRestrictedLogisticsBoss && !['/trips', '/fleet'].includes(item.href)) return false
     if (isRestrictedExpenseController && !['/expenses', '/trips'].includes(item.href)) return false
+    if (isRestrictedMaintenanceOrInventory && !['/maintenance', '/inventory'].includes(item.href)) return false
     if (isRestrictedMonitoring && !item.href.startsWith('/trips')) return false
     if (isRestrictedWalmartCoordinator && !item.href.startsWith('/trips')) return false
     if (isRestrictedWalmartOpsManager && ['/inventory', '/fuel'].includes(item.href)) return false
@@ -158,13 +163,13 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
   })
 
   const filteredAdminModules = ADMIN_MODULES.filter(item => {
-    if (isRestrictedMonitoring || isRestrictedWalmartCoordinator || isRestrictedLogisticsBoss || isRestrictedQhseSupervisor) return false
+    if (isRestrictedMonitoring || isRestrictedWalmartCoordinator || isRestrictedLogisticsBoss || isRestrictedQhseSupervisor || isRestrictedMaintenanceOrInventory) return false
     if (isRestrictedWalmartOpsManager && item.href === '/bi') return false
     return !item.requiredPermission || hasPermission(item.requiredPermission)
   })
 
   const filteredSystemItems = SYSTEM_ITEMS.filter(item => {
-    if (isRestrictedMonitoring || isRestrictedWalmartCoordinator || isRestrictedLogisticsBoss || isRestrictedQhseSupervisor) return false
+    if (isRestrictedMonitoring || isRestrictedWalmartCoordinator || isRestrictedLogisticsBoss || isRestrictedQhseSupervisor || isRestrictedMaintenanceOrInventory) return false
     return !item.requiredPermission || hasPermission(item.requiredPermission)
   })
 
@@ -220,9 +225,18 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
       window.location.href = '/trips/list'
     }
 
+    if (
+      isRestrictedMaintenanceOrInventory &&
+      !pathname.startsWith('/maintenance') &&
+      !pathname.startsWith('/inventory') &&
+      !pathname.startsWith('/profile')
+    ) {
+      window.location.href = isMaintenanceRole ? '/maintenance' : '/inventory'
+    }
+
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isRestrictedMonitoring, isRestrictedWalmartCoordinator, isRestrictedExpenseController, isRestrictedLogisticsBoss, isRestrictedQhseSupervisor, pathname])
+  }, [isRestrictedMonitoring, isRestrictedWalmartCoordinator, isRestrictedExpenseController, isRestrictedLogisticsBoss, isRestrictedQhseSupervisor, isRestrictedMaintenanceOrInventory, isMaintenanceRole, pathname])
 
   return (
     <aside

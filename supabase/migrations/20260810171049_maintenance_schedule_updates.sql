@@ -14,10 +14,12 @@ DECLARE
   next_seq INTEGER;
   date_prefix TEXT;
 BEGIN
-  -- Calcular el siguiente número secuencial (MAX + 1, rellena el final si se borró el último)
+  -- Calcular el siguiente número secuencial (MAX + 1, ignorando NULLs).
+  -- Si no hay registros con sequential_number, comienza desde 1.
   SELECT COALESCE(MAX(sequential_number), 0) + 1
   INTO next_seq
-  FROM public.workshop_stays;
+  FROM public.workshop_stays
+  WHERE sequential_number IS NOT NULL;
 
   -- Prefijo de fecha usando la fecha de ingreso en hora de México
   date_prefix := TO_CHAR(NEW.entered_at AT TIME ZONE 'America/Mexico_City', 'YYYY-MM-DD');
