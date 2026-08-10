@@ -380,7 +380,7 @@ export function TripWizard({ isOpen, onClose, onSaved, tripRow, clients = [], un
         dhdTotalInvoice: typeof tripRow.walmartData?.dhdTotalInvoice === 'number' ? tripRow.walmartData.dhdTotalInvoice : '',
         dettesLog: Array.isArray(tripRow.walmartData?.dettesLog) 
           ? tripRow.walmartData.dettesLog.map((d) => {
-              const row = d && typeof d === 'object' ? (d as Record<string, unknown>) : {}
+              const row = d && typeof d === 'object' ? (d as unknown as Record<string, unknown>) : {}
               const storeId = typeof row.storeId === 'string' ? row.storeId : ''
               const storeName = typeof row.storeName === 'string' ? row.storeName : ''
               const appointmentAtRaw = typeof row.appointmentAt === 'string' ? row.appointmentAt : null

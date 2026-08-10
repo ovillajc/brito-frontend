@@ -308,7 +308,7 @@ export function TripDetailsDialog({ isOpen, onClose, tripRow }: TripDetailsDialo
                   {tripRow.walmartData?.dettesLog && Array.isArray(tripRow.walmartData.dettesLog) && tripRow.walmartData.dettesLog.length > 0 ? (
                     <div className="grid gap-3">
                       {tripRow.walmartData.dettesLog.map((log, index) => {
-                        const row = log && typeof log === 'object' ? (log as Record<string, unknown>) : {}
+                        const row = log && typeof log === 'object' ? (log as unknown as Record<string, unknown>) : {}
                         const stopNumber = typeof row.stopNumber === 'number' ? row.stopNumber : null
                         const storeName = typeof row.storeName === 'string' ? row.storeName : null
                         const storeId = typeof row.storeId === 'string' ? row.storeId : null
