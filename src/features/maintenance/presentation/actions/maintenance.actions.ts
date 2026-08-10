@@ -11,6 +11,8 @@ import { CloseWorkshopStay } from '@/src/features/maintenance/application/CloseW
 import type { CreateWorkshopStayInput } from '@/src/features/maintenance/domain/schemas/create-stay.schema'
 import type { CreateWorkOrderInput } from '@/src/features/maintenance/domain/schemas/create-work-order.schema'
 import type { CreateWorkOrderPartInput } from '@/src/features/maintenance/domain/schemas/create-part.schema'
+import type { CreateWorkOrderIssueInput } from '@/src/features/maintenance/domain/schemas/create-work-order-issue.schema'
+import type { CreateProviderInput } from '@/src/features/maintenance/domain/schemas/create-provider.schema'
 
 async function getCurrentProfileId(): Promise<string | null> {
   const supabase = await createClient()
@@ -100,3 +102,36 @@ export async function deleteWorkOrderPartAction(partId: string): Promise<Either<
   return result
 }
 
+export async function createWorkOrderIssueAction(input: CreateWorkOrderIssueInput): Promise<Either<Failure, void>> {
+  const profileId = await getCurrentProfileId()
+  const repo = new SupabaseMaintenanceServerRepository()
+  const { CreateWorkOrderIssue } = await import('@/src/features/maintenance/application/CreateWorkOrderIssue')
+  const result = await CreateWorkOrderIssue(repo, input, profileId)
+  if (result.ok) revalidatePath('/maintenance')
+  return result
+}
+
+export async function deleteWorkOrderIssueAction(issueId: string): Promise<Either<Failure, void>> {
+  const repo = new SupabaseMaintenanceServerRepository()
+  const { DeleteWorkOrderIssue } = await import('@/src/features/maintenance/application/DeleteWorkOrderIssue')
+  const result = await DeleteWorkOrderIssue(repo, issueId)
+  if (result.ok) revalidatePath('/maintenance')
+  return result
+}
+
+export async function createProviderAction(input: CreateProviderInput): Promise<Either<Failure, void>> {
+  const profileId = await getCurrentProfileId()
+  const repo = new SupabaseMaintenanceServerRepository()
+  const { CreateProvider } = await import('@/src/features/maintenance/application/CreateProvider')
+  const result = await CreateProvider(repo, input, profileId)
+  if (result.ok) revalidatePath('/maintenance')
+  return result
+}
+
+export async function updateProviderAction(providerId: string, input: Partial<CreateProviderInput>): Promise<Either<Failure, void>> {
+  const repo = new SupabaseMaintenanceServerRepository()
+  const { UpdateProvider } = await import('@/src/features/maintenance/application/UpdateProvider')
+  const result = await UpdateProvider(repo, providerId, input)
+  if (result.ok) revalidatePath('/maintenance')
+  return result
+}

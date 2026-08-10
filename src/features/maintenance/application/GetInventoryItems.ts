@@ -3,7 +3,7 @@ import type { IMaintenanceRepository } from '../domain/repositories/i-maintenanc
 import type { InventoryItemEntity } from '../domain/entities/maintenance-entity'
 
 /**
- * Caso de uso para obtener los elementos del inventario.
+ * Caso de uso para obtener los artículos de inventario.
  *
  * @param repo - Implementación del repositorio inyectada.
  * @returns Either con Failure o un listado de InventoryItemEntity.
@@ -14,6 +14,6 @@ export async function GetInventoryItems(
   try {
     return await repo.getInventoryItems()
   } catch {
-    return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al obtener elementos del inventario' } }
+    return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al obtener artículos de inventario' } }
   }
 }

@@ -45,8 +45,9 @@ export interface WorkshopWorkOrderEntity {
   startedAt: Date
   finishedAt: Date | null
   status: WorkOrderStatus
-  specialistEmployeeId: string | null
-  supervisorProfileId: string | null
+  specialistName: string | null
+  supervisorName: string | null
+  supervisorEmployeeId: string | null
   description: string
   details: string | null
   failureLocation: string | null

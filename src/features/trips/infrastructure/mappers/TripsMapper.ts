@@ -141,36 +141,40 @@ export class TripsMapper {
       trailerEconomicNumber: row.unit_assemblies?.trailers?.economic_number ?? null,
       operatorRfc: row.unit_assemblies?.employees?.rfc ?? null,
       operatorLicenseNumber: row.unit_assemblies?.employees?.driver_details?.license_number ?? null,
-      walmartData: row.walmart_trip_data
-        ? {
-            coordinatorName: row.walmart_trip_data.coordinator_name ?? null,
-            route: row.walmart_trip_data.route ?? null,
-            cargoType: row.walmart_trip_data.cargo_type ?? null,
-            cartaPorteWalmart: row.walmart_trip_data.carta_porte_walmart ?? null,
-            numStores: row.walmart_trip_data.num_stores ?? null,
-            statusWalmart: row.walmart_trip_data.status_walmart ?? null,
-            strNumLoad: row.walmart_trip_data.str_num_load ?? null,
-            strComplementCartaPorte: row.walmart_trip_data.str_complement_carta_porte ?? null,
-            strPreinvoiceKm: row.walmart_trip_data.str_preinvoice_km ?? null,
-            strKmTraveled: row.walmart_trip_data.str_km_traveled ?? null,
-            strDiesel: row.walmart_trip_data.str_diesel ?? null,
-            strCasetas: row.walmart_trip_data.str_casetas ?? null,
-            strTotalInvoice: row.walmart_trip_data.str_total_invoice ?? null,
-            dhdNumLoad: row.walmart_trip_data.dhd_num_load ?? null,
-            dhdComplementCartaPorte: row.walmart_trip_data.dhd_complement_carta_porte ?? null,
-            dhdPreinvoiceKm: row.walmart_trip_data.dhd_preinvoice_km ?? null,
-            dhdKmTraveled: row.walmart_trip_data.dhd_km_traveled ?? null,
-            dhdDiesel: row.walmart_trip_data.dhd_diesel ?? null,
-            dhdCasetas: row.walmart_trip_data.dhd_casetas ?? null,
-            dhdTotalInvoice: row.walmart_trip_data.dhd_total_invoice ?? null,
-            dettesLog: typeof row.walmart_trip_data.dettes_log === 'string' 
-              ? (function() { try { return JSON.parse(row.walmart_trip_data.dettes_log as string) } catch { return [] } })() 
-              : (row.walmart_trip_data.dettes_log ?? null),
-            departureTemperature: row.walmart_trip_data.departure_temperature ?? null,
-            departureTime: row.walmart_trip_data.departure_time ?? null,
-            incidencias: row.walmart_trip_data.incidencias ?? null,
-          }
-        : null,
+      walmartData: (function() {
+        const walmartRow = Array.isArray(row.walmart_trip_data)
+          ? row.walmart_trip_data[0]
+          : row.walmart_trip_data;
+        if (!walmartRow) return null;
+        return {
+          coordinatorName: walmartRow.coordinator_name ?? null,
+          route: walmartRow.route ?? null,
+          cargoType: walmartRow.cargo_type ?? null,
+          cartaPorteWalmart: walmartRow.carta_porte_walmart ?? null,
+          numStores: walmartRow.num_stores ?? null,
+          statusWalmart: walmartRow.status_walmart ?? null,
+          strNumLoad: walmartRow.str_num_load ?? null,
+          strComplementCartaPorte: walmartRow.str_complement_carta_porte ?? null,
+          strPreinvoiceKm: walmartRow.str_preinvoice_km ?? null,
+          strKmTraveled: walmartRow.str_km_traveled ?? null,
+          strDiesel: walmartRow.str_diesel ?? null,
+          strCasetas: walmartRow.str_casetas ?? null,
+          strTotalInvoice: walmartRow.str_total_invoice ?? null,
+          dhdNumLoad: walmartRow.dhd_num_load ?? null,
+          dhdComplementCartaPorte: walmartRow.dhd_complement_carta_porte ?? null,
+          dhdPreinvoiceKm: walmartRow.dhd_preinvoice_km ?? null,
+          dhdKmTraveled: walmartRow.dhd_km_traveled ?? null,
+          dhdDiesel: walmartRow.dhd_diesel ?? null,
+          dhdCasetas: walmartRow.dhd_casetas ?? null,
+          dhdTotalInvoice: walmartRow.dhd_total_invoice ?? null,
+          dettesLog: typeof walmartRow.dettes_log === 'string' 
+            ? (function() { try { return JSON.parse(walmartRow.dettes_log as string) } catch { return [] } })() 
+            : (walmartRow.dettes_log ?? null),
+          departureTemperature: walmartRow.departure_temperature ?? null,
+          departureTime: walmartRow.departure_time ?? null,
+          incidencias: walmartRow.incidencias ?? null,
+        };
+      })(),
     }
   }
 

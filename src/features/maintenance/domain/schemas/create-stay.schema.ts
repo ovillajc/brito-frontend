@@ -14,6 +14,8 @@ export const createWorkshopStaySchema = z.object({
   deliveredByEmployeeId: z.string().uuid().nullable().default(null),
   pickedUpByEmployeeId: z.string().uuid().nullable().default(null),
   lastTripId: z.string().uuid().nullable().default(null),
+  notes: z.string().nullable().default(null),
+  exitedAt: z.string().nullable().default(null),
 }).superRefine((val, ctx) => {
   if (val.vehicleType === VEHICLE_TYPE.Truck && !val.truckId) {
     ctx.addIssue({ code: 'custom', path: ['truckId'], message: 'Selecciona un tracto' })

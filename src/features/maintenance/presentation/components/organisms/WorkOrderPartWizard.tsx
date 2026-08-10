@@ -12,7 +12,7 @@ import { Label } from '@/src/core/presentation/components/ui/label'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 import type { MaintenanceCatalogsEntity } from '@/src/features/maintenance/domain/repositories/i-maintenance-repository'
 import { createWorkOrderPartSchema, type CreateWorkOrderPartInput } from '@/src/features/maintenance/domain/schemas/create-part.schema'
-import { useCreateWorkOrderPart, useUpdateWorkOrderPart, useMeasurementUnits, useInventoryItems } from '@/src/features/maintenance/presentation/hooks/use-maintenance'
+import { useCreateWorkOrderPart, useUpdateWorkOrderPart, useMeasurementUnits, useInventoryItems, useAllWorkOrders } from '@/src/features/maintenance/presentation/hooks/use-maintenance'
 import type { WorkOrderPartReplicaEntity } from '@/src/features/maintenance/domain/entities/maintenance-entity'
 import type { z } from 'zod'
 
@@ -37,6 +37,7 @@ export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs, in
 
   const unitsQuery = useMeasurementUnits()
   const inventoryQuery = useInventoryItems()
+  const workOrdersQuery = useAllWorkOrders()
 
   const matchingProviderId = useMemo(() => {
     if (!initialData || !catalogs || !initialData.providerName) return null
@@ -111,9 +112,13 @@ export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs, in
   const providers = useMemo(() => catalogs?.providers ?? [], [catalogs])
   const units = useMemo(() => unitsQuery.data ?? [], [unitsQuery.data])
   const inventoryItems = useMemo(() => inventoryQuery.data ?? [], [inventoryQuery.data])
+  const workOrders = useMemo(() => workOrdersQuery.data?.data ?? [], [workOrdersQuery.data])
 
   const goNext = async () => {
-    const ok = await trigger(['description', 'quantity', 'unitPrice'])
+    const fieldsToValidate: (keyof PartFormValues)[] = ['description', 'quantity', 'unitPrice']
+    if (!workOrderId && !isEditing) fieldsToValidate.push('workOrderId')
+    
+    const ok = await trigger(fieldsToValidate)
     if (ok) setActiveStep(1)
   }
 
@@ -121,32 +126,60 @@ export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs, in
 
   const onFinish = handleSubmit(
     async (vals) => {
+      console.log('[WorkOrderPartWizard] onFinish called with vals:', vals)
       try {
-        if (!workOrderId && !isEditing) {
+        if (!vals.workOrderId) {
+          console.log('[WorkOrderPartWizard] Error: workOrderId is missing')
           toast.error('Selecciona una orden de trabajo')
           return
         }
-        const actualWorkOrderId = workOrderId || (initialData?.workOrderId ?? '');
-        const parsed: CreateWorkOrderPartInput = createWorkOrderPartSchema.parse({ ...vals, workOrderId: actualWorkOrderId })
+        
+        console.log('[WorkOrderPartWizard] Parsing with Zod...')
+        const parsed: CreateWorkOrderPartInput = createWorkOrderPartSchema.parse(vals)
+        console.log('[WorkOrderPartWizard] Parsed successfully:', parsed)
+        
         if (isEditing && initialData) {
+          console.log('[WorkOrderPartWizard] Updating part...')
           await updatePart.mutateAsync({ id: initialData.id, data: parsed })
+          console.log('[WorkOrderPartWizard] Update successful')
         } else {
+          console.log('[WorkOrderPartWizard] Creating part...')
           await createPart.mutateAsync(parsed)
+          console.log('[WorkOrderPartWizard] Create successful')
         }
         toast.success(isEditing ? 'Refacción actualizada' : 'Refacción registrada')
         handleClose()
       } catch (e) {
+        console.error('[WorkOrderPartWizard] Exception caught in onFinish:', e)
         toast.error(e instanceof Error ? e.message : 'Error al guardar refacción')
       }
     },
     (errors) => {
-      console.error('[WorkOrderPartWizard] Validation errors:', errors)
+      console.error('[WorkOrderPartWizard] Validation errors from react-hook-form:', errors)
       toast.error('Por favor, corrige los errores de validación antes de continuar.')
     }
   )
 
   const step1 = (
     <div className="flex flex-col gap-6 pt-2">
+      {!workOrderId && !isEditing && (
+        <div className="grid gap-2">
+          <Label htmlFor="workOrderId">Orden de Trabajo</Label>
+          <select
+            id="workOrderId"
+            className={inputClass}
+            disabled={workOrdersQuery.isLoading}
+            {...register('workOrderId')}
+          >
+            <option value="">{workOrdersQuery.isLoading ? 'Cargando...' : 'Selecciona una orden...'}</option>
+            {workOrders.map((wo: any) => (
+              <option key={wo.id} value={wo.id}>{wo.folio || wo.id}</option>
+            ))}
+          </select>
+          {errors.workOrderId && <p className={errorClass}>{errors.workOrderId.message}</p>}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="providerId">Proveedor (Opcional)</Label>

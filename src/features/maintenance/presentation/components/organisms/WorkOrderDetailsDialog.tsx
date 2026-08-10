@@ -105,8 +105,8 @@ export function WorkOrderDetailsDialog({ isOpen, onClose, workOrder }: WorkOrder
         <section>
           <SectionTitle title="Personal y Costos" icon={User} />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <DetailItem icon={User} label="Especialista" value={workOrder.specialistEmployeeName} />
-            <DetailItem icon={User} label="Supervisor" value={workOrder.supervisorProfileName} />
+            <DetailItem icon={User} label="Especialista" value={workOrder.specialistName} />
+            <DetailItem icon={User} label="Supervisor" value={workOrder.supervisorName} />
             <DetailItem icon={DollarSign} label="Costo Total" value={money.format(workOrder.totalCost)} />
           </div>
         </section>

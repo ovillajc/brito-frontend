@@ -1,17 +1,20 @@
 import { createClient } from '@/src/core/lib/supabase/client'
 import type { Either, Failure } from '@/src/core/domain/either'
 import type { IMaintenanceRepository, MaintenanceCatalogsEntity, MaintenanceListFilters, PaginatedResult } from '../../domain/repositories/i-maintenance-repository'
-import { MaintenanceMapper, type MaintenanceProviderRow, type MaintenanceTypeRow, type MechanicalCategoryRow, type WorkshopStayKpiRow, type WorkOrderPartRow, type WorkOrderRow, type MeasurementUnitRow, type InventoryItemRow } from '../mappers/MaintenanceMapper'
-import type { WorkshopWorkOrderEntity, WorkOrderPartEntity, WorkshopStayReplicaEntity, WorkshopWorkOrderReplicaEntity, WorkOrderPartReplicaEntity, MeasurementUnitEntity, InventoryItemEntity } from '../../domain/entities/maintenance-entity'
+import { MaintenanceMapper, type MaintenanceProviderRow, type MaintenanceTypeRow, type MechanicalCategoryRow, type MaintenanceServiceRow, type WorkshopStayKpiRow, type WorkOrderPartRow, type WorkOrderRow, type MeasurementUnitRow, type InventoryItemRow } from '../mappers/MaintenanceMapper'
+import type { WorkshopWorkOrderEntity, WorkOrderPartEntity, WorkshopStayReplicaEntity, WorkshopWorkOrderReplicaEntity, WorkOrderPartReplicaEntity, MeasurementUnitEntity, InventoryItemEntity, MaintenanceTypeEntity, MaintenanceServiceEntity, VehicleSystemEntity, VehicleComponentEntity, WorkOrderIssueEntity } from '../../domain/entities/maintenance-entity'
 import type { CreateWorkshopStayInput } from '../../domain/schemas/create-stay.schema'
 import type { CreateWorkOrderInput } from '../../domain/schemas/create-work-order.schema'
 import type { CreateWorkOrderPartInput } from '../../domain/schemas/create-part.schema'
+import type { CreateWorkOrderIssueInput } from '../../domain/schemas/create-work-order-issue.schema'
+import type { CreateProviderInput } from '../../domain/schemas/create-provider.schema'
+import type { MaintenanceProviderEntity } from '../../domain/entities/maintenance-entity'
 
 const SELECT_STAYS = 'id, folio, vehicle_type, unit_label, entered_at, exited_at, reason, days_in_shop, total_cost, status'
 const SELECT_WORK_ORDERS = [
   '*',
   'maintenance_types(name)',
-  'mechanical_categories(name)',
+  'maintenance_services(name)',
   'work_order_parts(total)',
 ].join(', ')
 const SELECT_PARTS = [
@@ -43,9 +46,10 @@ const SELECT_WORK_ORDERS_REPLICA = `
     trailers (economic_number, plates)
   ),
   maintenance_types (name),
-  mechanical_categories (name),
-  specialist_employee:employees!workshop_work_orders_specialist_employee_id_fkey (full_name),
-  supervisor_profile:profiles!workshop_work_orders_supervisor_profile_id_fkey (full_name),
+  maintenance_services (name),
+  specialist_name,
+  supervisor_name,
+  supervisor_employee:employees!workshop_work_orders_supervisor_employee_id_fkey (full_name),
   work_order_parts (total)
 `
 
@@ -56,7 +60,7 @@ const SELECT_PARTS_REPLICA = `
   workshop_work_orders (
     folio,
     maintenance_types(name),
-    mechanical_categories(name),
+    maintenance_services(name),
     workshop_stays (
       folio, entered_at, reason, vehicle_type,
       trucks(economic_number, plates),
@@ -208,25 +212,63 @@ export class SupabaseMaintenanceRepository implements IMaintenanceRepository {
   async getCatalogs(): Promise<Either<Failure, MaintenanceCatalogsEntity>> {
     try {
       const supabase = createClient()
-      const [typesRes, categoriesRes, providersRes] = await Promise.all([
+      const [typesRes, servicesRes, providersRes] = await Promise.all([
         supabase.from('maintenance_types').select('id, name, is_active').eq('is_active', true).order('name'),
-        supabase.from('mechanical_categories').select('id, name, is_active').eq('is_active', true).order('name'),
+        supabase.from('maintenance_services').select('id, name, description, maintenance_type_id, is_active').eq('is_active', true).order('name'),
         supabase.from('maintenance_providers').select('id, name, provider_type, is_active').eq('is_active', true).order('name'),
       ])
 
-      const anyError = typesRes.error || categoriesRes.error || providersRes.error
-      if (anyError) return { ok: false, error: { code: 'DB_ERROR', message: anyError.message } }
+      const anyError = typesRes.error || servicesRes.error || providersRes.error
+      if (anyError) return { ok: false, error: { code: 'DB_ERROR', message: anyError!.message } }
 
       return {
         ok: true,
         data: {
           maintenanceTypes: (typesRes.data ?? []).map((r) => MaintenanceMapper.maintenanceTypeToDomain(r as unknown as MaintenanceTypeRow)),
-          mechanicalCategories: (categoriesRes.data ?? []).map((r) => MaintenanceMapper.mechanicalCategoryToDomain(r as unknown as MechanicalCategoryRow)),
+          maintenanceServices: (servicesRes.data ?? []).map((r) => MaintenanceMapper.maintenanceServiceToDomain(r as unknown as MaintenanceServiceRow)),
           providers: (providersRes.data ?? []).map((r) => MaintenanceMapper.providerToDomain(r as unknown as MaintenanceProviderRow)),
         },
       }
     } catch {
       return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al cargar catálogos' } }
+    }
+  }
+
+  async getMaintenanceTypes(): Promise<Either<Failure, MaintenanceTypeEntity[]>> {
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('maintenance_types')
+        .select('id, name, is_active')
+        .eq('is_active', true)
+        .order('name')
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: (data ?? []).map((r) => MaintenanceMapper.maintenanceTypeToDomain(r as unknown as MaintenanceTypeRow)) }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al cargar tipos de mantenimiento' } }
+    }
+  }
+
+  async getMaintenanceServices(maintenanceTypeId?: string): Promise<Either<Failure, MaintenanceServiceEntity[]>> {
+    try {
+      const supabase = createClient()
+      let query = supabase
+        .from('maintenance_services')
+        .select('id, name, description, maintenance_type_id, is_active')
+        .eq('is_active', true)
+        .order('name')
+
+      if (maintenanceTypeId) {
+        query = query.eq('maintenance_type_id', maintenanceTypeId)
+      }
+
+      const { data, error } = await query
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: (data ?? []).map((r) => MaintenanceMapper.maintenanceServiceToDomain(r as unknown as MaintenanceServiceRow)) }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al cargar servicios de mantenimiento' } }
     }
   }
 
@@ -259,6 +301,79 @@ export class SupabaseMaintenanceRepository implements IMaintenanceRepository {
     } catch {
       return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al cargar inventario' } }
     }
+  }
+
+  // ─── Predictive Maintenance ─────────────────────────────────────────────────
+
+  async getVehicleSystems(): Promise<Either<Failure, VehicleSystemEntity[]>> {
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('vehicle_systems')
+        .select('id, name, description, is_active')
+        .eq('is_active', true)
+        .order('name')
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: (data ?? []).map((r) => MaintenanceMapper.vehicleSystemToDomain(r as any)) }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al cargar sistemas del vehículo' } }
+    }
+  }
+
+  async getVehicleComponents(vehicleSystemId?: string): Promise<Either<Failure, VehicleComponentEntity[]>> {
+    try {
+      const supabase = createClient()
+      let query = supabase
+        .from('vehicle_components')
+        .select(`
+          id, name, description, is_active, vehicle_system_id,
+          vehicle_systems (name)
+        `)
+        .eq('is_active', true)
+        .order('name')
+
+      if (vehicleSystemId) {
+        query = query.eq('vehicle_system_id', vehicleSystemId)
+      }
+
+      const { data, error } = await query
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: (data ?? []).map((r) => MaintenanceMapper.vehicleComponentToDomain(r as any)) }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al cargar componentes del vehículo' } }
+    }
+  }
+
+  async listWorkOrderIssues(workOrderId: string): Promise<Either<Failure, WorkOrderIssueEntity[]>> {
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('work_order_issues')
+        .select(`
+          id, work_order_id, vehicle_component_id, reported_issue, mechanic_notes, created_at,
+          vehicle_components (
+            name,
+            vehicle_systems (name)
+          )
+        `)
+        .eq('work_order_id', workOrderId)
+        .order('created_at', { ascending: false })
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: (data ?? []).map((r) => MaintenanceMapper.workOrderIssueToDomain(r as any)) }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al listar fallas de la orden de trabajo' } }
+    }
+  }
+
+  async createWorkOrderIssue(_input: CreateWorkOrderIssueInput, _createdBy: string | null): Promise<Either<Failure, void>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
+  }
+
+  async deleteWorkOrderIssue(_issueId: string): Promise<Either<Failure, void>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
   }
 
   async createStay(_input: CreateWorkshopStayInput, _createdBy: string | null): Promise<Either<Failure, void>> {
@@ -298,6 +413,36 @@ export class SupabaseMaintenanceRepository implements IMaintenanceRepository {
   }
 
   async deleteWorkOrderPart(_partId: string): Promise<Either<Failure, void>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
+  }
+
+  async listProviders(): Promise<Either<Failure, MaintenanceProviderEntity[]>> {
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('maintenance_providers')
+        .select('id, name, provider_type, is_active')
+        .order('name', { ascending: true })
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return {
+        ok: true,
+        data: (data ?? []).map((r) => ({
+          id: r.id as string,
+          name: r.name as string,
+          providerType: r.provider_type as MaintenanceProviderEntity['providerType'],
+          isActive: r.is_active as boolean,
+        })),
+      }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al obtener proveedores' } }
+    }
+  }
+
+  async createProvider(_input: CreateProviderInput, _createdBy: string | null): Promise<Either<Failure, void>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
+  }
+
+  async updateProvider(_providerId: string, _input: Partial<CreateProviderInput>): Promise<Either<Failure, void>> {
     return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en cliente' } }
   }
 }

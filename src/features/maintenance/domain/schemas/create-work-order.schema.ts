@@ -14,10 +14,15 @@ export const createWorkOrderSchema = z.object({
     WORK_ORDER_STATUS.Completed,
     WORK_ORDER_STATUS.OnHold,
   ]),
+  specialistName: z.string().trim().nullable().default(null),
   specialistEmployeeId: z.string().uuid().nullable().default(null),
-  supervisorProfileId: z.string().uuid().nullable().default(null),
+  supervisorName: z.string().trim().nullable().default(null),
+  supervisorEmployeeId: z.string().uuid().nullable().default(null),
   description: z.string().min(1, 'La descripción es requerida'),
   details: z.string().trim().nullable().default(null),
+  locationType: z.string().trim().nullable().default(null),
+  failureLocation: z.string().trim().nullable().default(null),
+  vehicleActivityAtFailure: z.string().trim().nullable().default(null),
 })
 
 export type CreateWorkOrderInput = z.infer<typeof createWorkOrderSchema>

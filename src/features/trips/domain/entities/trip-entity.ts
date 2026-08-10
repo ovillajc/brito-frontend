@@ -82,9 +82,19 @@ export interface TripWithRelations {
     dhdDiesel: number | null
     dhdCasetas: number | null
     dhdTotalInvoice: number | null
-    dettesLog: unknown
+    dettesLog: WalmartDette[] | null
     departureTemperature: string | null
     departureTime: string | null
     incidencias: string | null
   } | null
+}
+
+/** Estructura de cada entrada en dettes_log de walmart_trip_data */
+export interface WalmartDette {
+  storeId: string
+  storeName: string
+  stopNumber: number
+  appointmentAt: string | null
+  arrivedAt: string | null
+  departedAt: string | null
 }

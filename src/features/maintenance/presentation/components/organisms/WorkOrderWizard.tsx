@@ -37,6 +37,7 @@ function generateWorkOrderFolio() {
 
 export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData }: WorkOrderWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
+  const [isInternalSpecialist, setIsInternalSpecialist] = useState(false)
   const createWorkOrder = useCreateWorkOrder()
   const updateWorkOrder = useUpdateWorkOrder()
   const isEditing = !!initialData
@@ -48,7 +49,7 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData
 
   const matchingMechanicalCategoryId = useMemo(() => {
     if (!initialData || !catalogs || !initialData.mechanicalCategoryName) return null
-    return (catalogs.mechanicalCategories ?? []).find((c) => c.name === initialData.mechanicalCategoryName)?.id ?? null
+    return (catalogs.maintenanceServices ?? []).find((c) => c.name === initialData.mechanicalCategoryName)?.id ?? null
   }, [initialData, catalogs])
 
   const employeesQuery = useQuery({
@@ -70,6 +71,8 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData
     handleSubmit,
     reset,
     trigger,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<WorkOrderFormValues>({
     resolver: zodResolver(createWorkOrderSchema),
@@ -82,8 +85,12 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData
       finishedAt: null,
       status: WORK_ORDER_STATUS.Open,
       specialistEmployeeId: null,
+      specialistName: null,
       description: '',
       details: null,
+      locationType: 'BASE',
+      failureLocation: null,
+      vehicleActivityAtFailure: null,
     },
   })
 
@@ -98,10 +105,15 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData
         startedAt: new Date(initialData.startedAt).toISOString().slice(0, 10),
         finishedAt: initialData.finishedAt ? new Date(initialData.finishedAt).toISOString().slice(0, 10) : null,
         status: initialData.status,
-        specialistEmployeeId: null, // Not mapped in replica
+        specialistEmployeeId: initialData.specialistEmployeeId || null,
+        specialistName: initialData.specialistName || null,
         description: initialData.description,
         details: initialData.details,
+        locationType: (initialData as any).locationType || 'BASE',
+        failureLocation: (initialData as any).failureLocation || null,
+        vehicleActivityAtFailure: (initialData as any).vehicleActivityAtFailure || null,
       })
+      setIsInternalSpecialist(!!initialData.specialistEmployeeId)
     } else {
       reset({
         stayId,
@@ -112,11 +124,24 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData
         finishedAt: null,
         status: WORK_ORDER_STATUS.Open,
         specialistEmployeeId: null,
+        specialistName: null,
         description: '',
         details: null,
+        locationType: 'BASE',
+        failureLocation: null,
+        vehicleActivityAtFailure: null,
       })
+      setIsInternalSpecialist(false)
     }
   }, [isOpen, reset, stayId, initialData, matchingMaintenanceTypeId, matchingMechanicalCategoryId])
+
+  const selectedTypeId = watch('maintenanceTypeId')
+
+  const filteredServices = useMemo(() => {
+    const typeId = selectedTypeId || matchingMaintenanceTypeId
+    if (!typeId || !catalogs?.maintenanceServices) return []
+    return catalogs.maintenanceServices.filter((s) => s.maintenanceTypeId === typeId)
+  }, [catalogs?.maintenanceServices, selectedTypeId, matchingMaintenanceTypeId])
 
   const inputClass = cn(
     'flex h-12 w-full rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/20 transition-colors'
@@ -136,13 +161,15 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData
       try {
         const parsed: CreateWorkOrderInput = createWorkOrderSchema.parse(vals)
         if (isEditing && initialData) {
-          await updateWorkOrder.mutateAsync({ id: initialData.id, data: parsed })
+          const { supervisorName, supervisorEmployeeId, finishedAt, ...updatePayload } = parsed
+          await updateWorkOrder.mutateAsync({ id: initialData.id, data: updatePayload })
         } else {
           await createWorkOrder.mutateAsync(parsed)
         }
         toast.success(isEditing ? 'Orden de trabajo actualizada' : 'Orden de trabajo creada')
         handleClose()
       } catch (e) {
+        console.error('[WorkOrderWizard] Error on finish:', e)
         toast.error(e instanceof Error ? e.message : 'Error al guardar orden')
       }
     },
@@ -180,18 +207,45 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="specialistEmployeeId">Especialista (Opcional)</Label>
-          <select
-            id="specialistEmployeeId"
-            className={inputClass}
-            disabled={employeesQuery.isLoading}
-            {...register('specialistEmployeeId', { setValueAs: (v) => v || null })}
-          >
-            <option value="">{employeesQuery.isLoading ? 'Cargando...' : 'Selecciona...'}</option>
-            {specialists.map((e) => (
-              <option key={e.id} value={e.id}>{e.fullName}</option>
-            ))}
-          </select>
+          <div className="flex items-center justify-between">
+            <Label>Especialista (Opcional)</Label>
+            <label className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={isInternalSpecialist}
+                className="rounded border-stone-300 text-[#1a5c3a] focus:ring-[#1a5c3a]"
+                onChange={(e) => {
+                  setIsInternalSpecialist(e.target.checked)
+                  if (e.target.checked) {
+                    setValue('specialistName', null)
+                  } else {
+                    setValue('specialistEmployeeId', null)
+                  }
+                }} 
+              />
+              Es interno
+            </label>
+          </div>
+          {isInternalSpecialist ? (
+            <select
+              id="specialistEmployeeId"
+              className={inputClass}
+              disabled={employeesQuery.isLoading}
+              {...register('specialistEmployeeId', { setValueAs: (v) => v || null })}
+            >
+              <option value="">{employeesQuery.isLoading ? 'Cargando...' : 'Selecciona...'}</option>
+              {specialists.map((e) => (
+                <option key={e.id} value={e.id}>{e.fullName}</option>
+              ))}
+            </select>
+          ) : (
+            <Input
+              id="specialistName"
+              placeholder="Nombre del especialista externo"
+              className={inputClass}
+              {...register('specialistName', { setValueAs: (v) => v || null })}
+            />
+          )}
         </div>
       </div>
 
@@ -202,7 +256,10 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData
             id="maintenanceTypeId"
             className={inputClass}
             disabled={!catalogs}
-            {...register('maintenanceTypeId', { setValueAs: (v) => v || null })}
+            {...register('maintenanceTypeId', {
+              setValueAs: (v) => v || null,
+              onChange: () => setValue('mechanicalCategoryId', null),
+            })}
           >
             <option value="">{catalogs ? 'Selecciona...' : 'Cargando...'}</option>
             {(catalogs?.maintenanceTypes ?? []).map((t) => (
@@ -216,11 +273,13 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData
           <select
             id="mechanicalCategoryId"
             className={inputClass}
-            disabled={!catalogs}
+            disabled={!selectedTypeId}
             {...register('mechanicalCategoryId', { setValueAs: (v) => v || null })}
           >
-            <option value="">{catalogs ? 'Selecciona...' : 'Cargando...'}</option>
-            {(catalogs?.mechanicalCategories ?? []).map((c) => (
+            <option value="">
+              {!selectedTypeId ? 'Selecciona un tipo primero...' : 'Selecciona...'}
+            </option>
+            {filteredServices.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
@@ -239,6 +298,23 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData
 
   const step2 = (
     <div className="flex flex-col gap-6 pt-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="locationType">Lugar de Falla/Trabajo</Label>
+          <select id="locationType" className={inputClass} {...register('locationType', { setValueAs: (v) => v || null })}>
+            <option value="BASE">Taller Base</option>
+            <option value="EXTERNAL">Externo (Rescate/Ruta)</option>
+          </select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="failureLocation">Ubicación de Falla (Opcional)</Label>
+          <Input id="failureLocation" className={inputClass} placeholder="Ej. CEDIS, Base Brito..." {...register('failureLocation', { setValueAs: (v) => v || null })} />
+        </div>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="vehicleActivityAtFailure">Actividad del vehículo (Opcional)</Label>
+        <Input id="vehicleActivityAtFailure" className={inputClass} placeholder="Ej. Descargando, En ruta..." {...register('vehicleActivityAtFailure', { setValueAs: (v) => v || null })} />
+      </div>
       <div className="grid gap-2">
         <Label htmlFor="details">Detalle (Opcional)</Label>
         <textarea

@@ -1,64 +1,48 @@
-INSERT INTO public.trailers (
-  id, 
-  economic_number, 
-  plates, 
-  serial_number, 
-  insurance_policy, 
-  company_profile_id, 
-  trailer_model_id, 
-  status, 
-  created_at, 
-  updated_at, 
-  size_ft, 
-  continuous_refrigerated_yield, 
-  continuous_frozen_yield, 
-  ss_refrigerated_yield, 
-  ss_frozen_yield
-) VALUES 
-('e4a40f02-1d78-4156-a0a9-b96494a68e8b', 'Caja 01', '75UP7F', '1GRAA0622BB700349', 'NA', '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 19:10:08.09714+00', '2026-05-28 19:10:08.09714+00', 53, 1, 1, 1, 1),
-('f8805d27-7595-4f02-8283-d828a0567be9', 'Caja 03', '37UV7R', '1JJV532B9DL778798', 'NA', '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 19:29:50.05074+00', '2026-05-28 19:29:50.05074+00', 53, 1, 1, 1, 1),
-('b98f9a9c-49be-4dc7-b301-f45cd9b47154', 'Caja 04', '55UV7R', '1GRAA0628AW704171', 'NA', '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 19:31:59.137022+00', '2026-05-28 19:31:59.137022+00', 48, 1, 1, 1, 1),
-('62e8daef-be29-45ad-a6c1-83f7c93a01a5', 'Caja 05', '87UV7R', '1UYVS2538AM895005', 'NA', '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 19:33:03.814725+00', '2026-05-28 19:33:03.814725+00', 53, 1, 1, 1, 1),
-('f38b43b1-e643-4cf7-a277-42d20a3158c7', 'Caja 07', '45UY1A', '1UYVS25368U444732', 'NA', '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 19:36:29.395019+00', '2026-05-28 19:36:29.395019+00', 53, 1, 1, 1, 1),
-('1805aad4-1721-40ae-b0e4-6e3d7dd80126', 'Caja 08', '42UY1A', '1UYVS25309U741111', 'NA', '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 19:37:33.199853+00', '2026-05-28 19:37:33.199853+00', 53, 1, 1, 1, 1),
-('7fa4fc96-8e2f-4af5-8aca-e73896017fb3', 'Caja 09', '43UY1A', '1UYVS25309U741108', 'NA', '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 19:40:14.263371+00', '2026-05-28 19:40:14.263371+00', 53, 11, 1, 1, 1),
-('b0133ad9-b110-494c-94ff-26270d8ee6d1', 'Caja 10', '61UX5Y', '3H3V532C9GT082133', 'NA', '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 19:41:42.388102+00', '2026-05-28 19:41:42.388102+00', 53, 1, 1, 1, 1),
-('44d0c7bd-1e71-4707-adef-b4937f0a4cc5', 'Caja 11', '40UX6Y', '1GRAA062XFB708253', 'NA', '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 19:46:07.58326+00', '2026-05-28 19:46:07.58326+00', 53, 1, 1, 1, 1),
-('b285294c-90bc-4b5a-bc9d-94ff84842e54', 'Caja 13', '10UV9R', '1UYVS2532AU910811', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-30 15:58:04.207577+00', '2026-05-30 15:58:04.207577+00', 53, 1, 1, 1, 1),
-('e503e0d0-c8a3-4fa3-8035-ea942bc60065', 'Caja 18', '61VC8C', '1UYVS2534DU591206', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-30 15:59:15.384114+00', '2026-05-30 15:59:15.384114+00', 53, 1, 1, 1, 1),
-('1bdf3ed8-db6d-4da0-a4c7-6397dc95334b', 'Caja 17', '74UP7F', '1GRAA0629BW701412', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-30 16:00:48.131851+00', '2026-05-30 16:00:48.131851+00', 48, 1, 1, 1, 1),
-('2776e1a8-49ec-4569-9a37-75574fb9d616', 'Caja 16', '76VA5J', '1UYVS2538AM805917', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-30 16:04:01.862058+00', '2026-05-30 16:04:01.862058+00', 53, 1, 1, 1, 1),
-('b0dbec5a-0cc9-432e-b580-e2b34ad9ad5c', 'Caja 06', '40UY1A', '1UYVS25328U444730', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-30 16:22:00.813784+00', '2026-05-30 16:22:00.813784+00', 53, 1, 1, 1, 1),
-('82ba47d2-5d09-4716-b2f3-b9404fbe4d1e', 'Caja 14', '40UZ2W', '1UYVS2534EU772257', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-30 16:49:45.479883+00', '2026-05-30 16:49:45.479883+00', 40, 1, 1, 1, 1),
-('ac86f02e-afb1-428d-9a74-50932a7eb9be', 'Caja 15', '41UZ2W', '1UYVS2534AM806515', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-30 16:51:40.710975+00', '2026-05-30 16:51:40.710975+00', 40, 1, 1, 1, 1),
-('6b5fffd2-d0b1-459c-b4db-06f9701d73a0', 'Caja 02', '62UZ1W', '1UYVS2538AU805013', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-30 20:54:13.401633+00', '2026-05-30 20:54:13.401633+00', 53, 1, 1, 1, 1),
-('136347d1-eef0-4f6a-983e-9e78cfffdc4c', 'Caja 12', '64UX7Y', NULL, NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-30 20:55:34.639233+00', '2026-05-30 20:55:34.639233+00', 53, 1, 1, 1, 1),
-('291eb8c5-dc07-4d1e-bd6d-b34a2ea7ad89', 'Tolva HOL-01', 'M7XX236A', NULL, NULL, NULL, '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-06-02 21:33:24.316877+00', '2026-06-02 21:33:24.316877+00', 30, 1, 1, 1, 1),
-('b8240cfe-b17d-4978-aa1a-fb9587c9aa46', 'Tolva HOL-02', 'M7XX237A', NULL, NULL, NULL, '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-06-02 21:37:43.424054+00', '2026-06-02 21:37:43.424054+00', 30, 1, 1, 1, 1),
-('8bded4f9-bd96-4172-8d99-e3da3548578f', 'Tolva HOL-03', 'M7XX247A', NULL, NULL, NULL, '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-06-02 21:38:28.091215+00', '2026-06-02 21:38:28.091215+00', 30, 1, 1, 1, 1),
-('f70fbf67-b75d-4c96-912e-1f710c842534', 'Tolva HOL-04', 'M7XX249A', NULL, NULL, NULL, '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-06-02 21:39:07.11206+00', '2026-06-02 21:39:07.11206+00', 30, 1, 1, 1, 1),
-('e2a7cca9-b1c7-4486-b1c8-f67b428386e3', 'Tolva HOL-05', 'M1XX354B', NULL, NULL, NULL, '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-06-02 21:39:44.422349+00', '2026-06-02 21:39:44.422349+00', 30, 1, 1, 1, 1),
-('dfc03252-8d3c-43b2-99c5-19de88c2fcf3', 'Tolva HOL-06', 'M1XX355B', NULL, NULL, NULL, '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-06-02 21:40:20.123494+00', '2026-06-02 21:40:20.123494+00', 30, 1, 1, 1, 1),
-('ff092244-5c41-49c0-9bb9-db1247baac41', 'Tolva 21', '543XA3', '3BYTC30289M003208', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 21:53:38.769561+00', '2026-06-09 17:52:33.209946+00', 2, 1, 1, 1, 1),
-('ed325d29-bb74-4cfb-a685-67367e8c6c2b', 'Tolva 22', '924WN2', '3BYTC302X9M003209', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 21:56:02.134305+00', '2026-06-09 17:53:03.243038+00', 2, 1, 1, 1, 1),
-('f45cc7b4-e867-4abe-ab3c-cd198b94c3db', 'Tolva 02', '06TY1J', '38YTC2825EH008139', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 19:51:41.736262+00', '2026-06-09 18:33:46.34092+00', 2, 1, 1, 1, 1),
-('485926df-14ad-4556-a362-739a7dd52407', 'Tolva 03', '336XA3', '3BYTC3026BM003030', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 19:58:02.86676+00', '2026-06-09 18:33:58.672187+00', 2, 1, 1, 1, 1),
-('d9e4a72b-fecd-49ea-8fe3-0e8f539be3b2', 'Tolva 04', '545XA3', '3DG1N3661RG002650', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 20:03:37.385294+00', '2026-06-09 18:34:16.150479+00', 2, 1, 1, 1, 1),
-('f8c541b3-d785-4803-9f9e-062341cdaae2', 'Tolva 05', '609XA3', '3DG1N3665RG002649', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 20:05:53.258652+00', '2026-06-09 18:34:29.830602+00', 2, 1, 1, 1, 1),
-('a2b18c5f-0729-4084-b9e7-a3f5fe3c4186', 'Tolva 06', '16UH3E', '3R9D1CZ25MU078857', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 20:11:58.790262+00', '2026-06-09 18:34:44.613014+00', 3, 1, 1, 1, 1),
-('ac27f778-5625-4ce4-81e2-2c7808deaf6a', 'Tolva 07', '61UU1D', '3R9D1CZ37JU078525', NULL, '90f07670-2143-4e5e-a711-65e1c2dfdc71', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 20:14:42.390821+00', '2026-06-09 18:34:56.550953+00', 3, 1, 1, 1, 1),
-('ac785696-da66-42ca-8131-aee183029827', 'Tolva 08', '62UU1D', '3A9AA40B9NA210024', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 20:21:38.061309+00', '2026-06-09 18:35:09.546366+00', 3, 1, 1, 1, 1),
-('67bc56dd-0799-45f2-a15f-dea231b9d5fa', 'Tolva 09', '01UB3M', '3G972CP4M1030151', NULL, '90f07670-2143-4e5e-a711-65e1c2dfdc71', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 20:24:50.276237+00', '2026-06-09 18:35:25.109643+00', 3, 1, 1, 1, 1),
-('b1af2c32-9d28-4819-b3c2-6a24f088066c', 'Tolva 10', '18UM2L', '3DG1N4292SG000546', NULL, '90f07670-2143-4e5e-a711-65e1c2dfdc71', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 21:13:21.779555+00', '2026-06-09 18:35:36.349152+00', 3, 1, 1, 1, 1),
-('6a7bd9f5-f835-4956-aa21-fdec3028ef77', 'Tolva 19', '141UF7', NULL, NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-06-09 18:36:42.950509+00', '2026-06-09 18:36:42.950509+00', 30, 1, 1, 1, 1),
-('62eb0216-336a-44f1-86c5-395892adf58d', 'Tolva 12', '90VA5J', '3D9RC62C6F1010139', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 21:37:18.952459+00', '2026-06-09 18:27:40.094963+00', 2, 1, 1, 1, 1),
-('2c9c8e01-063b-401c-90a0-33104463904b', 'Tolva 13', '28UU1D', '3R9D1AY35KU078580', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 21:39:40.86232+00', '2026-06-09 18:27:54.292517+00', 3, 1, 1, 1, 1),
-('bb5e2e72-4959-415d-bf2b-f41cd10a9275', 'Tolva 14', '841UF6', '3T9CM33E23M014861', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 21:45:54.677593+00', '2026-06-09 18:28:26.204293+00', 2, 1, 1, 1, 1),
-('868a7764-9d01-4cb1-b312-1c3be76d97c9', 'Tolva 15', '88VA5J', '3BYTC2822BH004657', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 21:48:30.224651+00', '2026-06-09 18:28:42.787966+00', 2, 1, 1, 1, 1),
-('fd94091b-0403-4f53-b0f2-a0d8be561a1b', 'Tolva 16', '48UL4N', NULL, NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-06-09 18:29:49.036155+00', '2026-06-09 18:29:49.036155+00', 30, 1, 1, 1, 1),
-('ee3ab657-553f-4dd3-953d-89120df99d5f', 'Tolva 17', '597XR5', NULL, NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-06-09 18:30:38.588573+00', '2026-06-09 18:30:38.588573+00', 30, 1, 1, 1, 1),
-('5a6e020d-f4b7-4aee-aa9f-a5a08a9fa354', 'Tolva 18', '534XA3', '3D9RC83C8B1010079', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 21:59:37.59808+00', '2026-06-09 18:31:08.684106+00', 3, 1, 1, 1, 1),
-('21b1f9da-6547-411b-90a9-4bf0e7c244f5', 'Tolva 01', '597XR5', '3S9AM30597A031107', NULL, '90f07670-2143-4e5e-a711-65e1c2dfdc71', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 19:00:03.811762+00', '2026-06-09 18:33:31.8059+00', 2, 1, 1, 1, 1),
-('eef37e5b-0f65-441d-987f-5dadfceed628', 'Tolva 20', '84TY9H', NULL, NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-06-09 18:37:18.037383+00', '2026-06-09 18:37:18.037383+00', 30, 1, 1, 1, 1),
-('df1f91c7-f4c9-4fd3-b389-6c83c292d8ce', 'Tolva 11', '89VA5J', '3T9CM33E13M014852', NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-05-28 22:04:03.713104+00', '2026-06-13 18:17:31.0278+00', 2, 1, 1, 1, 1),
-('2e93d036-0c7a-4ce8-90c9-b88a0b70617e', 'Caja 19', '44VB5P', NULL, NULL, '61312618-74a4-4fc4-8cde-7e3ad43c5c60', '42bb2d98-32ad-4652-b4a6-2a643c56a6d9', 'available', '2026-06-24 18:19:04.694159+00', '2026-06-24 18:47:41.418048+00', 53, 1, 1, 1, 1);
+-- ==============================================================================
+-- 1. Habilitar RLS en las tablas (si no está habilitado, esto lo activa)
+-- ==============================================================================
+ALTER TABLE public.maintenance_types ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.maintenance_services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.maintenance_providers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.measurement_units ENABLE ROW LEVEL SECURITY;
+
+-- ==============================================================================
+-- 2. Eliminar las políticas previas si ya existen para evitar conflictos
+-- ==============================================================================
+DROP POLICY IF EXISTS "Allow authenticated users to read maintenance_types" ON public.maintenance_types;
+DROP POLICY IF EXISTS "Allow authenticated users to read maintenance_services" ON public.maintenance_services;
+DROP POLICY IF EXISTS "Allow authenticated users to read maintenance_providers" ON public.maintenance_providers;
+DROP POLICY IF EXISTS "Allow authenticated users to read measurement_units" ON public.measurement_units;
+
+-- ==============================================================================
+-- 3. Crear las nuevas políticas para permitir SELECT solo a usuarios autenticados
+-- ==============================================================================
+
+-- Política para maintenance_types
+CREATE POLICY "Allow authenticated users to read maintenance_types" 
+ON public.maintenance_types 
+FOR SELECT 
+TO authenticated 
+USING (true);
+
+-- Política para maintenance_services
+CREATE POLICY "Allow authenticated users to read maintenance_services" 
+ON public.maintenance_services 
+FOR SELECT 
+TO authenticated 
+USING (true);
+
+-- Política para maintenance_providers
+CREATE POLICY "Allow authenticated users to read maintenance_providers" 
+ON public.maintenance_providers 
+FOR SELECT 
+TO authenticated 
+USING (true);
+
+-- Política para measurement_units
+CREATE POLICY "Allow authenticated users to read measurement_units" 
+ON public.measurement_units 
+FOR SELECT 
+TO authenticated 
+USING (true);
+

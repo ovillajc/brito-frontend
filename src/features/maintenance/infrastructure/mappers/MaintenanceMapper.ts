@@ -1,18 +1,23 @@
 import type {
   MaintenanceProviderEntity,
   MaintenanceTypeEntity,
+  MaintenanceServiceEntity,
   MechanicalCategoryEntity,
   ProviderType,
   VehicleType,
-  WorkOrderPartEntity,
-  WorkshopStayKpiEntity,
-  WorkshopWorkOrderEntity,
-  WorkOrderStatus,
+  WorkshopStayEntity,
   WorkshopStayReplicaEntity,
+  WorkshopWorkOrderEntity,
   WorkshopWorkOrderReplicaEntity,
+  WorkOrderPartEntity,
   WorkOrderPartReplicaEntity,
   MeasurementUnitEntity,
-  InventoryItemEntity
+  InventoryItemEntity,
+  VehicleSystemEntity,
+  VehicleComponentEntity,
+  WorkOrderIssueEntity,
+  WorkOrderStatus,
+  WorkshopStayKpiEntity,
 } from '../../domain/entities/maintenance-entity'
 
 export type WorkshopStayKpiRow = {
@@ -33,15 +38,18 @@ export type WorkOrderRow = {
   stay_id: string
   folio: string
   maintenance_type_id: string | null
-  mechanical_category_id: string | null
+  maintenance_service_id?: string | null
+  mechanical_category_id?: string | null
   started_at: string
   finished_at: string | null
   status: WorkOrderStatus
-  specialist_employee_id: string | null
-  supervisor_profile_id: string | null
+  specialist_name: string | null
+  supervisor_name: string | null
+  supervisor_employee_id: string | null
   description: string
   details: string | null
   maintenance_types?: { name: string } | null
+  maintenance_services?: { name: string } | null
   mechanical_categories?: { name: string } | null
   work_order_parts?: Array<{ total: number | null }> | null
 }
@@ -66,10 +74,15 @@ export type WorkOrderPartRow = {
 }
 
 export type MaintenanceTypeRow = { id: string; name: string; is_active: boolean }
+export type MaintenanceServiceRow = { id: string; name: string; description: string | null; maintenance_type_id: string; is_active: boolean }
 export type MechanicalCategoryRow = { id: string; name: string; is_active: boolean }
 export type MaintenanceProviderRow = { id: string; name: string; provider_type: ProviderType; is_active: boolean }
 export type MeasurementUnitRow = { id: string; name: string; is_active: boolean }
 export type InventoryItemRow = { id: string; name: string }
+
+export type VehicleSystemRow = { id: string; name: string; description: string | null; is_active: boolean }
+export type VehicleComponentRow = { id: string; vehicle_system_id: string; name: string; description: string | null; is_active: boolean; vehicle_systems?: { name: string } | null }
+export type WorkOrderIssueRow = { id: string; work_order_id: string; vehicle_component_id: string; reported_issue: string | null; mechanic_notes: string | null; created_at: string; vehicle_components?: { name: string; vehicle_systems?: { name: string } | null } | null }
 
 export class MaintenanceMapper {
   static stayKpiToDomain(row: WorkshopStayKpiRow): WorkshopStayKpiEntity {
@@ -91,6 +104,16 @@ export class MaintenanceMapper {
     return { id: row.id, name: row.name, isActive: row.is_active }
   }
 
+  static maintenanceServiceToDomain(row: MaintenanceServiceRow): MaintenanceServiceEntity {
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description ?? null,
+      maintenanceTypeId: row.maintenance_type_id,
+      isActive: row.is_active,
+    }
+  }
+
   static mechanicalCategoryToDomain(row: MechanicalCategoryRow): MechanicalCategoryEntity {
     return { id: row.id, name: row.name, isActive: row.is_active }
   }
@@ -107,6 +130,34 @@ export class MaintenanceMapper {
     return { id: row.id, name: row.name }
   }
 
+  static vehicleSystemToDomain(row: VehicleSystemRow): VehicleSystemEntity {
+    return { id: row.id, name: row.name, description: row.description, isActive: row.is_active }
+  }
+
+  static vehicleComponentToDomain(row: VehicleComponentRow): VehicleComponentEntity {
+    return {
+      id: row.id,
+      vehicleSystemId: row.vehicle_system_id,
+      vehicleSystemName: row.vehicle_systems?.name ?? null,
+      name: row.name,
+      description: row.description,
+      isActive: row.is_active,
+    }
+  }
+
+  static workOrderIssueToDomain(row: WorkOrderIssueRow): WorkOrderIssueEntity {
+    return {
+      id: row.id,
+      workOrderId: row.work_order_id,
+      vehicleComponentId: row.vehicle_component_id,
+      componentName: row.vehicle_components?.name ?? null,
+      vehicleSystemName: row.vehicle_components?.vehicle_systems?.name ?? null,
+      reportedIssue: row.reported_issue,
+      mechanicNotes: row.mechanic_notes,
+      createdAt: new Date(row.created_at),
+    }
+  }
+
   static workOrderToDomain(row: WorkOrderRow): WorkshopWorkOrderEntity {
     const total = (row.work_order_parts ?? []).reduce((acc, p) => acc + (p.total ?? 0), 0)
     return {
@@ -115,13 +166,14 @@ export class MaintenanceMapper {
       folio: row.folio,
       maintenanceTypeId: row.maintenance_type_id,
       maintenanceTypeName: row.maintenance_types?.name ?? null,
-      mechanicalCategoryId: row.mechanical_category_id,
-      mechanicalCategoryName: row.mechanical_categories?.name ?? null,
+      mechanicalCategoryId: row.maintenance_service_id ?? row.mechanical_category_id ?? null,
+      mechanicalCategoryName: row.maintenance_services?.name ?? row.mechanical_categories?.name ?? null,
       startedAt: new Date(row.started_at),
       finishedAt: row.finished_at ? new Date(row.finished_at) : null,
       status: row.status,
-      specialistEmployeeId: row.specialist_employee_id,
-      supervisorProfileId: row.supervisor_profile_id,
+      specialistName: row.specialist_name,
+      supervisorName: row.supervisor_name,
+      supervisorEmployeeId: row.supervisor_employee_id,
       description: row.description,
       details: row.details,
       totalCost: total,
@@ -198,8 +250,9 @@ export class MaintenanceMapper {
     const startedAt = new Date(row.started_at);
     const finishedAt = row.finished_at ? new Date(row.finished_at) : null;
     let daysInWork = null;
-    if (finishedAt) {
-      daysInWork = Number(((finishedAt.getTime() - startedAt.getTime()) / (1000 * 60 * 60 * 24)).toFixed(2));
+    const endCalcDate = finishedAt || (row.status !== 'completed' && row.status !== 'cancelled' ? new Date() : null);
+    if (endCalcDate) {
+      daysInWork = Number(((endCalcDate.getTime() - startedAt.getTime()) / (1000 * 60 * 60 * 24)).toFixed(2));
     }
 
     const totalCost = (row.work_order_parts ?? []).reduce((acc: number, p: any) => acc + (Number(p.total) || 0), 0);
@@ -226,11 +279,12 @@ export class MaintenanceMapper {
       unitPlates,
       stayReason: stay?.reason || null,
       maintenanceTypeName: row.maintenance_types?.name || null,
-      mechanicalCategoryName: row.mechanical_categories?.name || null,
+      mechanicalCategoryName: row.maintenance_services?.name || row.mechanical_categories?.name || null,
       failureLocation: row.failure_location,
       vehicleActivityAtFailure: row.vehicle_activity_at_failure,
-      specialistEmployeeName: row.specialist_employee?.full_name || null,
-      supervisorProfileName: row.supervisor_profile?.full_name || null,
+      specialistName: row.specialist_name || null,
+      specialistEmployeeId: row.specialist_employee_id || null,
+      supervisorName: row.supervisor_name || row.supervisor_employee?.full_name || null,
       description: row.description,
       details: row.details
     }
@@ -254,7 +308,7 @@ export class MaintenanceMapper {
       unitPlates,
       stayReason: stay?.reason || null,
       maintenanceTypeName: wo?.maintenance_types?.name || null,
-      mechanicalCategoryName: wo?.mechanical_categories?.name || null,
+      mechanicalCategoryName: wo?.maintenance_services?.name || wo?.mechanical_categories?.name || null,
       description: row.description,
       providerName: row.maintenance_providers?.name || null,
       brand: row.brand,

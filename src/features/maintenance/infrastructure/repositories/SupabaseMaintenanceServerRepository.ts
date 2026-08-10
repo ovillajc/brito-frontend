@@ -1,10 +1,12 @@
 import { createClient } from '@/src/core/lib/supabase/server'
 import type { Either, Failure } from '@/src/core/domain/either'
 import type { IMaintenanceRepository, MaintenanceCatalogsEntity, MaintenanceListFilters, PaginatedResult } from '../../domain/repositories/i-maintenance-repository'
-import type { WorkOrderPartEntity, WorkshopStayKpiEntity, WorkshopWorkOrderEntity, WorkshopStayReplicaEntity, WorkshopWorkOrderReplicaEntity, WorkOrderPartReplicaEntity, MeasurementUnitEntity, InventoryItemEntity } from '../../domain/entities/maintenance-entity'
+import type { WorkOrderPartEntity, WorkshopStayKpiEntity, WorkshopWorkOrderEntity, WorkshopStayReplicaEntity, WorkshopWorkOrderReplicaEntity, WorkOrderPartReplicaEntity, MeasurementUnitEntity, InventoryItemEntity, MaintenanceTypeEntity, MaintenanceServiceEntity, VehicleSystemEntity, VehicleComponentEntity, WorkOrderIssueEntity, MaintenanceProviderEntity } from '../../domain/entities/maintenance-entity'
 import type { CreateWorkshopStayInput } from '../../domain/schemas/create-stay.schema'
 import type { CreateWorkOrderInput } from '../../domain/schemas/create-work-order.schema'
 import type { CreateWorkOrderPartInput } from '../../domain/schemas/create-part.schema'
+import type { CreateWorkOrderIssueInput } from '../../domain/schemas/create-work-order-issue.schema'
+import type { CreateProviderInput } from '../../domain/schemas/create-provider.schema'
 
 export class SupabaseMaintenanceServerRepository implements IMaintenanceRepository {
   async listStays(_filters?: MaintenanceListFilters): Promise<Either<Failure, PaginatedResult<WorkshopStayReplicaEntity>>> {
@@ -37,6 +39,95 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
 
   async getInventoryItems(): Promise<Either<Failure, InventoryItemEntity[]>> {
     return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en servidor' } }
+  }
+
+  async getMaintenanceTypes(): Promise<Either<Failure, MaintenanceTypeEntity[]>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en servidor' } }
+  }
+
+  async getMaintenanceServices(_maintenanceTypeId?: string): Promise<Either<Failure, MaintenanceServiceEntity[]>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en servidor' } }
+  }
+
+  async listProviders(): Promise<Either<Failure, MaintenanceProviderEntity[]>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en servidor' } }
+  }
+
+  async createProvider(input: CreateProviderInput, createdBy: string | null): Promise<Either<Failure, void>> {
+    try {
+      const supabase = await createClient()
+      const { error } = await supabase.from('maintenance_providers').insert({
+        name: input.name,
+        provider_type: input.providerType,
+        is_active: input.isActive !== undefined ? input.isActive : true,
+        created_by: createdBy,
+      })
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: undefined }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al crear proveedor' } }
+    }
+  }
+
+  async updateProvider(providerId: string, input: Partial<CreateProviderInput>): Promise<Either<Failure, void>> {
+    try {
+      const supabase = await createClient()
+      const updateData: Record<string, any> = {}
+      if (input.name !== undefined) updateData.name = input.name
+      if (input.providerType !== undefined) updateData.provider_type = input.providerType
+      if (input.isActive !== undefined) updateData.is_active = input.isActive
+
+      const { error } = await supabase.from('maintenance_providers').update(updateData).eq('id', providerId)
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: undefined }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al actualizar proveedor' } }
+    }
+  }
+
+  // ─── Predictive Maintenance ─────────────────────────────────────────────────
+
+  async getVehicleSystems(): Promise<Either<Failure, VehicleSystemEntity[]>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en servidor' } }
+  }
+
+  async getVehicleComponents(_vehicleSystemId?: string): Promise<Either<Failure, VehicleComponentEntity[]>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en servidor' } }
+  }
+
+  async listWorkOrderIssues(_workOrderId: string): Promise<Either<Failure, WorkOrderIssueEntity[]>> {
+    return { ok: false, error: { code: 'UNSUPPORTED', message: 'Operación no soportada en servidor' } }
+  }
+
+  async createWorkOrderIssue(input: CreateWorkOrderIssueInput, createdBy: string | null): Promise<Either<Failure, void>> {
+    try {
+      const supabase = await createClient()
+      const { error } = await supabase.from('work_order_issues').insert({
+        work_order_id: input.workOrderId,
+        vehicle_component_id: input.vehicleComponentId,
+        reported_issue: input.reportedIssue,
+        mechanic_notes: input.mechanicNotes,
+        created_by: createdBy,
+      })
+
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: undefined }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al registrar la falla' } }
+    }
+  }
+
+  async deleteWorkOrderIssue(issueId: string): Promise<Either<Failure, void>> {
+    try {
+      const supabase = await createClient()
+      const { error } = await supabase.from('work_order_issues').delete().eq('id', issueId)
+      if (error) return { ok: false, error: { code: 'DB_ERROR', message: error.message } }
+      return { ok: true, data: undefined }
+    } catch {
+      return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al eliminar la falla' } }
+    }
   }
 
   async createStay(input: CreateWorkshopStayInput, createdBy: string | null): Promise<Either<Failure, void>> {
@@ -96,7 +187,7 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
         finished_at: input.finishedAt ? new Date(input.finishedAt).toISOString() : null,
         status: input.status,
         specialist_employee_id: input.specialistEmployeeId,
-        supervisor_profile_id: createdBy,
+        supervisor_employee_id: input.supervisorEmployeeId,
         description: input.description,
         details: input.details,
         created_by: createdBy,
@@ -125,6 +216,8 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
       if (input.deliveredByEmployeeId !== undefined) updateData.delivered_by_employee_id = input.deliveredByEmployeeId
       if (input.pickedUpByEmployeeId !== undefined) updateData.picked_up_by_employee_id = input.pickedUpByEmployeeId
       if (input.lastTripId !== undefined) updateData.last_trip_id = input.lastTripId
+      if (input.notes !== undefined) updateData.notes = input.notes
+      if (input.exitedAt !== undefined) updateData.exited_at = input.exitedAt ? new Date(input.exitedAt).toISOString() : null
 
       console.log('[SupabaseMaintenanceServerRepository] updateStay executing with id:', stayId, 'data:', updateData)
 
@@ -150,7 +243,7 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
       if (input.startedAt !== undefined) updateData.started_at = new Date(input.startedAt).toISOString()
       if (input.status !== undefined) updateData.status = input.status
       if (input.specialistEmployeeId !== undefined) updateData.specialist_employee_id = input.specialistEmployeeId
-      if (input.supervisorProfileId !== undefined) updateData.supervisor_profile_id = input.supervisorProfileId
+      if (input.supervisorEmployeeId !== undefined) updateData.supervisor_employee_id = input.supervisorEmployeeId
       if (input.description !== undefined) updateData.description = input.description
       if (input.details !== undefined) updateData.details = input.details
 

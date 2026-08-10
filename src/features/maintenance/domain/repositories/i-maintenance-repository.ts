@@ -2,6 +2,7 @@ import type { Either, Failure } from '@/src/core/domain/either'
 import type {
   MaintenanceProviderEntity,
   MaintenanceTypeEntity,
+  MaintenanceServiceEntity,
   MechanicalCategoryEntity,
   WorkOrderPartEntity,
   WorkshopStayKpiEntity,
@@ -10,11 +11,16 @@ import type {
   WorkshopWorkOrderReplicaEntity,
   WorkOrderPartReplicaEntity,
   MeasurementUnitEntity,
-  InventoryItemEntity
+  InventoryItemEntity,
+  VehicleSystemEntity,
+  VehicleComponentEntity,
+  WorkOrderIssueEntity,
 } from '../entities/maintenance-entity'
 import type { CreateWorkshopStayInput } from '../schemas/create-stay.schema'
 import type { CreateWorkOrderInput } from '../schemas/create-work-order.schema'
 import type { CreateWorkOrderPartInput } from '../schemas/create-part.schema'
+import type { CreateWorkOrderIssueInput } from '../schemas/create-work-order-issue.schema'
+import type { CreateProviderInput } from '../schemas/create-provider.schema'
 
 export interface MaintenanceListFilters {
   status?: 'open' | 'closed'
@@ -28,7 +34,7 @@ export interface MaintenanceListFilters {
 
 export interface MaintenanceCatalogsEntity {
   maintenanceTypes: MaintenanceTypeEntity[]
-  mechanicalCategories: MechanicalCategoryEntity[]
+  maintenanceServices: MaintenanceServiceEntity[]
   providers: MaintenanceProviderEntity[]
 }
 
@@ -48,8 +54,17 @@ export interface IMaintenanceRepository {
   listAllWorkOrderParts(filters?: MaintenanceListFilters): Promise<Either<Failure, PaginatedResult<WorkOrderPartReplicaEntity>>>
   
   getCatalogs(): Promise<Either<Failure, MaintenanceCatalogsEntity>>
+  getMaintenanceTypes(): Promise<Either<Failure, MaintenanceTypeEntity[]>>
+  getMaintenanceServices(maintenanceTypeId?: string): Promise<Either<Failure, MaintenanceServiceEntity[]>>
   getMeasurementUnits(): Promise<Either<Failure, MeasurementUnitEntity[]>>
   getInventoryItems(): Promise<Either<Failure, InventoryItemEntity[]>>
+
+  // Predictive Maintenance
+  getVehicleSystems(): Promise<Either<Failure, VehicleSystemEntity[]>>
+  getVehicleComponents(vehicleSystemId?: string): Promise<Either<Failure, VehicleComponentEntity[]>>
+  listWorkOrderIssues(workOrderId: string): Promise<Either<Failure, WorkOrderIssueEntity[]>>
+  createWorkOrderIssue(input: CreateWorkOrderIssueInput, createdBy: string | null): Promise<Either<Failure, void>>
+  deleteWorkOrderIssue(issueId: string): Promise<Either<Failure, void>>
 
   createStay(input: CreateWorkshopStayInput, createdBy: string | null): Promise<Either<Failure, void>>
   updateStay(stayId: string, input: Partial<CreateWorkshopStayInput>, updatedBy: string | null): Promise<Either<Failure, void>>
@@ -61,5 +76,10 @@ export interface IMaintenanceRepository {
   deleteStay(stayId: string): Promise<Either<Failure, void>>
   deleteWorkOrder(workOrderId: string): Promise<Either<Failure, void>>
   deleteWorkOrderPart(partId: string): Promise<Either<Failure, void>>
+
+  // Providers
+  listProviders(): Promise<Either<Failure, MaintenanceProviderEntity[]>>
+  createProvider(input: CreateProviderInput, createdBy: string | null): Promise<Either<Failure, void>>
+  updateProvider(providerId: string, input: Partial<CreateProviderInput>): Promise<Either<Failure, void>>
 }
 
