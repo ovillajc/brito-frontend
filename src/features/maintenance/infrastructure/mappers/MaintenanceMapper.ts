@@ -67,7 +67,9 @@ export type WorkOrderPartRow = {
   discount: number
   tax_rate: number
   total: number
+  paid_by: string | null
   created_at: string
+  is_internal_supply: boolean | null
   maintenance_providers?: { name: string; provider_type: ProviderType } | null
   inventory_items?: { name: string } | null
   measurement_units?: { name: string } | null
@@ -198,6 +200,7 @@ export class MaintenanceMapper {
       discount: row.discount,
       taxRate: row.tax_rate,
       total: row.total,
+      isInternalSupply: Boolean(row.is_internal_supply),
       createdAt: new Date(row.created_at),
     }
   }
@@ -319,7 +322,9 @@ export class MaintenanceMapper {
       taxRate: row.tax_rate,
       totalWithTax: row.total,
       paidBy: row.paid_by,
-      notes: row.notes
+      notes: row.notes,
+      isInternalSupply: Boolean(row.is_internal_supply),
+      inventoryItemId: row.inventory_item_id || null,
     }
   }
 }

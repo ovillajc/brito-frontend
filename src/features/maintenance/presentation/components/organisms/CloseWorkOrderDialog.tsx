@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -15,6 +15,7 @@ import { WORK_ORDER_STATUS, type WorkshopWorkOrderReplicaEntity } from '@/src/fe
 import { useQuery } from '@tanstack/react-query'
 import { getEmployeesAction } from '@/src/features/hr/presentation/actions/employee.actions'
 import { EmployeeEntity } from '@/src/features/hr/domain/entities'
+import { DateTimePicker24h } from '@/src/core/presentation/components/molecules/date-time-picker-24h'
 
 const closeWorkOrderSchema = z.object({
   finishedAt: z.string().min(1, 'La fecha y hora de finalización es requerida'),
@@ -51,6 +52,7 @@ export function CloseWorkOrderDialog({ isOpen, onClose, workOrder }: CloseWorkOr
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setValue,
@@ -141,11 +143,15 @@ export function CloseWorkOrderDialog({ isOpen, onClose, workOrder }: CloseWorkOr
         <form onSubmit={onSubmit} className="flex flex-col gap-5">
           <div className="grid gap-2">
             <Label htmlFor="finishedAt" className="text-stone-700 dark:text-zinc-300 font-semibold">Fecha y Hora de Finalización</Label>
-            <Input
-              id="finishedAt"
-              type="datetime-local"
-              {...register('finishedAt')}
-              className="bg-stone-50 dark:bg-zinc-950 border-stone-200 dark:border-zinc-800 focus-visible:ring-[#1a5c3a]"
+            <Controller
+              control={control}
+              name="finishedAt"
+              render={({ field }) => (
+                <DateTimePicker24h
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                />
+              )}
             />
             {errors.finishedAt && <p className="text-xs text-red-500">{errors.finishedAt.message}</p>}
           </div>

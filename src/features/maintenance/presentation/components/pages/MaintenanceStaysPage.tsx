@@ -46,7 +46,6 @@ export default function MaintenanceStaysPage() {
   }
 
   const staysColumns = useMemo<SpreadsheetColumn<WorkshopStayReplicaEntity>[]>(() => [
-    { key: 'id', header: 'ID de registro', render: (s) => <div className="text-xs text-stone-500">{s.id.substring(0,8)}</div> },
     { key: 'seq', header: 'No. Secuencial', render: (s) => <div className="text-sm">{String(s.sequentialNumber)}</div> },
     { key: 'folio', header: 'Folio de Estancia', render: (s) => <div className="font-mono font-bold text-stone-900">{s.folio}</div> },
     { key: 'entered', header: 'Fecha de ingreso', render: (s) => <div className="text-sm">{dateFmt.format(new Date(s.enteredAt))}</div> },

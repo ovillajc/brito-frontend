@@ -9,9 +9,11 @@ import { Wizard, type WizardStep } from '@/src/core/presentation/components/orga
 import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
+import { DateTimePicker24h } from '@/src/core/presentation/components/molecules/date-time-picker-24h'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 import { useTractors, useTrailers } from '@/src/features/fleet/presentation/hooks/use-fleet'
 import { useQuery } from '@tanstack/react-query'
+import { Controller } from 'react-hook-form'
 import { getEmployeesAction } from '@/src/features/hr/presentation/actions/employee.actions'
 import type { EmployeeEntity } from '@/src/features/hr/domain/entities'
 import { getTripsAction } from '@/src/features/trips/presentation/actions/trips.actions'
@@ -31,12 +33,7 @@ interface StayWizardProps {
 type SubmissionStatus = 'idle' | 'success' | 'error'
 type StayFormValues = z.input<typeof createWorkshopStaySchema>
 
-function generateFolio() {
-  const d = new Date()
-  const date = d.toISOString().slice(0, 10)
-  const num = Math.floor(Math.random() * 9000) + 1000
-  return `${date}-TALLER-${num}`
-}
+
 
 export function StayWizard({ isOpen, onClose, initialData }: StayWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
@@ -86,15 +83,15 @@ export function StayWizard({ isOpen, onClose, initialData }: StayWizardProps) {
     watch,
     reset,
     setValue,
+    control,
     formState: { errors },
   } = useForm<StayFormValues>({
     resolver: zodResolver(createWorkshopStaySchema),
     defaultValues: {
-      folio: generateFolio(),
       vehicleType: VEHICLE_TYPE.Truck,
       truckId: null,
       trailerId: null,
-      enteredAt: new Date().toISOString().slice(0, 10),
+      enteredAt: '',
       reason: '',
       kmAtEntry: null,
       kmLastService: null,
@@ -107,15 +104,22 @@ export function StayWizard({ isOpen, onClose, initialData }: StayWizardProps) {
 
   const vehicleType = watch('vehicleType')
 
+  const toLocalInputString = (dateString: Date | string | null | undefined) => {
+    if (!dateString) return ''
+    const d = typeof dateString === 'string' ? new Date(dateString) : dateString
+    if (isNaN(d.getTime())) return ''
+    const tzOffset = d.getTimezoneOffset() * 60000
+    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16)
+  }
+
   useEffect(() => {
     if (!isOpen) return
     if (initialData) {
       reset({
-        folio: initialData.folio,
         vehicleType: initialData.vehicleType,
         truckId: matchingTruckId,
         trailerId: matchingTrailerId,
-        enteredAt: new Date(initialData.enteredAt).toISOString().slice(0, 10),
+        enteredAt: toLocalInputString(initialData.enteredAt),
         reason: initialData.reason,
         kmAtEntry: initialData.kmAtEntry,
         kmLastService: initialData.kmLastService,
@@ -126,11 +130,10 @@ export function StayWizard({ isOpen, onClose, initialData }: StayWizardProps) {
       })
     } else {
       reset({
-        folio: generateFolio(),
         vehicleType: VEHICLE_TYPE.Truck,
         truckId: null,
         trailerId: null,
-        enteredAt: new Date().toISOString().slice(0, 10),
+        enteredAt: toLocalInputString(new Date().toISOString()),
         reason: '',
         kmAtEntry: null,
         kmLastService: null,
@@ -192,7 +195,7 @@ export function StayWizard({ isOpen, onClose, initialData }: StayWizardProps) {
   const goNext = async () => {
     const fields: (keyof StayFormValues)[] =
       activeStep === 0
-        ? ['folio', 'vehicleType', 'truckId', 'trailerId', 'enteredAt', 'reason']
+        ? ['vehicleType', 'truckId', 'trailerId', 'enteredAt', 'reason']
         : ['kmAtEntry', 'kmLastService', 'lastTripStartDate']
 
     const ok = await trigger(fields)
@@ -238,16 +241,27 @@ export function StayWizard({ isOpen, onClose, initialData }: StayWizardProps) {
 
   const step1 = (
     <div className="space-y-5">
+      {isEditing && initialData && (
+        <div className="flex items-center gap-3 rounded-xl bg-stone-100 dark:bg-zinc-800 px-4 py-3">
+          <span className="text-xs text-stone-500 dark:text-zinc-400 font-medium">Folio generado:</span>
+          <span className="font-mono font-bold text-stone-800 dark:text-zinc-200">{initialData.folio}</span>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="folio">Folio</Label>
-          <Input id="folio" className={inputClass} {...register('folio')} />
-          {errors.folio && <p className={errorClass}>{errors.folio.message}</p>}
-        </div>
-
-        <div className="grid gap-2">
-          <Label htmlFor="enteredAt">Fecha de ingreso</Label>
-          <Input id="enteredAt" type="date" className={inputClass} {...register('enteredAt')} />
+          <Label htmlFor="enteredAt">Fecha y hora de ingreso</Label>
+          <Controller
+            name="enteredAt"
+            control={control}
+            render={({ field }) => (
+              <DateTimePicker24h
+                value={field.value || ''}
+                onChange={field.onChange}
+                error={!!errors.enteredAt}
+                className="w-full"
+              />
+            )}
+          />
           {errors.enteredAt && <p className={errorClass}>{errors.enteredAt.message}</p>}
         </div>
       </div>
@@ -320,7 +334,7 @@ export function StayWizard({ isOpen, onClose, initialData }: StayWizardProps) {
 
   const step2 = (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
         <div className="grid gap-2">
           <Label htmlFor="kmAtEntry">KM al ingreso (Opcional)</Label>
           <Input id="kmAtEntry" type="number" className={inputClass} {...register('kmAtEntry', { setValueAs: (v) => (v === '' ? null : Number(v)) })} />
@@ -335,7 +349,18 @@ export function StayWizard({ isOpen, onClose, initialData }: StayWizardProps) {
 
         <div className="grid gap-2">
           <Label htmlFor="lastTripStartDate">Inicio de Último Viaje (Opcional)</Label>
-          <Input id="lastTripStartDate" type="datetime-local" className={inputClass} {...register('lastTripStartDate')} />
+          <Controller
+            name="lastTripStartDate"
+            control={control}
+            render={({ field }) => (
+              <DateTimePicker24h
+                value={field.value || ''}
+                onChange={(val) => field.onChange(val || null)}
+                error={!!errors.lastTripStartDate}
+                className="w-full"
+              />
+            )}
+          />
           {errors.lastTripStartDate && <p className={errorClass}>{errors.lastTripStartDate.message}</p>}
         </div>
 
@@ -395,6 +420,7 @@ export function StayWizard({ isOpen, onClose, initialData }: StayWizardProps) {
       steps={steps}
       activeStep={activeStep}
       size="lg"
+      className="max-w-[705px]"
     />
   )
 }

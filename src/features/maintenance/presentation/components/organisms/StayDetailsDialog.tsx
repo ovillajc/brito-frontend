@@ -514,6 +514,7 @@ export function StayDetailsDialog({ isOpen, onClose, stay, defaultTab = 'general
         isOpen={isWorkOrderWizardOpen}
         onClose={() => { setIsWorkOrderWizardOpen(false); setEditingWorkOrder(null) }}
         stayId={stay.id}
+        stayFolio={stay.folio}
         catalogs={catalogsQuery.data ?? null}
         initialData={editingWorkOrder ? toReplicaShape(editingWorkOrder, stay.folio) : null}
       />

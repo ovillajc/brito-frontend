@@ -126,6 +126,7 @@ export interface WorkOrderPartEntity {
   discount: number
   taxRate: number
   total: number
+  isInternalSupply: boolean
   createdAt: Date
 }
 
@@ -203,6 +204,8 @@ export interface WorkOrderPartReplicaEntity {
   totalWithTax: number
   paidBy: string | null
   notes: string | null
+  isInternalSupply: boolean
+  inventoryItemId: string | null
 }
 
 // ─── Predictive Maintenance ─────────────────────────────────────────────────

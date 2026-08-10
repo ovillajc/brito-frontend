@@ -134,7 +134,6 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
     try {
       const supabase = await createClient()
       const { error } = await supabase.from('workshop_stays').insert({
-        folio: input.folio,
         vehicle_type: input.vehicleType,
         truck_id: input.truckId,
         trailer_id: input.trailerId,
@@ -182,14 +181,19 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
         stay_id: input.stayId,
         folio: input.folio,
         maintenance_type_id: input.maintenanceTypeId,
-        mechanical_category_id: input.mechanicalCategoryId,
+        maintenance_service_id: input.mechanicalCategoryId,
         started_at: new Date(input.startedAt).toISOString(),
         finished_at: input.finishedAt ? new Date(input.finishedAt).toISOString() : null,
         status: input.status,
         specialist_employee_id: input.specialistEmployeeId,
         supervisor_employee_id: input.supervisorEmployeeId,
+        specialist_name: input.specialistName,
+        supervisor_name: input.supervisorName,
         description: input.description,
         details: input.details,
+        location_type: input.locationType,
+        failure_location: input.failureLocation,
+        vehicle_activity_at_failure: input.vehicleActivityAtFailure,
         created_by: createdBy,
       })
 
@@ -204,7 +208,6 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
     try {
       const supabase = await createClient()
       const updateData: Record<string, any> = {}
-      if (input.folio !== undefined) updateData.folio = input.folio
       if (input.vehicleType !== undefined) updateData.vehicle_type = input.vehicleType
       if (input.truckId !== undefined) updateData.truck_id = input.truckId
       if (input.trailerId !== undefined) updateData.trailer_id = input.trailerId
@@ -239,13 +242,19 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
       const updateData: Record<string, any> = {}
       if (input.folio !== undefined) updateData.folio = input.folio
       if (input.maintenanceTypeId !== undefined) updateData.maintenance_type_id = input.maintenanceTypeId
-      if (input.mechanicalCategoryId !== undefined) updateData.mechanical_category_id = input.mechanicalCategoryId
+      if (input.mechanicalCategoryId !== undefined) updateData.maintenance_service_id = input.mechanicalCategoryId
       if (input.startedAt !== undefined) updateData.started_at = new Date(input.startedAt).toISOString()
+      if (input.finishedAt !== undefined) updateData.finished_at = input.finishedAt ? new Date(input.finishedAt).toISOString() : null
       if (input.status !== undefined) updateData.status = input.status
       if (input.specialistEmployeeId !== undefined) updateData.specialist_employee_id = input.specialistEmployeeId
       if (input.supervisorEmployeeId !== undefined) updateData.supervisor_employee_id = input.supervisorEmployeeId
+      if (input.specialistName !== undefined) updateData.specialist_name = input.specialistName
+      if (input.supervisorName !== undefined) updateData.supervisor_name = input.supervisorName
       if (input.description !== undefined) updateData.description = input.description
       if (input.details !== undefined) updateData.details = input.details
+      if (input.locationType !== undefined) updateData.location_type = input.locationType
+      if (input.failureLocation !== undefined) updateData.failure_location = input.failureLocation
+      if (input.vehicleActivityAtFailure !== undefined) updateData.vehicle_activity_at_failure = input.vehicleActivityAtFailure
 
       const { error } = await supabase.from('workshop_work_orders').update(updateData).eq('id', workOrderId)
 
@@ -270,6 +279,8 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
         unit_price: input.unitPrice,
         discount: input.discount,
         tax_rate: input.taxRate,
+        is_internal_supply: input.isInternalSupply,
+        paid_by: input.paidBy ?? null,
         created_by: createdBy,
       })
 
@@ -293,6 +304,8 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
       if (input.unitPrice !== undefined) updateData.unit_price = input.unitPrice
       if (input.discount !== undefined) updateData.discount = input.discount
       if (input.taxRate !== undefined) updateData.tax_rate = input.taxRate
+      if (input.isInternalSupply !== undefined) updateData.is_internal_supply = input.isInternalSupply
+      if (input.paidBy !== undefined) updateData.paid_by = input.paidBy
 
       const { error } = await supabase.from('work_order_parts').update(updateData).eq('id', partId)
 

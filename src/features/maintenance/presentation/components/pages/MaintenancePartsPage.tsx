@@ -37,12 +37,11 @@ export default function MaintenancePartsPage() {
   const [exportEndDate, setExportEndDate] = useState('')
 
   const confirmExport = () => {
-    alert(`Exportando refacciones (Desde: ${exportStartDate || 'siempre'}, Hasta: ${exportEndDate || 'siempre'})`)
+    alert(`Exportando gastos (Desde: ${exportStartDate || 'siempre'}, Hasta: ${exportEndDate || 'siempre'})`)
     setExportModalOpen(false)
   }
 
   const partsColumns = useMemo<SpreadsheetColumn<WorkOrderPartReplicaEntity>[]>(() => [
-    { key: 'id', header: 'ID Registro', render: (s) => <div className="text-xs text-stone-500">{s.id.substring(0, 8)}</div> },
     { key: 'stayFolio', header: 'Folio Estancia', render: (s) => <span className="font-mono text-stone-700">{s.stayFolio}</span> },
     { key: 'stayEntered', header: 'Fecha Ingreso', render: (s) => <div className="text-sm">{dateFmt.format(new Date(s.stayEnteredAt))}</div> },
     { key: 'woFolio', header: 'Folio Trabajo', render: (s) => <span className="font-mono text-stone-700">{s.workOrderFolio}</span> },
@@ -67,10 +66,10 @@ export default function MaintenancePartsPage() {
       {canManage && (
         <Alert className="bg-stone-50/50 dark:bg-zinc-900/50 border-stone-200 dark:border-zinc-800">
           <Info className="h-4 w-4 !text-stone-500" />
-          <AlertTitle className="text-stone-800 dark:text-stone-300 font-bold">Registro de Refacciones</AlertTitle>
+          <AlertTitle className="text-stone-800 dark:text-stone-300 font-bold">Registro de Gastos</AlertTitle>
           <AlertDescription className="text-stone-600 dark:text-stone-400 mt-1">
             <p>
-              Para <strong>registrar refacciones a una orden de trabajo</strong>, te recomendamos usar la pestaña de <strong>Estancias</strong>, abrir los detalles de una estancia, seleccionar la orden y usar el botón de agregar refacciones en la vista dividida. Esta tabla plana sirve para visualizar, exportar, y gestionar todas las refacciones existentes.
+              Para <strong>registrar gastos a una orden de trabajo</strong>, te recomendamos usar la pestaña de <strong>Estancias</strong>, abrir los detalles de una estancia, seleccionar la orden y usar el botón de agregar gastos en la vista dividida. Esta tabla plana sirve para visualizar, exportar, y gestionar todos los gastos existentes.
             </p>
           </AlertDescription>
         </Alert>
@@ -81,9 +80,9 @@ export default function MaintenancePartsPage() {
         pageSize={10}
         data={parts}
         columns={partsColumns as any}
-        searchPlaceholder="Buscar refacciones..."
+        searchPlaceholder="Buscar gastos..."
         searchFilter={(row, term) => [row.workOrderFolio, row.description, row.brand].some((v) => v?.toLowerCase().includes(term))}
-        actionLabel="Nueva Refacción"
+        actionLabel="Nuevo Gasto"
         onAction={() => { setSelectedPart(null); setIsPartWizardOpen(true); }}
         onEdit={(p) => { setSelectedPart(p); setIsPartWizardOpen(true); }}
         onView={(p) => { setDetailPart(p); setIsPartDetailsOpen(true); }}
@@ -92,11 +91,11 @@ export default function MaintenancePartsPage() {
             await deletePart.mutateAsync(p.id)
             return { ok: true }
           } catch (e: any) {
-            return { ok: false, error: { message: e.message || 'Error al eliminar refacción' } }
+            return { ok: false, error: { message: e.message || 'Error al eliminar gasto' } }
           }
         }}
         onExport={() => setExportModalOpen(true)}
-        emptyState={{ icon: Settings, title: 'Sin refacciones', description: 'No hay registros de refacciones actualmente.' }}
+        emptyState={{ icon: Settings, title: 'Sin gastos', description: 'No hay registros de gastos actualmente.' }}
       />
 
       <WorkOrderPartWizard
@@ -117,7 +116,7 @@ export default function MaintenancePartsPage() {
       <Dialog
         isOpen={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
-        title="Exportar Refacciones a Excel"
+        title="Exportar Gastos a Excel"
         description="Selecciona un rango de fechas para filtrar los registros a exportar. Si lo dejas en blanco, se exportarán todos."
       >
         <div className="p-6 pt-0 space-y-4">

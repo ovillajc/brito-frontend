@@ -26,16 +26,12 @@ interface WorkOrderWizardProps {
   isOpen: boolean
   onClose: () => void
   stayId: string
+  stayFolio: string
   catalogs: MaintenanceCatalogsEntity | null
   initialData?: WorkshopWorkOrderReplicaEntity | null
 }
 
-function generateWorkOrderFolio() {
-  const num = Math.floor(Math.random() * 9000) + 1000
-  return `${num}-Trabajo`
-}
-
-export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData }: WorkOrderWizardProps) {
+export function WorkOrderWizard({ isOpen, onClose, stayId, stayFolio, catalogs, initialData }: WorkOrderWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
   const [isInternalSpecialist, setIsInternalSpecialist] = useState(false)
   const createWorkOrder = useCreateWorkOrder()
@@ -78,7 +74,7 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData
     resolver: zodResolver(createWorkOrderSchema),
     defaultValues: {
       stayId,
-      folio: generateWorkOrderFolio(),
+      folio: stayFolio,
       maintenanceTypeId: null,
       mechanicalCategoryId: null,
       startedAt: new Date().toISOString().slice(0, 10),
@@ -117,7 +113,7 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData
     } else {
       reset({
         stayId,
-        folio: generateWorkOrderFolio(),
+        folio: stayFolio,
         maintenanceTypeId: null,
         mechanicalCategoryId: null,
         startedAt: new Date().toISOString().slice(0, 10),
@@ -183,8 +179,8 @@ export function WorkOrderWizard({ isOpen, onClose, stayId, catalogs, initialData
     <div className="flex flex-col gap-6 pt-2">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="folio">Folio del trabajo</Label>
-          <Input id="folio" className={inputClass} {...register('folio')} />
+          <Label htmlFor="folio">Folio del trabajo (Heredado)</Label>
+          <Input id="folio" readOnly className={cn(inputClass, "bg-stone-100 dark:bg-zinc-800/50 text-stone-500 font-mono")} {...register('folio')} />
           {errors.folio && <p className={errorClass}>{errors.folio.message}</p>}
         </div>
 

@@ -10,6 +10,8 @@ import { Button } from '@/src/core/presentation/components/ui/button'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Textarea } from '@/src/core/presentation/components/ui/textarea'
+import { DateTimePicker24h } from '@/src/core/presentation/components/molecules/date-time-picker-24h'
+import { Controller } from 'react-hook-form'
 import { useUpdateWorkshopStay } from '@/src/features/maintenance/presentation/hooks/use-maintenance'
 import type { WorkshopStayReplicaEntity } from '@/src/features/maintenance/domain/entities/maintenance-entity'
 import { useQuery } from '@tanstack/react-query'
@@ -47,15 +49,24 @@ export function CloseWorkshopStayDialog({ isOpen, onClose, stay }: CloseWorkshop
     return (employeesQuery.data ?? []).filter((e) => e.isActive)
   }, [employeesQuery.data])
 
+  const toLocalInputString = (dateString: Date | string | null | undefined) => {
+    if (!dateString) return ''
+    const d = typeof dateString === 'string' ? new Date(dateString) : dateString
+    if (isNaN(d.getTime())) return ''
+    const tzOffset = d.getTimezoneOffset() * 60000
+    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16)
+  }
+
   const {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<CloseFormValues>({
     resolver: zodResolver(closeWorkshopStaySchema) as any,
     defaultValues: {
-      exitedAt: new Date().toISOString().slice(0, 16),
+      exitedAt: toLocalInputString(new Date()),
       pickedUpByEmployeeId: null,
       notes: '',
     },
@@ -64,9 +75,7 @@ export function CloseWorkshopStayDialog({ isOpen, onClose, stay }: CloseWorkshop
   useEffect(() => {
     if (isOpen && stay) {
       reset({
-        exitedAt: stay.exitedAt
-          ? new Date(stay.exitedAt).toISOString().slice(0, 16)
-          : new Date().toISOString().slice(0, 16),
+        exitedAt: stay.exitedAt ? toLocalInputString(stay.exitedAt) : toLocalInputString(new Date()),
         pickedUpByEmployeeId: stay.pickedUpByEmployeeId || null,
         notes: stay.notes || '',
       })
@@ -133,11 +142,17 @@ export function CloseWorkshopStayDialog({ isOpen, onClose, stay }: CloseWorkshop
         <form onSubmit={onSubmit} className="flex flex-col gap-5">
           <div className="grid gap-2">
             <Label htmlFor="exitedAt" className="text-stone-700 dark:text-zinc-300 font-semibold">Fecha y Hora de Salida</Label>
-            <Input
-              id="exitedAt"
-              type="datetime-local"
-              {...register('exitedAt')}
-              className="bg-stone-50 dark:bg-zinc-950 border-stone-200 dark:border-zinc-800 focus-visible:ring-[#1a5c3a]"
+            <Controller
+              name="exitedAt"
+              control={control}
+              render={({ field }) => (
+                <DateTimePicker24h
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  error={!!errors.exitedAt}
+                  className="w-full"
+                />
+              )}
             />
             {errors.exitedAt && <p className="text-xs text-red-500">{errors.exitedAt.message}</p>}
           </div>

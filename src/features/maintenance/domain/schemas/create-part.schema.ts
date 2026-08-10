@@ -11,6 +11,8 @@ export const createWorkOrderPartSchema = z.object({
   unitPrice: z.coerce.number().nonnegative('El precio unitario debe ser >= 0'),
   discount: z.coerce.number().nonnegative().default(0),
   taxRate: z.coerce.number().min(0).max(1).default(0.16),
+  isInternalSupply: z.boolean().default(false),
+  paidBy: z.string().trim().nullable().optional().default(null),
 })
 
 export type CreateWorkOrderPartInput = z.infer<typeof createWorkOrderPartSchema>

@@ -2,7 +2,6 @@ import { z } from 'zod'
 import { VEHICLE_TYPE } from '../entities/maintenance-entity'
 
 export const createWorkshopStaySchema = z.object({
-  folio: z.string().min(1, 'El folio es requerido'),
   vehicleType: z.enum([VEHICLE_TYPE.Truck, VEHICLE_TYPE.Trailer]),
   truckId: z.string().uuid().nullable().default(null),
   trailerId: z.string().uuid().nullable().default(null),

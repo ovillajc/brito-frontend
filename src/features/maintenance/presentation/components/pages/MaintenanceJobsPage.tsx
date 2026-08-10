@@ -45,7 +45,6 @@ export default function MaintenanceJobsPage() {
   }
 
   const woColumns = useMemo<SpreadsheetColumn<WorkshopWorkOrderReplicaEntity>[]>(() => [
-    { key: 'id', header: 'ID de registro', render: (s) => <div className="text-xs text-stone-500">{s.id.substring(0, 8)}</div> },
     { key: 'stayFolio', header: 'Folio de Estancia', render: (s) => <span className="font-mono text-stone-700">{s.stayFolio}</span> },
     { key: 'woFolio', header: 'Folio Trabajo', render: (s) => <span className="font-mono font-bold text-stone-900">{s.workOrderFolio}</span> },
     { key: 'stayEntered', header: 'Fecha ingreso Taller', render: (s) => <div className="text-sm">{dateFmt.format(new Date(s.stayEnteredAt))}</div> },
@@ -140,6 +139,7 @@ export default function MaintenanceJobsPage() {
         isOpen={isWoWizardOpen && !!selectedWo}
         onClose={() => setIsWoWizardOpen(false)}
         stayId={selectedWo?.stayId ?? ''}
+        stayFolio={selectedWo?.stayFolio ?? ''}
         catalogs={catalogs}
         initialData={selectedWo}
       />
