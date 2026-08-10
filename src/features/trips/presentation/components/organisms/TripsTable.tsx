@@ -8,8 +8,8 @@
  */
 
 import { useCallback, useMemo, useState } from 'react'
-import {  MapPin, Briefcase } from 'lucide-react'
-import { CrudDataTable, type CrudColumn } from '@/src/core/presentation/components/organisms/CrudDataTable'
+import { MapPin, Briefcase } from 'lucide-react'
+import { SpreadsheetTable, type SpreadsheetColumn } from '@/src/core/presentation/components/ui/SpreadsheetTable'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { TripWizard } from './TripWizard'
 import { TripDetailsDialog } from './TripDetailsDialog'
@@ -71,11 +71,21 @@ export interface TripsTableRowEntity {
     dhdDiesel: number | null
     dhdCasetas: number | null
     dhdTotalInvoice: number | null
-    dettesLog: unknown
+    dettesLog: WalmartDette[] | null
     departureTemperature: string | null
     departureTime: string | null
     incidencias: string | null
   }
+}
+
+/** Estructura de cada entrada en dettes_log de walmart_trip_data */
+export interface WalmartDette {
+  storeId: string
+  storeName: string
+  stopNumber: number
+  appointmentAt: string | null
+  arrivedAt: string | null
+  departedAt: string | null
 }
 
 const STATUS_MAP: Record<TripStatus, { label: string; className: string }> = {
@@ -259,7 +269,7 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
     setExportModalOpen(false)
   }
 
-  const columns = useMemo((): CrudColumn<TripsTableRowEntity>[] => {
+  const columns = useMemo((): SpreadsheetColumn<TripsTableRowEntity>[] => {
     const selectedClient = filters?.clientId ? clients.find(c => c.id === filters.clientId) : null
     const isWalmartSelected = !!selectedClient && (
       selectedClient.tradeName?.toLowerCase().includes('walmart') ||
@@ -278,10 +288,11 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
       'soluciones integrales maritimas',
     ].some((k) => normalizedClientLabel.includes(k))
 
-    const baseColumns: CrudColumn<TripsTableRowEntity>[] = [
+    const baseColumns: SpreadsheetColumn<TripsTableRowEntity>[] = [
       {
+        key: 'folio',
         header: 'Viaje',
-        cell: (row) => (
+        render: (row) => (
           <div className="flex flex-col">
             <span className="font-bold text-stone-900 dark:text-zinc-100 group-hover:text-[#1a5c3a] dark:group-hover:text-primary-container transition-colors font-mono">
               {row.folio}
@@ -290,8 +301,9 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
         ),
       },
       {
+        key: 'departureDate',
         header: 'Fecha',
-        cell: (row) => {
+        render: (row) => {
           if (!row.departureDate) return <span className="text-stone-400">—</span>
           const d = new Date(row.departureDate)
           const dateStr = d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -305,24 +317,26 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
         }
       },
       {
+        key: 'route',
         header: 'Ruta',
-        cell: (row) => (
+        render: (row) => (
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5 text-xs text-stone-600 dark:text-zinc-400">
               <MapPin className="size-3 text-stone-400" />
-              <span className="truncate max-w-[120px]">{row.origin || '—'}</span>
+              <span className="truncate max-w-30">{row.origin || '—'}</span>
             </div>
             <div className="flex items-center gap-1.5 text-xs text-stone-600 dark:text-zinc-400 mt-0.5">
               <MapPin className="size-3 text-[#006d37] dark:text-primary-container" />
-              <span className="truncate max-w-[120px]">{row.destination || '—'}</span>
+              <span className="truncate max-w-30">{row.destination || '—'}</span>
             </div>
           </div>
         ),
       },
       ...(selectedClient ? [] : [{
+        key: 'clientName',
         header: 'Cliente',
-        cell: (row: TripsTableRowEntity) => (
-          <div className="flex items-center gap-2 min-w-[120px]">
+        render: (row: TripsTableRowEntity) => (
+          <div className="flex items-center gap-2 min-w-30">
             <div className="p-1.5 rounded bg-stone-100 dark:bg-zinc-800">
               <Briefcase className="size-3 text-stone-500 dark:text-zinc-400" />
             </div>
@@ -333,9 +347,10 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
         ),
       }]),
       {
+        key: 'unitOperator',
         header: 'Unidad / Operador',
-        cell: (row) => (
-          <div className="flex flex-col gap-0.5 min-w-[150px]">
+        render: (row) => (
+          <div className="flex flex-col gap-0.5 min-w-37">
             <span className="text-sm font-semibold text-stone-800 dark:text-zinc-200">
               {row.unitEconomicNumber ?? '—'}
             </span>
@@ -346,8 +361,9 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
         ),
       },
       {
+        key: 'status',
         header: 'Estado',
-        cell: (row) => {
+        render: (row) => {
           const cfg = STATUS_MAP[row.status] ?? { label: row.status, className: 'bg-stone-100 text-stone-600' }
 
           if (!canEditRow(row)) {
@@ -379,116 +395,180 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
     ]
 
     if (isWalmartSelected) {
-      const walmartColumns: CrudColumn<TripsTableRowEntity>[] = [
-        { header: 'W: Coordinador', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{row.walmartData?.coordinatorName || '—'}</span> },
-        { header: 'W: Ruta Walmart', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{row.walmartData?.route || '—'}</span> },
-        { header: 'W: Tipo Carga', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.cargoType || '—'}</span> },
-        { header: 'W: Carta Porte', cell: (row) => <span className="text-sm font-mono min-w-[100px] inline-block">{row.walmartData?.cartaPorteWalmart || '—'}</span> },
-        { header: 'W: Estatus Walmart', cell: (row) => <span className="text-sm font-semibold text-[#1a5c3a] dark:text-primary-container min-w-[120px] inline-block">{row.walmartData?.statusWalmart || '—'}</span> },
-        { header: 'W: Tiendas', cell: (row) => <span className="text-sm min-w-[80px] inline-block">{row.walmartData?.numStores ?? '—'}</span> },
-        { header: 'W: Temp. Salida', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.departureTemperature || '—'}</span> },
+      // Calcular el máximo de tiendas en todos los viajes cargados para generar columnas dinámicas
+      const maxStores = rows.reduce((max, row) => {
+        const len = row.walmartData?.dettesLog?.length ?? 0
+        return len > max ? len : max
+      }, 0)
+
+      // Formateador de hora/fecha local
+      const fmtDateTime = (iso: string | null | undefined) =>
+        iso ? new Date(iso).toLocaleString('es-MX', { hour12: false, day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'
+
+      // Columnas fijas de Walmart
+      const walmartFixedColumns: SpreadsheetColumn<TripsTableRowEntity>[] = [
+        { key: 'w_coordinator', header: 'Coordinador', render: (row) => <span className="text-sm min-w-30 inline-block">{row.walmartData?.coordinatorName || '—'}</span> },
+        { key: 'w_route', header: 'Ruta Walmart', render: (row) => <span className="text-sm min-w-30 inline-block">{row.walmartData?.route || '—'}</span> },
+        { key: 'w_cargoType', header: 'Tipo Carga', render: (row) => <span className="text-sm min-w-25 inline-block">{row.walmartData?.cargoType || '—'}</span> },
+        { key: 'w_cartaPorte', header: 'Carta Porte', render: (row) => <span className="text-sm font-mono min-w-25 inline-block">{row.walmartData?.cartaPorteWalmart || '—'}</span> },
+        { key: 'w_status', header: 'Estatus Walmart', render: (row) => <span className="text-sm font-semibold text-[#1a5c3a] dark:text-primary-container min-w-30 inline-block">{row.walmartData?.statusWalmart || '—'}</span> },
+        { key: 'w_numStores', header: 'Tiendas', render: (row) => <span className="text-sm min-w-20 inline-block">{row.walmartData?.numStores ?? '—'}</span> },
+        { key: 'w_depTemp', header: 'Temp. Salida', render: (row) => <span className="text-sm min-w-25 inline-block">{row.walmartData?.departureTemperature || '—'}</span> },
         { 
-          header: 'W: Hora Salida', 
-          cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.departureTime ? new Date(row.walmartData.departureTime).toLocaleString('es-MX', { hour12: false }) : '—'}</span> 
+          key: 'w_depTime',
+          header: 'Hora Salida', 
+          render: (row) => <span className="text-sm min-w-25 inline-block">{fmtDateTime(row.walmartData?.departureTime)}</span> 
         },
-        { header: 'W: STR Num Load', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.strNumLoad || '—'}</span> },
-        { header: 'W: STR Compl. CP', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.strComplementCartaPorte || '—'}</span> },
-        { header: 'W: STR KM Pre-fact', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.strPreinvoiceKm ?? '—'}</span> },
-        { header: 'W: STR KM Recorridos', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.strKmTraveled ?? '—'}</span> },
-        { header: 'W: STR Diesel', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.strDiesel ?? '—'}</span> },
-        { header: 'W: STR Casetas', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.strCasetas ?? '—'}</span> },
-        { header: 'W: STR Total Facturado', cell: (row) => <span className="text-sm min-w-[100px] inline-block font-semibold">{row.walmartData?.strTotalInvoice ?? '—'}</span> },
-        { header: 'W: DHD Num Load', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.dhdNumLoad || '—'}</span> },
-        { header: 'W: DHD Compl. CP', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.dhdComplementCartaPorte || '—'}</span> },
-        { header: 'W: DHD KM Pre-fact', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.dhdPreinvoiceKm ?? '—'}</span> },
-        { header: 'W: DHD KM Recorridos', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.dhdKmTraveled ?? '—'}</span> },
-        { header: 'W: DHD Diesel', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.dhdDiesel ?? '—'}</span> },
-        { header: 'W: DHD Casetas', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{row.walmartData?.dhdCasetas ?? '—'}</span> },
-        { header: 'W: DHD Total Facturado', cell: (row) => <span className="text-sm min-w-[100px] inline-block font-semibold">{row.walmartData?.dhdTotalInvoice ?? '—'}</span> },
-        { header: 'W: Incidencias', cell: (row) => <span className="text-sm min-w-[200px] inline-block truncate" title={row.walmartData?.incidencias || ''}>{row.walmartData?.incidencias || '—'}</span> },
+        { key: 'w_strNumLoad', header: 'STR Num Load', render: (row) => <span className="text-sm min-w-25 inline-block">{row.walmartData?.strNumLoad || '—'}</span> },
+        { key: 'w_strComplCP', header: 'STR Compl. CP', render: (row) => <span className="text-sm min-w-25 inline-block">{row.walmartData?.strComplementCartaPorte || '—'}</span> },
+        { key: 'w_strKmPre', header: 'STR KM Pre-fact', render: (row) => <span className="text-sm min-w-25 inline-block">{row.walmartData?.strPreinvoiceKm ?? '—'}</span> },
+        { key: 'w_strKmTrav', header: 'STR KM Recorridos', render: (row) => <span className="text-sm min-w-25 inline-block">{row.walmartData?.strKmTraveled ?? '—'}</span> },
+        { key: 'w_strDiesel', header: 'STR Diesel', render: (row) => <span className="text-sm min-w-25 inline-block">{row.walmartData?.strDiesel ?? '—'}</span> },
+        { key: 'w_strCasetas', header: 'STR Casetas', render: (row) => <span className="text-sm min-w-25 inline-block">{row.walmartData?.strCasetas ?? '—'}</span> },
+        { key: 'w_strTotal', header: 'STR Total Facturado', render: (row) => <span className="text-sm min-w-25 inline-block font-semibold">{row.walmartData?.strTotalInvoice ?? '—'}</span> },
+        { key: 'w_dhdNumLoad', header: 'DHD Num Load', render: (row) => <span className="text-sm min-w-25 inline-block">{row.walmartData?.dhdNumLoad || '—'}</span> },
+        { key: 'w_dhdComplCP', header: 'DHD Compl. CP', render: (row) => <span className="text-sm min-w-25 inline-block">{row.walmartData?.dhdComplementCartaPorte || '—'}</span> },
+        { key: 'w_dhdKmPre', header: 'DHD KM Pre-fact', render: (row) => <span className="text-sm min-w-25 inline-block">{row.walmartData?.dhdPreinvoiceKm ?? '—'}</span> },
+        { key: 'w_dhdKmTrav', header: 'DHD KM Recorridos', render: (row) => <span className="text-sm min-w-25 inline-block">{row.walmartData?.dhdKmTraveled ?? '—'}</span> },
+        { key: 'w_dhdDiesel', header: 'DHD Diesel', render: (row) => <span className="text-sm min-w-25 inline-block">{row.walmartData?.dhdDiesel ?? '—'}</span> },
+        { key: 'w_dhdCasetas', header: 'DHD Casetas', render: (row) => <span className="text-sm min-w-25 inline-block">{row.walmartData?.dhdCasetas ?? '—'}</span> },
+        { key: 'w_dhdTotal', header: 'DHD Total Facturado', render: (row) => <span className="text-sm min-w-25 inline-block font-semibold">{row.walmartData?.dhdTotalInvoice ?? '—'}</span> },
+        { key: 'w_incidencias', header: 'Incidencias', render: (row) => <span className="text-sm min-w-50 inline-block truncate" title={row.walmartData?.incidencias || ''}>{row.walmartData?.incidencias || '—'}</span> },
       ]
-      return [...baseColumns, ...walmartColumns]
+
+      // Columnas dinámicas por tienda (DETTS)
+      const detteColumns: SpreadsheetColumn<TripsTableRowEntity>[] = []
+      for (let i = 0; i < maxStores; i++) {
+        const n = i + 1
+        detteColumns.push(
+          {
+            key: `dette_${n}_stop`,
+            header: `Tienda ${n} - Parada`,
+            render: (row) => {
+              const dette = row.walmartData?.dettesLog?.[i]
+              return <span className="text-sm min-w-16 inline-block text-center font-mono">{dette?.stopNumber ?? '—'}</span>
+            },
+          },
+          {
+            key: `dette_${n}_name`,
+            header: `Tienda ${n} - Nombre`,
+            render: (row) => {
+              const dette = row.walmartData?.dettesLog?.[i]
+              return <span className="text-sm min-w-28 inline-block">{dette?.storeName || '—'}</span>
+            },
+          },
+          {
+            key: `dette_${n}_appt`,
+            header: `Tienda ${n} - Cita`,
+            render: (row) => {
+              const dette = row.walmartData?.dettesLog?.[i]
+              return <span className="text-sm min-w-30 inline-block">{fmtDateTime(dette?.appointmentAt)}</span>
+            },
+          },
+          {
+            key: `dette_${n}_arr`,
+            header: `Tienda ${n} - Llegada`,
+            render: (row) => {
+              const dette = row.walmartData?.dettesLog?.[i]
+              return <span className="text-sm min-w-30 inline-block">{fmtDateTime(dette?.arrivedAt)}</span>
+            },
+          },
+          {
+            key: `dette_${n}_dep`,
+            header: `Tienda ${n} - Salida`,
+            render: (row) => {
+              const dette = row.walmartData?.dettesLog?.[i]
+              return <span className="text-sm min-w-30 inline-block">{fmtDateTime(dette?.departedAt)}</span>
+            },
+          },
+        )
+      }
+
+      return [...baseColumns, ...walmartFixedColumns, ...detteColumns]
     }
 
     if (isHolcimSelected) {
-      const holcimColumns: CrudColumn<TripsTableRowEntity>[] = [
-        { header: 'H: Núm. Viaje', cell: (row) => <span className="text-sm min-w-[100px] inline-block font-mono">{row.tripNumberClient ?? '—'}</span> },
-        { header: 'H: Remisión', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.holcim?.remision as string) || '—'}</span> },
-        { header: 'H: Factura', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.holcim?.factura as string) || '—'}</span> },
-        { header: 'H: Gastos Revisados', cell: (row) => {
+      const holcimColumns: SpreadsheetColumn<TripsTableRowEntity>[] = [
+        { key: 'h_tripNum', header: 'Núm. Viaje', render: (row) => <span className="text-sm min-w-25 inline-block font-mono">{row.tripNumberClient ?? '—'}</span> },
+        { key: 'h_remision', header: 'Remisión', render: (row) => <span className="text-sm min-w-30 inline-block">{((row.clientSpecificData as Record<string, any>)?.holcim?.remision as string) || '—'}</span> },
+        { key: 'h_factura', header: 'Factura', render: (row) => <span className="text-sm min-w-30 inline-block">{((row.clientSpecificData as Record<string, any>)?.holcim?.factura as string) || '—'}</span> },
+        { key: 'h_gastos', header: 'Gastos Revisados', render: (row) => {
             const exp = (row.clientSpecificData as Record<string, any>)?.holcim?.expensesReviewed
             const val = typeof exp === 'string' ? exp : (exp === true ? 'Sí' : '—')
-            return <span className="text-sm min-w-[120px] inline-block">{val}</span>
+            return <span className="text-sm min-w-30 inline-block">{val}</span>
         } },
       ]
       return [...baseColumns, ...holcimColumns]
     }
 
     if (isBarichonSelected) {
-      const barichonColumns: CrudColumn<TripsTableRowEntity>[] = [
-        { header: 'B: Núm. Viaje', cell: (row) => <span className="text-sm min-w-[100px] inline-block font-mono">{row.tripNumberClient ?? '—'}</span> },
-        { header: 'B: Ticket', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.ticket as string) || '—'}</span> },
-        { header: 'B: Descarga', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.unloading as string) || '—'}</span> },
-        { header: 'B: Peso Bruto', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.weight?.gross as number) ?? '—'}</span> },
-        { header: 'B: Tara', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.weight?.tare as number) ?? '—'}</span> },
-        { header: 'B: Peso Neto', cell: (row) => <span className="text-sm min-w-[100px] inline-block font-semibold">{((row.clientSpecificData as Record<string, any>)?.barichon?.weight?.net as number) ?? '—'}</span> },
-        { header: 'B: Remisión', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.remision as string) || '—'}</span> },
-        { header: 'B: Factura', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.factura as string) || '—'}</span> },
-        { header: 'B: Material', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.material as string) || '—'}</span> },
-        { header: 'B: PO', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.po as string) || '—'}</span> },
-        { header: 'B: Total', cell: (row) => <span className="text-sm min-w-[100px] inline-block font-semibold">{((row.clientSpecificData as Record<string, any>)?.barichon?.total as number) ?? '—'}</span> },
-        { header: 'B: Gastos Revisados', cell: (row) => <span className="text-sm min-w-[120px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.expensesReviewed as string) || '—'}</span> },
-        { header: 'B: Placas Tracto', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.unit?.truckPlates as string) || '—'}</span> },
-        { header: 'B: Placas Tolva', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.unit?.trailerPlates as string) || '—'}</span> },
-        { header: 'B: Placas Tolva 2', cell: (row) => <span className="text-sm min-w-[100px] inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.unit?.trailer2Plates as string) || '—'}</span> },
+      const barichonColumns: SpreadsheetColumn<TripsTableRowEntity>[] = [
+        { key: 'b_tripNum', header: 'Núm. Viaje', render: (row) => <span className="text-sm min-w-25 inline-block font-mono">{row.tripNumberClient ?? '—'}</span> },
+        { key: 'b_ticket', header: 'Ticket', render: (row) => <span className="text-sm min-w-25 inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.ticket as string) || '—'}</span> },
+        { key: 'b_descarga', header: 'Descarga', render: (row) => <span className="text-sm min-w-30 inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.unloading as string) || '—'}</span> },
+        { key: 'b_pesoBruto', header: 'Peso Bruto', render: (row) => <span className="text-sm min-w-25 inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.weight?.gross as number) ?? '—'}</span> },
+        { key: 'b_tara', header: 'Tara', render: (row) => <span className="text-sm min-w-25 inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.weight?.tare as number) ?? '—'}</span> },
+        { key: 'b_pesoNeto', header: 'Peso Neto', render: (row) => <span className="text-sm min-w-25 inline-block font-semibold">{((row.clientSpecificData as Record<string, any>)?.barichon?.weight?.net as number) ?? '—'}</span> },
+        { key: 'b_remision', header: 'Remisión', render: (row) => <span className="text-sm min-w-30 inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.remision as string) || '—'}</span> },
+        { key: 'b_factura', header: 'Factura', render: (row) => <span className="text-sm min-w-30 inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.factura as string) || '—'}</span> },
+        { key: 'b_material', header: 'Material', render: (row) => <span className="text-sm min-w-30 inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.material as string) || '—'}</span> },
+        { key: 'b_po', header: 'PO', render: (row) => <span className="text-sm min-w-30 inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.po as string) || '—'}</span> },
+        { key: 'b_total', header: 'Total', render: (row) => <span className="text-sm min-w-25 inline-block font-semibold">{((row.clientSpecificData as Record<string, any>)?.barichon?.total as number) ?? '—'}</span> },
+        { key: 'b_gastos', header: 'Gastos Revisados', render: (row) => <span className="text-sm min-w-30 inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.expensesReviewed as string) || '—'}</span> },
+        { key: 'b_placasTracto', header: 'Placas Tracto', render: (row) => <span className="text-sm min-w-25 inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.unit?.truckPlates as string) || '—'}</span> },
+        { key: 'b_placasTolva', header: 'Placas Tolva', render: (row) => <span className="text-sm min-w-25 inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.unit?.trailerPlates as string) || '—'}</span> },
+        { key: 'b_placasTolva2', header: 'Placas Tolva 2', render: (row) => <span className="text-sm min-w-25 inline-block">{((row.clientSpecificData as Record<string, any>)?.barichon?.unit?.trailer2Plates as string) || '—'}</span> },
       ]
       return [...baseColumns, ...barichonColumns]
     }
 
     return baseColumns
-  }, [canEditRow, filters?.clientId, clients])
+  }, [canEditRow, filters?.clientId, clients, rows])
 
   const selectedClient = filters?.clientId ? clients.find(c => c.id === filters.clientId) : null
   const selectedClientName = selectedClient ? (selectedClient.tradeName ?? selectedClient.companyName ?? '').replace(/\s*\(.*?\)\s*/g, '').trim() : ''
 
   return (
-    <>
-      <CrudDataTable<TripsTableRowEntity>
-        title={
-          selectedClient ? (
-            <h2 className="text-2xl font-bold text-stone-900 dark:text-zinc-100">
-              Bitácora {selectedClientName}
-            </h2>
-          ) : undefined
-        }
-        data={rows}
-        isLoading={tripsQuery.isLoading}
-        columns={columns}
-        searchPlaceholder="Buscar por folio, cliente u origen..."
-        searchFilter={(row, term) =>
-          [row.folio, row.clientName, row.origin, row.destination, row.unitEconomicNumber]
-            .some((val) => val?.toLowerCase().includes(term))
-        }
-        actionLabel={canCreate ? "Nuevo Viaje" : undefined}
-        onAction={canCreate ? () => { setSelectedRow(null); setIsWizardOpen(true) } : undefined}
-        onView={handleView}
-        onEdit={handleEdit}
-        canEdit={canEditRow}
-        onDelete={canDelete ? async (id) => {
-          const result = await deleteTripAction(id)
-          if (result.ok) {
-            await tripsQuery.refetch()
-            return { ok: true }
+    <div className="flex flex-col gap-4">
+      {selectedClient ? (
+        <h2 className="text-2xl font-bold text-stone-900 dark:text-zinc-100">
+          Bitácora {selectedClientName}
+        </h2>
+      ) : null}
+      {tripsQuery.isLoading && rows.length === 0 ? (
+        <div className="flex items-center justify-center py-20 bg-stone-50/50 dark:bg-zinc-900/50 rounded-[20px] border border-stone-200 dark:border-zinc-800 text-stone-500 dark:text-zinc-400">
+          Cargando viajes...
+        </div>
+      ) : (
+        <SpreadsheetTable<TripsTableRowEntity>
+          data={rows}
+          columns={columns}
+          searchPlaceholder="Buscar por folio, cliente u origen..."
+          searchFilter={(row, term) =>
+            [row.folio, row.clientName, row.origin, row.destination, row.unitEconomicNumber]
+              .some((val) => val?.toLowerCase().includes(term))
           }
-          return { ok: false, error: { message: result.error.message } }
-        } : undefined}
-        emptyState={{
-          icon: MapPin,
-          title: 'Sin viajes registrados',
-          description: 'Aún no hay viajes registrados en el sistema.',
-        }}
-        onExport={handleExportTrips}
-      />
+          actionLabel={canCreate ? "Nuevo Viaje" : undefined}
+          onAction={canCreate ? () => { setSelectedRow(null); setIsWizardOpen(true) } : undefined}
+          onView={handleView}
+          onEdit={handleEdit}
+          canEdit={canEditRow}
+          onDelete={canDelete ? async (item) => {
+            const result = await deleteTripAction(item.id)
+            if (result.ok) {
+              await tripsQuery.refetch()
+              return { ok: true }
+            }
+            return { ok: false, error: { message: result.error.message } }
+          } : undefined}
+          emptyState={{
+            icon: MapPin,
+            title: 'Sin viajes registrados',
+            description: 'Aún no hay viajes registrados en el sistema.',
+          }}
+          onExport={handleExportTrips}
+        />
+      )}
 
       {/* Pasa los clientes y unidades al wizard para que arme el dropdown */}
       <TripWizard
@@ -587,6 +667,6 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
         cancelLabel="Cancelar"
         variant="warning"
       />
-    </>
+    </div>
   )
 }

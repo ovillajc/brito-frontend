@@ -23,9 +23,9 @@ const CONTACT_INFO = [
   {
     icon: Phone,
     label: 'Logística y Tráfico',
-    value: '936-110-3979',
-    href: 'tel:9361103979',
-    sub: 'Gilberto Focil Sánchez',
+    value: '553-893-7366',
+    href: 'mailto:davidricardezf@outlook.com',
+    sub: 'David Iván Ricardez Frías',
   },
   {
     icon: Mail,

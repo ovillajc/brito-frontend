@@ -11,8 +11,10 @@ import { TripsMapper, type TripListRow, type TripRow } from '../mappers/TripsMap
 const SELECT_LIST =
   [
     '*',
+    'total_income',
+    'preinvoice_km',
     'clients(trade_name, company_name)',
-    'unit_assemblies(economic_number, trailer2_id, employees(full_name))',
+    'unit_assemblies(economic_number, trailer2_id, employees(full_name, rfc, driver_details(license_number)), trucks(plates, year, brand, model, insurance_policy), trailers!unit_assemblies_trailer_id_fkey(plates, economic_number))',
     'walmart_trip_data(*)',
   ].join(', ')
 

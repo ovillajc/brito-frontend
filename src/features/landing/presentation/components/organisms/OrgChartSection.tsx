@@ -38,13 +38,11 @@ const DEPARTMENTS: OrgDepartment[] = [
       {
         name: 'Abril Andrea Vidal Vergara',
         role: 'Administración',
-        phone: '937-164-8799',
         email: 'transportesbrito_admon_1@hotmail.com',
       },
       {
         name: 'Keila Raquel Torres Pérez',
         role: 'Facturación',
-        phone: '826-158-0828',
         email: 'facturacionbrito@hotmail.com',
       },
     ],
@@ -56,13 +54,11 @@ const DEPARTMENTS: OrgDepartment[] = [
       {
         name: 'Ricardo Colomé Payro',
         role: 'Contador',
-        phone: '993-223-1568',
         email: 'ricopa@hotmail.com',
       },
       {
         name: 'Abenamar Ramírez Torres',
         role: 'Auxiliar Contable',
-        phone: '993-223-1568',
         email: 'abenamarrt@hotmail.com',
       },
     ],
@@ -72,15 +68,15 @@ const DEPARTMENTS: OrgDepartment[] = [
     color: 'orange',
     members: [
       {
-        name: 'Gilberto Focil Sánchez',
+        name: 'David Iván Ricardez Frías',
         role: 'Jefe de Logística',
-        phone: '936-110-3979',
+        phone: '553-893-7366',
         email: 'logistica.trafico@tbrito.com.mx',
       },
       {
-        name: 'Edgar Iván Méndez Rodríguez',
+        name: '',
         role: 'Tráfico',
-        phone: '933-329-4562',
+        phone: '',
         email: 'logistica.brito@hotmail.com',
       },
     ],
@@ -96,7 +92,7 @@ export const OrgChartSection = () => {
     <section id="organigrama" className="py-24 bg-[#0f1419] text-white overflow-hidden relative">
       {/* Background glow */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#1a5c3a]/10 rounded-full blur-[160px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-200 h-200 bg-[#1a5c3a]/10 rounded-full blur-[160px]" />
       </div>
 
       <div className="container mx-auto px-6 relative z-10">

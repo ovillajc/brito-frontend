@@ -27,6 +27,14 @@ export interface MaintenanceTypeEntity {
   isActive: boolean
 }
 
+export interface MaintenanceServiceEntity {
+  id: string
+  name: string
+  description?: string | null
+  maintenanceTypeId: string
+  isActive: boolean
+}
+
 export interface MechanicalCategoryEntity {
   id: string
   name: string
@@ -38,6 +46,17 @@ export interface MaintenanceProviderEntity {
   name: string
   providerType: ProviderType
   isActive: boolean
+}
+
+export interface MeasurementUnitEntity {
+  id: string
+  name: string
+  isActive: boolean
+}
+
+export interface InventoryItemEntity {
+  id: string
+  name: string
 }
 
 export interface WorkshopStayEntity {
@@ -82,8 +101,9 @@ export interface WorkshopWorkOrderEntity {
   startedAt: Date
   finishedAt: Date | null
   status: WorkOrderStatus
-  specialistEmployeeId: string | null
-  supervisorProfileId: string | null
+  specialistName: string | null
+  supervisorName: string | null
+  supervisorEmployeeId: string | null
   description: string
   details: string | null
   totalCost: number
@@ -106,6 +126,114 @@ export interface WorkOrderPartEntity {
   discount: number
   taxRate: number
   total: number
+  isInternalSupply: boolean
+  createdAt: Date
+}
+
+export interface WorkshopStayReplicaEntity {
+  id: string
+  sequentialNumber: number
+  folio: string
+  enteredAt: Date
+  exitedAt: Date | null
+  daysInShop: number | null
+  reason: string
+  totalCost: number
+  economicNumber: string | null
+  vehicleType: VehicleType
+  plates: string | null
+  deliveredByEmployeeName: string | null
+  deliveredByEmployeeId: string | null
+  receivedByProfileName: string | null
+  pickedUpByEmployeeName: string | null
+  pickedUpByEmployeeId: string | null
+  kmAtEntry: number | null
+  kmLastService: number | null
+  lastClientName: string | null
+  lastDestination: string | null
+  lastTripStartDate: Date | null
+  lastTripId: string | null
+  notes: string | null
+}
+
+export interface WorkshopWorkOrderReplicaEntity {
+  id: string
+  stayId: string
+  stayFolio: string
+  workOrderFolio: string
+  stayEnteredAt: Date
+  startedAt: Date
+  finishedAt: Date | null
+  daysInWork: number | null
+  status: WorkOrderStatus
+  totalCost: number
+  locationType: string | null
+  unitEconomicNumber: string | null
+  unitPlates: string | null
+  stayReason: string | null
+  maintenanceTypeName: string | null
+  mechanicalCategoryName: string | null
+  failureLocation: string | null
+  vehicleActivityAtFailure: string | null
+  specialistName: string | null
+  specialistEmployeeId: string | null
+  supervisorName: string | null
+  description: string
+  details: string | null
+}
+
+export interface WorkOrderPartReplicaEntity {
+  id: string
+  workOrderId: string
+  stayFolio: string
+  stayEnteredAt: Date
+  workOrderFolio: string
+  unitEconomicNumber: string | null
+  unitPlates: string | null
+  stayReason: string | null
+  maintenanceTypeName: string | null
+  mechanicalCategoryName: string | null
+  description: string
+  providerName: string | null
+  brand: string | null
+  unitName: string | null
+  unitPrice: number
+  quantity: number
+  discount: number
+  taxRate: number
+  totalWithTax: number
+  paidBy: string | null
+  notes: string | null
+  isInternalSupply: boolean
+  inventoryItemId: string | null
+}
+
+// ─── Predictive Maintenance ─────────────────────────────────────────────────
+
+export interface VehicleSystemEntity {
+  id: string
+  name: string
+  description: string | null
+  isActive: boolean
+}
+
+export interface VehicleComponentEntity {
+  id: string
+  vehicleSystemId: string
+  vehicleSystemName: string | null
+  name: string
+  description: string | null
+  isActive: boolean
+}
+
+export interface WorkOrderIssueEntity {
+  id: string
+  workOrderId: string
+  vehicleComponentId: string
+  componentName: string | null
+  vehicleSystemName: string | null
+  reportedIssue: string | null
+  mechanicNotes: string | null
   createdAt: Date
 }
 

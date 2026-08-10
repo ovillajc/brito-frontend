@@ -1,15 +1,10 @@
-import MaintenancePage from '@/src/features/maintenance/presentation/components/pages/MaintenancePage'
+import MaintenanceStaysPage from '@/src/features/maintenance/presentation/components/pages/MaintenanceStaysPage'
 import { ModuleGuard } from '@/src/features/auth/presentation/components/ModuleGuard'
 
-export const metadata = {
-  title: 'Mantenimiento | Brito',
-  description: 'Bitácora de taller: estancias, órdenes de trabajo y refacciones.',
-}
-
-export default function Page() {
+export default function MaintenanceStaysRoute() {
   return (
     <ModuleGuard permission="maintenance:view">
-      <MaintenancePage />
+      <MaintenanceStaysPage />
     </ModuleGuard>
   )
 }

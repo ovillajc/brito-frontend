@@ -1,7 +1,6 @@
 import React, { Suspense } from 'react'
 import { getEmployeesAction } from '@/src/features/hr/presentation/actions/employee.actions'
-import { EmployeesTable } from '@/src/features/hr/presentation/components/organisms/EmployeesTable'
-import { Card } from '@/src/core/presentation/components/ui/card'
+import { WalmartOperatorsTable } from '@/src/features/operations/presentation/components/organisms/WalmartOperatorsTable'
 
 export default async function OperatorsPage() {
   return (
@@ -27,7 +26,7 @@ async function OperatorsContent() {
 
   return (
     <div className="w-full">
-      <EmployeesTable initialData={operators} />
+      <WalmartOperatorsTable initialData={operators} />
     </div>
   )
 }

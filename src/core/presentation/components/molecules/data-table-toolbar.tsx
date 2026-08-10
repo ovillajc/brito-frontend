@@ -1,4 +1,3 @@
-import React from 'react'
 import { Search, Filter, Plus } from 'lucide-react'
 import { Button } from '@/src/core/presentation/components/ui/button'
 
@@ -46,7 +45,7 @@ export function DataTableToolbar({
 
       {hasRightActions ? (
         <div className="flex items-center gap-2">
-          <Button variant="green" className="gap-2" onClick={onFiltersClick} disabled={!onFiltersClick}>
+          <Button variant="green" className="gap-2" onClick={onFiltersClick}>
             <Filter className="size-4" />
             Filtros{filtersCount && filtersCount > 0 ? ` (${filtersCount})` : ''}
           </Button>

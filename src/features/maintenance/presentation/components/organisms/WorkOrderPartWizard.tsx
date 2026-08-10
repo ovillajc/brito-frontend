@@ -9,13 +9,13 @@ import { Wizard, type WizardStep } from '@/src/core/presentation/components/orga
 import { WizardFooter } from '@/src/core/presentation/components/molecules/wizard-footer'
 import { Input } from '@/src/core/presentation/components/ui/input'
 import { Label } from '@/src/core/presentation/components/ui/label'
+import { Checkbox } from '@/src/core/presentation/components/ui/checkbox'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 import type { MaintenanceCatalogsEntity } from '@/src/features/maintenance/domain/repositories/i-maintenance-repository'
 import { createWorkOrderPartSchema, type CreateWorkOrderPartInput } from '@/src/features/maintenance/domain/schemas/create-part.schema'
-import { useCreateWorkOrderPart } from '@/src/features/maintenance/presentation/hooks/use-maintenance'
+import { useCreateWorkOrderPart, useUpdateWorkOrderPart, useMeasurementUnits, useInventoryItems, useAllWorkOrders } from '@/src/features/maintenance/presentation/hooks/use-maintenance'
+import type { WorkOrderPartReplicaEntity } from '@/src/features/maintenance/domain/entities/maintenance-entity'
 import type { z } from 'zod'
-import { useQuery } from '@tanstack/react-query'
-import { createClient } from '@/src/core/lib/supabase/client'
 
 type PartFormValues = z.input<typeof createWorkOrderPartSchema>
 
@@ -24,43 +24,32 @@ interface WorkOrderPartWizardProps {
   onClose: () => void
   workOrderId: string | null
   catalogs: MaintenanceCatalogsEntity | null
+  initialData?: WorkOrderPartReplicaEntity | null
 }
 
 type MeasurementUnitRow = { id: string; name: string; is_active: boolean }
 type InventoryItemRow = { id: string; name: string }
 
-export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs }: WorkOrderPartWizardProps) {
+export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs, initialData }: WorkOrderPartWizardProps) {
   const [activeStep, setActiveStep] = useState(0)
+  const [showInventorySelect, setShowInventorySelect] = useState(false)
   const createPart = useCreateWorkOrderPart()
+  const updatePart = useUpdateWorkOrderPart()
+  const isEditing = !!initialData
 
-  const unitsQuery = useQuery({
-    queryKey: ['maintenance', 'measurement-units'],
-    queryFn: async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('measurement_units')
-        .select('id, name, is_active')
-        .eq('is_active', true)
-        .order('name')
-      if (error) throw new Error(error.message)
-      return data as MeasurementUnitRow[]
-    },
-    staleTime: 1000 * 60 * 10,
-  })
+  const unitsQuery = useMeasurementUnits()
+  const inventoryQuery = useInventoryItems()
+  const workOrdersQuery = useAllWorkOrders()
 
-  const inventoryQuery = useQuery({
-    queryKey: ['maintenance', 'inventory-items'],
-    queryFn: async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('inventory_items')
-        .select('id, name')
-        .order('name')
-      if (error) throw new Error(error.message)
-      return data as InventoryItemRow[]
-    },
-    staleTime: 1000 * 60 * 10,
-  })
+  const matchingProviderId = useMemo(() => {
+    if (!initialData || !catalogs || !initialData.providerName) return null
+    return (catalogs.providers ?? []).find((p) => p.name === initialData.providerName)?.id ?? null
+  }, [initialData, catalogs])
+
+  const matchingUnitId = useMemo(() => {
+    if (!initialData || !unitsQuery.data || !initialData.unitName) return null
+    return (unitsQuery.data ?? []).find((u) => u.name === initialData.unitName)?.id ?? null
+  }, [initialData, unitsQuery.data])
 
   const {
     register,
@@ -75,6 +64,7 @@ export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs }: 
       workOrderId: workOrderId ?? '',
       providerId: null,
       inventoryItemId: null,
+      isInternalSupply: false,
       description: '',
       brand: null,
       unitId: null,
@@ -82,59 +72,122 @@ export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs }: 
       unitPrice: 0,
       discount: 0,
       taxRate: 0.16,
+      paidBy: null,
     },
   })
 
   useEffect(() => {
     if (!isOpen) return
-    reset({
-      workOrderId: workOrderId ?? '',
-      providerId: null,
-      inventoryItemId: null,
-      description: '',
-      brand: null,
-      unitId: null,
-      quantity: 1,
-      unitPrice: 0,
-      discount: 0,
-      taxRate: 0.16,
-    })
-  }, [isOpen, reset, workOrderId])
+    if (initialData) {
+      reset({
+        workOrderId: workOrderId ?? initialData.workOrderId ?? '',
+        providerId: matchingProviderId,
+        inventoryItemId: initialData.inventoryItemId ?? null,
+        isInternalSupply: initialData.isInternalSupply ?? false,
+        description: initialData.description,
+        brand: initialData.brand,
+        unitId: matchingUnitId,
+        quantity: initialData.quantity,
+        unitPrice: initialData.unitPrice,
+        discount: initialData.discount,
+        taxRate: initialData.taxRate,
+        paidBy: initialData.paidBy ?? null,
+      })
+    } else {
+      reset({
+        workOrderId: workOrderId ?? '',
+        providerId: null,
+        inventoryItemId: null,
+        isInternalSupply: false,
+        description: '',
+        brand: null,
+        unitId: null,
+        quantity: 1,
+        unitPrice: 0,
+        discount: 0,
+        taxRate: 0.16,
+        paidBy: null,
+      })
+    }
+  }, [isOpen, reset, workOrderId, initialData, matchingProviderId, matchingUnitId])
 
   const inputClass = cn(
-    'h-10 rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#006d37]/30'
+    'flex h-12 w-full rounded-xl border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/20 transition-colors'
   )
 
-  const errorClass = 'text-xs text-red-600 mt-1'
+  const errorClass = 'text-xs text-red-500 mt-1'
 
   const providers = useMemo(() => catalogs?.providers ?? [], [catalogs])
   const units = useMemo(() => unitsQuery.data ?? [], [unitsQuery.data])
   const inventoryItems = useMemo(() => inventoryQuery.data ?? [], [inventoryQuery.data])
+  const workOrders = useMemo(() => workOrdersQuery.data?.data ?? [], [workOrdersQuery.data])
 
   const goNext = async () => {
-    const ok = await trigger(['description', 'quantity', 'unitPrice'])
+    const fieldsToValidate: (keyof PartFormValues)[] = ['description', 'quantity', 'unitPrice']
+    if (!workOrderId && !isEditing) fieldsToValidate.push('workOrderId')
+
+    const ok = await trigger(fieldsToValidate)
     if (ok) setActiveStep(1)
   }
 
   const handleClose = () => onClose()
 
-  const onFinish = handleSubmit(async (vals) => {
-    try {
-      if (!workOrderId) {
-        toast.error('Selecciona una orden de trabajo')
-        return
+  const onFinish = handleSubmit(
+    async (vals) => {
+      console.log('[WorkOrderPartWizard] onFinish called with vals:', vals)
+      try {
+        if (!vals.workOrderId) {
+          console.log('[WorkOrderPartWizard] Error: workOrderId is missing')
+          toast.error('Selecciona una orden de trabajo')
+          return
+        }
+
+        console.log('[WorkOrderPartWizard] Parsing with Zod...')
+        const parsed: CreateWorkOrderPartInput = createWorkOrderPartSchema.parse(vals)
+        console.log('[WorkOrderPartWizard] Parsed successfully:', parsed)
+
+        if (isEditing && initialData) {
+          console.log('[WorkOrderPartWizard] Updating part...')
+          await updatePart.mutateAsync({ id: initialData.id, data: parsed })
+          console.log('[WorkOrderPartWizard] Update successful')
+        } else {
+          console.log('[WorkOrderPartWizard] Creating part...')
+          await createPart.mutateAsync(parsed)
+          console.log('[WorkOrderPartWizard] Create successful')
+        }
+        toast.success(isEditing ? 'Gasto actualizado' : 'Gasto registrado')
+        handleClose()
+      } catch (e) {
+        console.error('[WorkOrderPartWizard] Exception caught in onFinish:', e)
+        toast.error(e instanceof Error ? e.message : 'Error al guardar gasto')
       }
-      const parsed: CreateWorkOrderPartInput = createWorkOrderPartSchema.parse({ ...vals, workOrderId })
-      await createPart.mutateAsync(parsed)
-      toast.success('Refacción registrada')
-      handleClose()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al registrar refacción')
+    },
+    (errors) => {
+      console.error('[WorkOrderPartWizard] Validation errors from react-hook-form:', errors)
+      toast.error('Por favor, corrige los errores de validación antes de continuar.')
     }
-  })
+  )
 
   const step1 = (
     <div className="flex flex-col gap-6 pt-2">
+      {!workOrderId && !isEditing && (
+        <div className="grid gap-2">
+          <Label htmlFor="workOrderId">Orden de Trabajo</Label>
+          <select
+            id="workOrderId"
+            className={inputClass}
+            disabled={workOrdersQuery.isLoading}
+            {...register('workOrderId')}
+          >
+            <option value="">{workOrdersQuery.isLoading ? 'Cargando...' : 'Selecciona una orden...'}</option>
+            {workOrders.map((wo: any) => (
+              <option key={wo.id} value={wo.id}>{wo.folio || wo.id}</option>
+            ))}
+          </select>
+          {errors.workOrderId && <p className={errorClass}>{errors.workOrderId.message}</p>}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="providerId">Proveedor (Opcional)</Label>
@@ -152,23 +205,46 @@ export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs }: 
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="inventoryItemId">Inventario (Opcional)</Label>
-          <select
-            id="inventoryItemId"
-            className={inputClass}
-            disabled={inventoryQuery.isLoading}
-            {...register('inventoryItemId', { setValueAs: (v) => v || null })}
-          >
-            <option value="">{inventoryQuery.isLoading ? 'Cargando...' : 'Selecciona...'}</option>
-            {inventoryItems.map((i) => (
-              <option key={i.id} value={i.id}>{i.name}</option>
-            ))}
-          </select>
+          <Label>Inventario</Label>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 h-10 px-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+              <Checkbox
+                id="isInternalSupply"
+                {...register('isInternalSupply')}
+              />
+              <Label htmlFor="isInternalSupply" className="cursor-pointer font-normal flex-1">
+                Tomado del inventario
+              </Label>
+              {watch('isInternalSupply') && (
+                <button
+                  type="button"
+                  onClick={() => setShowInventorySelect(!showInventorySelect)}
+                  className="text-xs text-brito-green hover:underline"
+                >
+                  {showInventorySelect ? 'Ocultar' : 'Vincular'}
+                </button>
+              )}
+            </div>
+
+            {watch('isInternalSupply') && showInventorySelect && (
+              <select
+                id="inventoryItemId"
+                className={inputClass}
+                disabled={inventoryQuery.isLoading}
+                {...register('inventoryItemId', { setValueAs: (v) => v || null })}
+              >
+                <option value="">{inventoryQuery.isLoading ? 'Cargando...' : 'Selecciona pieza (opcional)...'}</option>
+                {inventoryItems.map((i) => (
+                  <option key={i.id} value={i.id}>{i.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="description">Descripción de la pieza</Label>
+        <Label htmlFor="description">Descripción del gasto</Label>
         <Input id="description" className={inputClass} placeholder="Ej. Filtro de aceite P559000" {...register('description')} />
         {errors.description && <p className={errorClass}>{errors.description.message}</p>}
       </div>
@@ -176,11 +252,7 @@ export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs }: 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="brand">Marca (Opcional)</Label>
-          <Input
-            id="brand"
-            className={inputClass}
-            {...register('brand', { setValueAs: (v) => (typeof v === 'string' ? (v.trim() === '' ? null : v.trim()) : null) })}
-          />
+          <Input id="brand" className={inputClass} placeholder="Ej. Donaldson" {...register('brand')} />
         </div>
 
         <div className="grid gap-2">
@@ -197,6 +269,11 @@ export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs }: 
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="grid gap-2 mt-4">
+        <Label htmlFor="paidBy">Pagado por (Opcional)</Label>
+        <Input id="paidBy" className={inputClass} placeholder="Nombre de quien pagó" {...register('paidBy')} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -229,19 +306,19 @@ export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs }: 
         const taxRate = Number(watch('taxRate'))
 
         return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="taxRate">IVA (0–1)</Label>
-          <Input id="taxRate" type="number" step="0.01" className={inputClass} {...register('taxRate', { setValueAs: (v) => Number(v) })} />
-          {errors.taxRate && <p className={errorClass}>{errors.taxRate.message}</p>}
-        </div>
-        <div className="grid gap-2">
-          <Label>Total estimado</Label>
-          <div className="h-10 rounded-xl border border-stone-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 px-3 text-sm flex items-center">
-            {estimateTotal({ quantity, unitPrice, discount, taxRate })}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="taxRate">IVA (0–1)</Label>
+              <Input id="taxRate" type="number" step="0.01" className={inputClass} {...register('taxRate', { setValueAs: (v) => Number(v) })} />
+              {errors.taxRate && <p className={errorClass}>{errors.taxRate.message}</p>}
+            </div>
+            <div className="grid gap-2">
+              <Label>Total estimado</Label>
+              <div className="h-10 rounded-xl border border-stone-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 px-3 text-sm flex items-center">
+                {estimateTotal({ quantity, unitPrice, discount, taxRate })}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
         )
       })()}
 
@@ -257,7 +334,7 @@ export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs }: 
   )
 
   const steps: WizardStep[] = [
-    { id: 'part-1', title: 'Pieza', content: step1 },
+    { id: 'part-1', title: 'Gasto', content: step1 },
     { id: 'part-2', title: 'Total', content: step2 },
   ]
 
@@ -265,8 +342,8 @@ export function WorkOrderPartWizard({ isOpen, onClose, workOrderId, catalogs }: 
     <Wizard
       isOpen={isOpen}
       onClose={handleClose}
-      title="Nueva Refacción"
-      description="Registra materiales y costos asociados a una orden."
+      title={isEditing ? 'Editar Gasto' : 'Nuevo Gasto'}
+      description={isEditing ? 'Modifica los detalles del gasto seleccionado.' : 'Registra gastos y costos asociados a una orden.'}
       icon={<PackagePlus className="size-5" />}
       steps={steps}
       activeStep={activeStep}

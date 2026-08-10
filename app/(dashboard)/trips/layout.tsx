@@ -71,7 +71,7 @@ export default async function TripsLayout({ children }: { children: React.ReactN
         <TripsNavbar hiddenHrefs={hiddenHrefs} />
       </header>
 
-      <main className="min-h-[500px]">
+      <main className="min-h-125">
         {children}
       </main>
     </div>
