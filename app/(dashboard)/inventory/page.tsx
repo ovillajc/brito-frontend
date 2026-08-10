@@ -22,7 +22,7 @@ export default async function Page() {
   }
 
   return (
-    <ModuleGuard permission="inventory:view">
+    <ModuleGuard permissions={['inventory:view', 'inventory:manage']}>
       <UnderDevelopment />
     </ModuleGuard>
   )

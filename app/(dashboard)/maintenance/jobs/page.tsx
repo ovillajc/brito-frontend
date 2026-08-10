@@ -3,7 +3,7 @@ import { ModuleGuard } from '@/src/features/auth/presentation/components/ModuleG
 
 export default function MaintenanceJobsRoute() {
   return (
-    <ModuleGuard permission="maintenance:view">
+    <ModuleGuard permissions={['maintenance:view', 'maintenance:manage']}>
       <MaintenanceJobsPage />
     </ModuleGuard>
   )

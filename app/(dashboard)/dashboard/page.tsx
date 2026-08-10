@@ -38,6 +38,15 @@ export default async function DashboardPage() {
   const isQhseSupervisor = user.roles.some(r => r.name === 'supervisor_qhse')
   const isSuperUser = user.permissions.includes('all_access') || user.permissions.includes('view_all')
 
+  const isMaintenanceManager = user.roles.some(r => r.name === 'jefe_mantenimiento')
+  const isInventoryManager = user.roles.some(r => r.name === 'almacen')
+
+  if (isMaintenanceManager && !isSuperUser) {
+    redirect('/maintenance')
+  }
+  if (isInventoryManager && !isSuperUser) {
+    redirect('/inventory')
+  }
   if (isWalmartCoordinator && !isSuperUser) {
     redirect('/trips/list')
   }
