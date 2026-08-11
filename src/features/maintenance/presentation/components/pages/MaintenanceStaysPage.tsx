@@ -7,7 +7,7 @@ import type { WorkshopStayReplicaEntity } from '@/src/features/maintenance/domai
 import { StayWizard } from '../organisms/StayWizard'
 import { CloseWorkshopStayDialog } from '../organisms/CloseWorkshopStayDialog'
 import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
-import { SpreadsheetTable, type SpreadsheetColumn } from '@/src/core/presentation/components/ui/SpreadsheetTable'
+import { SpreadsheetTable, type SpreadsheetColumn, type TableFilterConfig } from '@/src/core/presentation/components/ui/SpreadsheetTable'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { Input } from '@/src/core/presentation/components/ui/input'
@@ -45,25 +45,55 @@ export default function MaintenanceStaysPage() {
     setExportModalOpen(false)
   }
 
+  const tableFilters = useMemo((): TableFilterConfig<WorkshopStayReplicaEntity>[] => [
+    {
+      id: 'status',
+      label: 'Estado',
+      type: 'select',
+      options: [
+        { value: 'entered', label: 'Ingresada' },
+        { value: 'in_workshop', label: 'En Taller' },
+        { value: 'completed', label: 'Terminada' },
+        { value: 'released', label: 'Liberada' },
+      ],
+    },
+    {
+      id: 'enteredAt',
+      label: 'Fecha de Ingreso',
+      type: 'date-range',
+      filterFn: (row, value) => {
+        if (!row.enteredAt) return false;
+        const d = new Date(row.enteredAt).getTime();
+        const start = value.start ? new Date(value.start + 'T00:00:00').getTime() : null;
+        const end = value.end ? new Date(value.end + 'T23:59:59').getTime() : null;
+        
+        if (start && d < start) return false;
+        if (end && d > end) return false;
+        return true;
+      }
+    }
+  ], []);
+
   const staysColumns = useMemo<SpreadsheetColumn<WorkshopStayReplicaEntity>[]>(() => [
-    { key: 'seq', header: 'No. Secuencial', render: (s) => <div className="text-sm">{String(s.sequentialNumber)}</div> },
-    { key: 'folio', header: 'Folio de Estancia', render: (s) => <div className="font-mono font-bold text-stone-900">{s.folio}</div> },
-    { key: 'entered', header: 'Fecha de ingreso', render: (s) => <div className="text-sm">{dateFmt.format(new Date(s.enteredAt))}</div> },
-    { key: 'exited', header: 'Fecha de salida', render: (s) => <div className="text-sm">{s.exitedAt ? dateFmt.format(new Date(s.exitedAt)) : '—'}</div> },
-    { key: 'days', header: 'Días en Taller', render: (s) => <div className="text-sm">{s.daysInShop === null ? '—' : String(s.daysInShop)}</div> },
-    { key: 'reason', header: 'Motivo', render: (s) => <div className="text-sm max-w-xs truncate">{s.reason}</div> },
-    { key: 'cost', header: 'Costo Total', render: (s) => <div className="text-sm">{money.format(s.totalCost)}</div> },
-    { key: 'eco', header: 'No. Económico', render: (s) => <div className="text-sm">{s.economicNumber || '—'}</div> },
-    { key: 'type', header: 'Tipo de Vehículo', render: (s) => <div className="text-sm">{s.vehicleType}</div> },
-    { key: 'plates', header: 'Placas', render: (s) => <div className="text-sm">{s.plates || '—'}</div> },
-    { key: 'delivered', header: 'Entregado Por', render: (s) => <div className="text-sm">{s.deliveredByEmployeeName || '—'}</div> },
-    { key: 'received', header: 'Recibido Por', render: (s) => <div className="text-sm">{s.receivedByProfileName || '—'}</div> },
-    { key: 'pickedup', header: 'Recogido Por', render: (s) => <div className="text-sm">{s.pickedUpByEmployeeName || '—'}</div> },
-    { key: 'km', header: 'Km de Ingreso', render: (s) => <div className="text-sm">{s.kmAtEntry ?? '—'}</div> },
-    { key: 'km_last', header: 'KM Último Servicio', render: (s) => <div className="text-sm">{s.kmLastService ?? '—'}</div> },
+    { key: 'seq', header: 'No. Secuencial', resizable: true, filterable: true, render: (s) => <div className="text-sm">{String(s.sequentialNumber)}</div> },
+    { key: 'folio', header: 'Folio de Estancia', resizable: true, filterable: true, render: (s) => <div className="font-mono font-bold text-stone-900">{s.folio}</div> },
+    { key: 'entered', header: 'Fecha de ingreso', resizable: true, render: (s) => <div className="text-sm">{dateFmt.format(new Date(s.enteredAt))}</div> },
+    { key: 'exited', header: 'Fecha de salida', resizable: true, render: (s) => <div className="text-sm">{s.exitedAt ? dateFmt.format(new Date(s.exitedAt)) : '—'}</div> },
+    { key: 'days', header: 'Días en Taller', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.daysInShop === null ? '—' : String(s.daysInShop)}</div> },
+    { key: 'reason', header: 'Motivo', resizable: true, filterable: true, render: (s) => <div className="text-sm max-w-xs truncate">{s.reason}</div> },
+    { key: 'cost', header: 'Costo Total', resizable: true, render: (s) => <div className="text-sm">{money.format(s.totalCost)}</div> },
+    { key: 'eco', header: 'No. Económico', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.economicNumber || '—'}</div> },
+    { key: 'type', header: 'Tipo de Vehículo', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.vehicleType}</div> },
+    { key: 'plates', header: 'Placas', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.plates || '—'}</div> },
+    { key: 'delivered', header: 'Entregado Por', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.deliveredByEmployeeName || '—'}</div> },
+    { key: 'received', header: 'Recibido Por', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.receivedByProfileName || '—'}</div> },
+    { key: 'pickedup', header: 'Recogido Por', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.pickedUpByEmployeeName || '—'}</div> },
+    { key: 'km', header: 'Km de Ingreso', resizable: true, render: (s) => <div className="text-sm">{s.kmAtEntry ?? '—'}</div> },
+    { key: 'km_last', header: 'KM Último Servicio', resizable: true, render: (s) => <div className="text-sm">{s.kmLastService ?? '—'}</div> },
     { 
       key: 'last_trip_start', 
       header: 'Inicio de último Viaje', 
+      resizable: true,
       render: (s) => {
         if (!s.lastTripStartDate) return <div className="text-sm">—</div>
         try {
@@ -75,9 +105,9 @@ export default function MaintenanceStaysPage() {
         }
       } 
     },
-    { key: 'notes', header: 'Observaciones', render: (s) => <div className="text-sm">{s.notes || '—'}</div> },
-    { key: 'last_client', header: 'Último Cliente', render: (s) => <div className="text-sm">{s.lastClientName || '—'}</div> },
-    { key: 'last_dest', header: 'Último Destino', render: (s) => <div className="text-sm">{s.lastDestination || '—'}</div> },
+    { key: 'notes', header: 'Observaciones', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.notes || '—'}</div> },
+    { key: 'last_client', header: 'Último Cliente', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.lastClientName || '—'}</div> },
+    { key: 'last_dest', header: 'Último Destino', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.lastDestination || '—'}</div> },
   ], [])
 
   return (
@@ -91,10 +121,14 @@ export default function MaintenanceStaysPage() {
       </Alert>
 
       <SpreadsheetTable<WorkshopStayReplicaEntity>
+        stateKey="maintenance-stays-table"
         canManage={canManage}
         pageSize={10}
         data={stays}
         columns={staysColumns}
+        filters={tableFilters}
+        draggableRows={true}
+        onRowReorder={(from, to, newData) => console.log('Reordered stays:', from, to)}
         searchPlaceholder="Buscar estancia..."
         searchFilter={(row, term) => [row.folio, row.reason, row.economicNumber].some((v) => v?.toLowerCase().includes(term))}
         actionLabel="Nueva Estancia"

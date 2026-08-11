@@ -8,7 +8,7 @@ import type { WorkshopWorkOrderReplicaEntity } from '@/src/features/maintenance/
 import { WorkOrderWizard } from '../organisms/WorkOrderWizard'
 import { CloseWorkOrderDialog } from '../organisms/CloseWorkOrderDialog'
 import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
-import { SpreadsheetTable, type SpreadsheetColumn } from '@/src/core/presentation/components/ui/SpreadsheetTable'
+import { SpreadsheetTable, type SpreadsheetColumn, type TableFilterConfig } from '@/src/core/presentation/components/ui/SpreadsheetTable'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { Input } from '@/src/core/presentation/components/ui/input'
@@ -44,15 +44,44 @@ export default function MaintenanceJobsPage() {
     setExportModalOpen(false)
   }
 
-  const woColumns = useMemo<SpreadsheetColumn<WorkshopWorkOrderReplicaEntity>[]>(() => [
-    { key: 'stayFolio', header: 'Folio de Estancia', render: (s) => <span className="font-mono text-stone-700">{s.stayFolio}</span> },
-    { key: 'woFolio', header: 'Folio Trabajo', render: (s) => <span className="font-mono font-bold text-stone-900">{s.workOrderFolio}</span> },
-    { key: 'stayEntered', header: 'Fecha ingreso Taller', render: (s) => <div className="text-sm">{dateFmt.format(new Date(s.stayEnteredAt))}</div> },
-    { key: 'started', header: 'Fecha inicio Taller', render: (s) => <div className="text-sm">{dateFmt.format(new Date(s.startedAt))}</div> },
-    { key: 'finished', header: 'Fecha fin Taller', render: (s) => <div className="text-sm">{s.finishedAt ? dateFmt.format(new Date(s.finishedAt)) : '—'}</div> },
-    { key: 'days', header: 'Días de Trabajo', render: (s) => <div className="text-sm">{s.daysInWork === null ? '—' : String(s.daysInWork)}</div> },
+  const tableFilters = useMemo((): TableFilterConfig<WorkshopWorkOrderReplicaEntity>[] => [
     {
-      key: 'status', header: 'Estado', render: (s) => (
+      id: 'status',
+      label: 'Estado',
+      type: 'select',
+      options: [
+        { value: 'open', label: 'Abierta' },
+        { value: 'in_progress', label: 'En progreso' },
+        { value: 'on_hold', label: 'En espera' },
+        { value: 'completed', label: 'Cerrada' },
+      ],
+    },
+    {
+      id: 'startedAt',
+      label: 'Fecha de Inicio',
+      type: 'date-range',
+      filterFn: (row, value) => {
+        if (!row.startedAt) return false;
+        const d = new Date(row.startedAt).getTime();
+        const start = value.start ? new Date(value.start + 'T00:00:00').getTime() : null;
+        const end = value.end ? new Date(value.end + 'T23:59:59').getTime() : null;
+        
+        if (start && d < start) return false;
+        if (end && d > end) return false;
+        return true;
+      }
+    }
+  ], []);
+
+  const woColumns = useMemo<SpreadsheetColumn<WorkshopWorkOrderReplicaEntity>[]>(() => [
+    { key: 'stayFolio', header: 'Folio de Estancia', resizable: true, filterable: true, render: (s) => <span className="font-mono text-stone-700">{s.stayFolio}</span> },
+    { key: 'woFolio', header: 'Folio Trabajo', resizable: true, filterable: true, render: (s) => <span className="font-mono font-bold text-stone-900">{s.workOrderFolio}</span> },
+    { key: 'stayEntered', header: 'Fecha ingreso Taller', resizable: true, render: (s) => <div className="text-sm">{dateFmt.format(new Date(s.stayEnteredAt))}</div> },
+    { key: 'started', header: 'Fecha inicio Taller', resizable: true, render: (s) => <div className="text-sm">{dateFmt.format(new Date(s.startedAt))}</div> },
+    { key: 'finished', header: 'Fecha fin Taller', resizable: true, render: (s) => <div className="text-sm">{s.finishedAt ? dateFmt.format(new Date(s.finishedAt)) : '—'}</div> },
+    { key: 'days', header: 'Días de Trabajo', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.daysInWork === null ? '—' : String(s.daysInWork)}</div> },
+    {
+      key: 'status', header: 'Estado', resizable: true, filterable: true, render: (s) => (
         <select
           value={s.status}
           onChange={async (e) => {
@@ -73,17 +102,17 @@ export default function MaintenanceJobsPage() {
         </select>
       )
     },
-    { key: 'cost', header: 'Costo Total', render: (s) => <div className="text-sm">{money.format(s.totalCost)}</div> },
-    { key: 'locType', header: 'Tipo Locación', render: (s) => <div className="text-sm">{s.locationType || '—'}</div> },
-    { key: 'eco', header: 'No. Económico', render: (s) => <div className="text-sm">{s.unitEconomicNumber || '—'}</div> },
-    { key: 'plates', header: 'Placas', render: (s) => <div className="text-sm">{s.unitPlates || '—'}</div> },
-    { key: 'reason', header: 'Motivo Taller', render: (s) => <div className="text-sm">{s.stayReason || '—'}</div> },
-    { key: 'mntType', header: 'Tipo Mantenimiento', render: (s) => <div className="text-sm">{s.maintenanceTypeName || '—'}</div> },
-    { key: 'mechCat', header: 'Categoría Mecánica', render: (s) => <div className="text-sm">{s.mechanicalCategoryName || '—'}</div> },
-    { key: 'failLoc', header: 'Falla o Problema', render: (s) => <div className="text-sm">{s.failureLocation || '—'}</div> },
-    { key: 'spec', header: 'Especialista', render: (s) => <div className="text-sm">{s.specialistName || '—'}</div> },
-    { key: 'sup', header: 'Supervisor', render: (s) => <div className="text-sm">{s.supervisorName || '—'}</div> },
-    { key: 'desc', header: 'Descripción', render: (s) => <div className="text-sm truncate max-w-50">{s.description}</div> },
+    { key: 'cost', header: 'Costo Total', resizable: true, render: (s) => <div className="text-sm">{money.format(s.totalCost)}</div> },
+    { key: 'locType', header: 'Tipo Locación', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.locationType || '—'}</div> },
+    { key: 'eco', header: 'No. Económico', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.unitEconomicNumber || '—'}</div> },
+    { key: 'plates', header: 'Placas', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.unitPlates || '—'}</div> },
+    { key: 'reason', header: 'Motivo Taller', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.stayReason || '—'}</div> },
+    { key: 'mntType', header: 'Tipo Mantenimiento', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.maintenanceTypeName || '—'}</div> },
+    { key: 'mechCat', header: 'Categoría Mecánica', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.mechanicalCategoryName || '—'}</div> },
+    { key: 'failLoc', header: 'Falla o Problema', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.failureLocation || '—'}</div> },
+    { key: 'spec', header: 'Especialista', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.specialistName || '—'}</div> },
+    { key: 'sup', header: 'Supervisor', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.supervisorName || '—'}</div> },
+    { key: 'desc', header: 'Descripción', resizable: true, filterable: true, render: (s) => <div className="text-sm truncate max-w-50">{s.description}</div> },
   ], [])
 
   return (
@@ -103,10 +132,14 @@ export default function MaintenanceJobsPage() {
         </Alert>
       )}
       <SpreadsheetTable<WorkshopWorkOrderReplicaEntity>
+        stateKey="maintenance-jobs-table"
         canManage={canManage}
         pageSize={10}
         data={workOrders}
         columns={woColumns as any}
+        filters={tableFilters}
+        draggableRows={true}
+        onRowReorder={(from, to, newData) => console.log('Reordered jobs:', from, to)}
         searchPlaceholder="Buscar orden de trabajo..."
         searchFilter={(row, term) => [row.workOrderFolio, row.stayFolio, row.description].some((v) => v?.toLowerCase().includes(term))}
         actionLabel={undefined}

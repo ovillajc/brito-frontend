@@ -9,7 +9,7 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import { MapPin, Briefcase } from 'lucide-react'
-import { SpreadsheetTable, type SpreadsheetColumn } from '@/src/core/presentation/components/ui/SpreadsheetTable'
+import { SpreadsheetTable, type SpreadsheetColumn, type TableFilterConfig } from '@/src/core/presentation/components/ui/SpreadsheetTable'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { TripWizard } from './TripWizard'
 import { TripDetailsDialog } from './TripDetailsDialog'
@@ -269,6 +269,35 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
     setExportModalOpen(false)
   }
 
+  const tableFilters = useMemo((): TableFilterConfig<TripsTableRowEntity>[] => [
+    {
+      id: 'folio',
+      label: 'Folio',
+      type: 'text'
+    },
+    {
+      id: 'status',
+      label: 'Estado',
+      type: 'select',
+      options: STATUS_OPTIONS.map(s => ({ value: s, label: STATUS_MAP[s]?.label ?? s }))
+    },
+    {
+      id: 'departureDate',
+      label: 'Fecha de Salida',
+      type: 'date-range',
+      filterFn: (row, value) => {
+        if (!row.departureDate) return false;
+        const d = new Date(row.departureDate).getTime();
+        const start = value.start ? new Date(value.start + 'T00:00:00').getTime() : null;
+        const end = value.end ? new Date(value.end + 'T23:59:59').getTime() : null;
+        
+        if (start && d < start) return false;
+        if (end && d > end) return false;
+        return true;
+      }
+    }
+  ], []);
+
   const columns = useMemo((): SpreadsheetColumn<TripsTableRowEntity>[] => {
     const selectedClient = filters?.clientId ? clients.find(c => c.id === filters.clientId) : null
     const isWalmartSelected = !!selectedClient && (
@@ -292,6 +321,7 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
       {
         key: 'folio',
         header: 'Viaje',
+        sortable: true,
         render: (row) => (
           <div className="flex flex-col">
             <span className="font-bold text-stone-900 dark:text-zinc-100 group-hover:text-[#1a5c3a] dark:group-hover:text-primary-container transition-colors font-mono">
@@ -303,6 +333,8 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
       {
         key: 'departureDate',
         header: 'Fecha',
+        sortable: true,
+        sortValue: (row) => row.departureDate ? new Date(row.departureDate).getTime() : 0,
         render: (row) => {
           if (!row.departureDate) return <span className="text-stone-400">—</span>
           const d = new Date(row.departureDate)
@@ -335,6 +367,7 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
       ...(selectedClient ? [] : [{
         key: 'clientName',
         header: 'Cliente',
+        sortable: true,
         render: (row: TripsTableRowEntity) => (
           <div className="flex items-center gap-2 min-w-30">
             <div className="p-1.5 rounded bg-stone-100 dark:bg-zinc-800">
@@ -363,6 +396,8 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
       {
         key: 'status',
         header: 'Estado',
+        sortable: true,
+        sortValue: (row) => STATUS_MAP[row.status]?.label || row.status,
         render: (row) => {
           const cfg = STATUS_MAP[row.status] ?? { label: row.status, className: 'bg-stone-100 text-stone-600' }
 
@@ -543,6 +578,7 @@ export function TripsTable({ clients = [], units = [], trips = [], filters }: Tr
         <SpreadsheetTable<TripsTableRowEntity>
           data={rows}
           columns={columns}
+          filters={tableFilters}
           searchPlaceholder="Buscar por folio, cliente u origen..."
           searchFilter={(row, term) =>
             [row.folio, row.clientName, row.origin, row.destination, row.unitEconomicNumber]
