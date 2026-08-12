@@ -80,7 +80,7 @@ const ADMIN_MODULES: NavItem[] = [
 ]
 
 const SYSTEM_ITEMS: NavItem[] = [
-  { label: 'Configuración', icon: Settings, href: '/settings', requiredPermission: 'all_access' },
+  { label: 'Configuración', icon: Settings, href: '/settings' },
   { label: 'Soporte', icon: HelpCircle, href: '/support' },
 ]
 
@@ -169,7 +169,6 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
   })
 
   const filteredSystemItems = SYSTEM_ITEMS.filter(item => {
-    if (isRestrictedMonitoring || isRestrictedWalmartCoordinator || isRestrictedLogisticsBoss || isRestrictedQhseSupervisor || isRestrictedMaintenanceOrInventory) return false
     return !item.requiredPermission || hasPermission(item.requiredPermission)
   })
 
@@ -194,60 +193,43 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
       }
     }
 
-    // Redirect monitoring users if they are not in trips/profile
-    if (isRestrictedMonitoring && 
-        !pathname.startsWith('/trips') && 
-        !pathname.startsWith('/profile')
-    ) {
-      window.location.href = '/trips'
-    }
-
-    if (isRestrictedWalmartCoordinator && 
-        !pathname.startsWith('/trips') && 
-        !pathname.startsWith('/profile')
-    ) {
-      window.location.href = '/trips/list'
-    }
-
-    if (
-      isRestrictedExpenseController &&
-      !pathname.startsWith('/expenses') &&
-      !pathname.startsWith('/trips/fuel/load') &&
-      !pathname.startsWith('/profile')
-    ) {
-      window.location.href = '/expenses'
-    }
-
-    if (
-      isRestrictedLogisticsBoss &&
-      !pathname.startsWith('/trips/list') &&
-      !pathname.startsWith('/fleet') &&
-      !pathname.startsWith('/profile')
-    ) {
-      window.location.href = '/trips/list'
-    }
-
-    if (
-      isRestrictedQhseSupervisor &&
-      !pathname.startsWith('/trips') &&
-      !pathname.startsWith('/qhse') &&
-      !pathname.startsWith('/profile')
-    ) {
-      window.location.href = '/trips/list'
-    }
-
-    if (
-      isRestrictedMaintenanceOrInventory &&
-      !pathname.startsWith('/maintenance') &&
-      !pathname.startsWith('/inventory') &&
-      !pathname.startsWith('/profile')
-    ) {
-      window.location.href = isMaintenanceRole ? '/maintenance' : '/inventory'
-    }
-
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Navigation enforcement Effect
+  useEffect(() => {
+    const enforceRoute = () => {
+      if (isRestrictedMonitoring && !pathname.startsWith('/trips') && !pathname.startsWith('/profile')) {
+        window.location.replace('/trips')
+        return
+      }
+      if (isRestrictedWalmartCoordinator && !pathname.startsWith('/trips') && !pathname.startsWith('/profile')) {
+        window.location.replace('/trips/list')
+        return
+      }
+      if (isRestrictedExpenseController && !pathname.startsWith('/expenses') && !pathname.startsWith('/trips/fuel/load') && !pathname.startsWith('/profile')) {
+        window.location.replace('/expenses')
+        return
+      }
+      if (isRestrictedLogisticsBoss && !pathname.startsWith('/trips/list') && !pathname.startsWith('/fleet') && !pathname.startsWith('/profile')) {
+        window.location.replace('/trips/list')
+        return
+      }
+      if (isRestrictedQhseSupervisor && !pathname.startsWith('/trips') && !pathname.startsWith('/qhse') && !pathname.startsWith('/profile')) {
+        window.location.replace('/trips/list')
+        return
+      }
+      if (isRestrictedMaintenanceOrInventory && !pathname.startsWith('/maintenance') && !pathname.startsWith('/inventory') && !pathname.startsWith('/profile')) {
+        window.location.replace(isMaintenanceRole ? '/maintenance' : '/inventory')
+        return
+      }
+    }
+    
+    // We use window.location.replace to prevent history pollution, which avoids the SecurityError.
+    enforceRoute()
   }, [isRestrictedMonitoring, isRestrictedWalmartCoordinator, isRestrictedExpenseController, isRestrictedLogisticsBoss, isRestrictedQhseSupervisor, isRestrictedMaintenanceOrInventory, isMaintenanceRole, pathname])
+
 
   return (
     <aside

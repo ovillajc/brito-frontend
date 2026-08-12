@@ -5,7 +5,8 @@
 
 'use client'
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react'
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react'
+import { useSettingsStore } from '@/src/core/presentation/store/settings-store'
 
 interface SidebarContextValue {
   isCollapsed: boolean
@@ -19,17 +20,32 @@ const SidebarContext = createContext<SidebarContextValue | undefined>(undefined)
  * Provider que gestiona el estado del sidebar.
  */
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
+  const storeCollapsed = useSettingsStore((state) => state.sidebarCollapsed)
+  const setStoreCollapsed = useSettingsStore((state) => state.setSidebarCollapsed)
+  
+  // Local state for fast updates and SSR hydration safety
   const [isCollapsed, setIsCollapsed] = useState(true)
 
+  // Sync with persistent store on mount
+  useEffect(() => {
+    setIsCollapsed(storeCollapsed)
+  }, [storeCollapsed])
+
+  // Custom setter that updates both local context state and persistent store
+  const setSidebarState = useCallback((value: boolean) => {
+    setIsCollapsed(value)
+    setStoreCollapsed(value)
+  }, [setStoreCollapsed])
+
   const toggleCollapsed = useCallback(() => {
-    setIsCollapsed((prev) => !prev)
-  }, [])
+    setSidebarState(!isCollapsed)
+  }, [isCollapsed, setSidebarState])
 
   const value = useMemo(() => ({
     isCollapsed,
     toggleCollapsed,
-    setIsCollapsed,
-  }), [isCollapsed, toggleCollapsed])
+    setIsCollapsed: setSidebarState,
+  }), [isCollapsed, toggleCollapsed, setSidebarState])
 
   return (
     <SidebarContext.Provider value={value}>
