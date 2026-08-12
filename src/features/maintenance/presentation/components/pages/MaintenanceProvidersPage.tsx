@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Building2, Wrench } from 'lucide-react'
 import { Badge } from '@/src/core/presentation/components/ui/badge'
 import { cn } from '@/src/core/infrastructure/utils/cn'
 import { useProviders } from '@/src/features/maintenance/presentation/hooks/use-maintenance'
 import { ProviderDialog } from '@/src/features/maintenance/presentation/components/organisms/ProviderDialog'
-import { CrudDataTable, type CrudColumn } from '@/src/core/presentation/components/organisms/CrudDataTable'
+import { SpreadsheetTable, type SpreadsheetColumn, type TableFilterConfig } from '@/src/core/presentation/components/ui/SpreadsheetTable'
 import type { MaintenanceProviderEntity } from '@/src/features/maintenance/domain/entities/maintenance-entity'
 
 /** Página de gestión de proveedores de servicios de mantenimiento. */
@@ -30,11 +30,38 @@ export default function MaintenanceProvidersPage() {
     setSelectedProvider(null)
   }
 
-  const columns: CrudColumn<MaintenanceProviderEntity>[] = [
+  const tableFilters = useMemo((): TableFilterConfig<MaintenanceProviderEntity>[] => [
     {
+      id: 'providerType',
+      label: 'Tipo de Proveedor',
+      type: 'select',
+      options: [
+        { value: 'INTERNAL', label: 'Interno' },
+        { value: 'EXTERNAL', label: 'Externo' },
+      ],
+    },
+    {
+      id: 'isActive',
+      label: 'Estado',
+      type: 'select',
+      options: [
+        { value: 'true', label: 'Activo' },
+        { value: 'false', label: 'Inactivo' },
+      ],
+      filterFn: (row, value) => {
+        const isAct = value === 'true'
+        return row.isActive === isAct
+      }
+    }
+  ], [])
+
+  const columns: SpreadsheetColumn<MaintenanceProviderEntity>[] = [
+    {
+      key: 'name',
       header: 'Nombre',
-      sortable: true,
-      cell: (p) => (
+      resizable: true,
+      filterable: true,
+      render: (p) => (
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1a5c3a]/10 text-[#1a5c3a]">
             {p.providerType === 'INTERNAL' ? (
@@ -46,12 +73,13 @@ export default function MaintenanceProvidersPage() {
           <span className="font-medium text-on-surface">{p.name}</span>
         </div>
       ),
-      accessor: (p) => p.name,
     },
     {
+      key: 'type',
       header: 'Tipo',
-      sortable: true,
-      cell: (p) => (
+      resizable: true,
+      filterable: true,
+      render: (p) => (
         <Badge
           variant="outline"
           className={cn(
@@ -64,12 +92,13 @@ export default function MaintenanceProvidersPage() {
           {p.providerType === 'INTERNAL' ? 'Interno' : 'Externo'}
         </Badge>
       ),
-      accessor: (p) => p.providerType,
     },
     {
+      key: 'status',
       header: 'Estado',
-      sortable: true,
-      cell: (p) => (
+      resizable: true,
+      filterable: true,
+      render: (p) => (
         <span
           className={cn(
             'inline-flex items-center gap-1.5 text-xs font-medium',
@@ -85,7 +114,6 @@ export default function MaintenanceProvidersPage() {
           {p.isActive ? 'Activo' : 'Inactivo'}
         </span>
       ),
-      accessor: (p) => (p.isActive ? 'Activo' : 'Inactivo'),
     },
   ]
 
@@ -105,15 +133,20 @@ export default function MaintenanceProvidersPage() {
         </div>
       )}
 
-      <CrudDataTable<MaintenanceProviderEntity>
+      <SpreadsheetTable<MaintenanceProviderEntity>
+        stateKey="maintenance-providers-table"
         data={providers ?? []}
         isLoading={isLoading}
         columns={columns}
+        filters={tableFilters}
+        draggableRows={true}
+        onRowReorder={(from, to, newData) => console.log('Reordered:', from, to)}
         searchPlaceholder="Buscar por nombre..."
         searchFilter={(p, term) => p.name.toLowerCase().includes(term.toLowerCase())}
         actionLabel="Nuevo proveedor"
         onAction={handleNew}
         onEdit={handleEdit}
+        canManage={true}
         emptyState={{
           icon: Building2,
           title: 'Sin proveedores',

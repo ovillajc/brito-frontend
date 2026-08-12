@@ -6,7 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/src/core/presentation/com
 import { useAllWorkOrderParts, useMaintenanceCatalogs, useDeleteWorkOrderPart } from '@/src/features/maintenance/presentation/hooks/use-maintenance'
 import type { WorkOrderPartReplicaEntity } from '@/src/features/maintenance/domain/entities/maintenance-entity'
 import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
-import { SpreadsheetTable, type SpreadsheetColumn } from '@/src/core/presentation/components/ui/SpreadsheetTable'
+import { SpreadsheetTable, type SpreadsheetColumn, type TableFilterConfig } from '@/src/core/presentation/components/ui/SpreadsheetTable'
 import { Dialog } from '@/src/core/presentation/components/ui/dialog'
 import { Label } from '@/src/core/presentation/components/ui/label'
 import { Input } from '@/src/core/presentation/components/ui/input'
@@ -41,24 +41,51 @@ export default function MaintenancePartsPage() {
     setExportModalOpen(false)
   }
 
+  const tableFilters = useMemo((): TableFilterConfig<WorkOrderPartReplicaEntity>[] => [
+    {
+      id: 'paidBy',
+      label: 'Pagado Por',
+      type: 'select',
+      options: [
+        { value: 'COMPANY', label: 'Empresa' },
+        { value: 'OPERATOR', label: 'Operador' },
+      ],
+    },
+    {
+      id: 'stayEnteredAt',
+      label: 'Fecha Ingreso (Estancia)',
+      type: 'date-range',
+      filterFn: (row, value) => {
+        if (!row.stayEnteredAt) return false;
+        const d = new Date(row.stayEnteredAt).getTime();
+        const start = value.start ? new Date(value.start + 'T00:00:00').getTime() : null;
+        const end = value.end ? new Date(value.end + 'T23:59:59').getTime() : null;
+        
+        if (start && d < start) return false;
+        if (end && d > end) return false;
+        return true;
+      }
+    }
+  ], []);
+
   const partsColumns = useMemo<SpreadsheetColumn<WorkOrderPartReplicaEntity>[]>(() => [
-    { key: 'stayFolio', header: 'Folio Estancia', render: (s) => <span className="font-mono text-stone-700">{s.stayFolio}</span> },
-    { key: 'stayEntered', header: 'Fecha Ingreso', render: (s) => <div className="text-sm">{dateFmt.format(new Date(s.stayEnteredAt))}</div> },
-    { key: 'woFolio', header: 'Folio Trabajo', render: (s) => <span className="font-mono text-stone-700">{s.workOrderFolio}</span> },
-    { key: 'eco', header: 'No. Económico', render: (s) => <div className="text-sm">{s.unitEconomicNumber || '—'}</div> },
-    { key: 'plates', header: 'Placas', render: (s) => <div className="text-sm">{s.unitPlates || '—'}</div> },
-    { key: 'reason', header: 'Motivo Estancia', render: (s) => <div className="text-sm truncate max-w-37.5">{s.stayReason || '—'}</div> },
-    { key: 'mntType', header: 'Tipo Mantenimiento', render: (s) => <div className="text-sm">{s.maintenanceTypeName || '—'}</div> },
-    { key: 'mechCat', header: 'Categoría Mecánica', render: (s) => <div className="text-sm">{s.mechanicalCategoryName || '—'}</div> },
-    { key: 'concept', header: 'Concepto/Pieza', render: (s) => <div className="text-sm font-medium">{s.description}</div> },
-    { key: 'provider', header: 'Proveedor', render: (s) => <div className="text-sm">{s.providerName || '—'}</div> },
-    { key: 'brand', header: 'Marca', render: (s) => <div className="text-sm">{s.brand || '—'}</div> },
-    { key: 'unit', header: 'Unidad de Medida', render: (s) => <div className="text-sm">{s.unitName || '—'}</div> },
-    { key: 'price', header: 'Precio Unitario', render: (s) => <div className="text-sm">{money.format(s.unitPrice)}</div> },
-    { key: 'qty', header: 'Cantidad', render: (s) => <div className="text-sm">{String(s.quantity)}</div> },
-    { key: 'discount', header: 'Descuento', render: (s) => <div className="text-sm">{s.discount ? `${s.discount}%` : '0%'}</div> },
-    { key: 'total', header: 'Importe Total', render: (s) => <div className="text-sm font-bold">{money.format(s.totalWithTax)}</div> },
-    { key: 'paidBy', header: 'Pagado Por', render: (s) => <div className="text-sm">{s.paidBy || '—'}</div> },
+    { key: 'stayFolio', header: 'Folio Estancia', resizable: true, filterable: true, render: (s) => <span className="font-mono text-stone-700">{s.stayFolio}</span> },
+    { key: 'stayEntered', header: 'Fecha Ingreso', resizable: true, render: (s) => <div className="text-sm">{dateFmt.format(new Date(s.stayEnteredAt))}</div> },
+    { key: 'woFolio', header: 'Folio Trabajo', resizable: true, filterable: true, render: (s) => <span className="font-mono text-stone-700">{s.workOrderFolio}</span> },
+    { key: 'eco', header: 'No. Económico', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.unitEconomicNumber || '—'}</div> },
+    { key: 'plates', header: 'Placas', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.unitPlates || '—'}</div> },
+    { key: 'reason', header: 'Motivo Estancia', resizable: true, filterable: true, render: (s) => <div className="text-sm truncate max-w-37.5">{s.stayReason || '—'}</div> },
+    { key: 'mntType', header: 'Tipo Mantenimiento', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.maintenanceTypeName || '—'}</div> },
+    { key: 'mechCat', header: 'Categoría Mecánica', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.mechanicalCategoryName || '—'}</div> },
+    { key: 'concept', header: 'Concepto/Pieza', resizable: true, filterable: true, render: (s) => <div className="text-sm font-medium">{s.description}</div> },
+    { key: 'provider', header: 'Proveedor', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.providerName || '—'}</div> },
+    { key: 'brand', header: 'Marca', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.brand || '—'}</div> },
+    { key: 'unit', header: 'Unidad de Medida', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.unitName || '—'}</div> },
+    { key: 'price', header: 'Precio Unitario', resizable: true, render: (s) => <div className="text-sm">{money.format(s.unitPrice)}</div> },
+    { key: 'qty', header: 'Cantidad', resizable: true, render: (s) => <div className="text-sm">{String(s.quantity)}</div> },
+    { key: 'discount', header: 'Descuento', resizable: true, render: (s) => <div className="text-sm">{s.discount ? `${s.discount}%` : '0%'}</div> },
+    { key: 'total', header: 'Importe Total', resizable: true, render: (s) => <div className="text-sm font-bold">{money.format(s.totalWithTax)}</div> },
+    { key: 'paidBy', header: 'Pagado Por', resizable: true, filterable: true, render: (s) => <div className="text-sm">{s.paidBy || '—'}</div> },
   ], [])
 
   return (
@@ -76,10 +103,14 @@ export default function MaintenancePartsPage() {
       )}
 
       <SpreadsheetTable<WorkOrderPartReplicaEntity>
+        stateKey="maintenance-parts-table"
         canManage={canManage}
         pageSize={10}
         data={parts}
         columns={partsColumns as any}
+        filters={tableFilters as any}
+        draggableRows={true}
+        onRowReorder={(from, to, newData) => console.log('Reordered parts:', from, to)}
         searchPlaceholder="Buscar gastos..."
         searchFilter={(row, term) => [row.workOrderFolio, row.description, row.brand].some((v) => v?.toLowerCase().includes(term))}
         actionLabel="Nuevo Gasto"
