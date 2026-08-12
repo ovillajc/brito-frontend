@@ -1,5 +1,8 @@
 'use client'
 
+import { GetMaintenanceGeneralKPIs } from "../../application/GetMaintenanceGeneralKPIs";
+import { GetMaintenanceExpenseKPIs } from "../../application/GetMaintenanceExpenseKPIs";
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SupabaseMaintenanceRepository } from '../../infrastructure/repositories/SupabaseMaintenanceRepository'
 import { GetWorkshopStays } from '../../application/GetWorkshopStays'
@@ -423,6 +426,28 @@ export function useUpdateProvider() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['maintenance', 'providers'] })
       qc.invalidateQueries({ queryKey: ['maintenance', 'catalogs'] })
+    },
+  })
+}
+
+export function useMaintenanceGeneralKPIs(startDate?: string, endDate?: string) {
+  return useQuery({
+    queryKey: ['maintenance', 'kpis', 'general', startDate, endDate],
+    queryFn: async () => {
+      const result = await GetMaintenanceGeneralKPIs(repo, startDate, endDate)
+      if (!result.ok) throw new Error(result.error.message)
+      return result.data
+    },
+  })
+}
+
+export function useMaintenanceExpenseKPIs(startDate?: string, endDate?: string) {
+  return useQuery({
+    queryKey: ['maintenance', 'kpis', 'expense', startDate, endDate],
+    queryFn: async () => {
+      const result = await GetMaintenanceExpenseKPIs(repo, startDate, endDate)
+      if (!result.ok) throw new Error(result.error.message)
+      return result.data
     },
   })
 }

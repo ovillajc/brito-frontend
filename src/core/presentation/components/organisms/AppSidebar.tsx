@@ -175,6 +175,17 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
 
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const [tooltip, setTooltip] = useState<{ label: string; top: number } | null>(null)
+
+  const handleMouseEnter = (e: React.MouseEvent, label: string) => {
+    if (!isCollapsed) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    setTooltip({ label, top: rect.top + rect.height / 2 })
+  }
+
+  const handleMouseLeave = () => {
+    setTooltip(null)
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -275,12 +286,13 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
               <li key={href}>
                 <Link
                   href={href}
-                  title={isCollapsed ? item.label : undefined}
+                  onMouseEnter={(e) => handleMouseEnter(e, item.label)}
+                  onMouseLeave={handleMouseLeave}
                   className={cn(
                     'flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-medium transition-all',
                     isActive
                       ? 'bg-[#1a5c3a]/5 dark:bg-primary-container/10 text-[#1a5c3a] dark:text-primary-container font-bold'
-                      : 'text-stone-500 dark:text-zinc-400 hover:bg-stone-50 dark:hover:bg-zinc-800 hover:text-stone-900 dark:hover:text-zinc-100',
+                      : 'text-stone-500 dark:text-zinc-400 hover:bg-stone-50 dark:hover:bg-zinc-800 hover:text-primary dark:hover:text-primary',
                     isCollapsed && 'justify-center px-2',
                   )}
                 >
@@ -309,13 +321,13 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
              <li key={item.href}>
               <Link 
                 href={item.href}
-
-                title={isCollapsed ? item.label : undefined}
+                onMouseEnter={(e) => handleMouseEnter(e, item.label)}
+                onMouseLeave={handleMouseLeave}
                 className={cn(
                   'flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-medium transition-all',
                   isActive
                     ? 'bg-[#1a5c3a]/5 text-[#1a5c3a] font-bold'
-                    : 'text-stone-500 hover:bg-stone-50 hover:text-stone-900',
+                    : 'text-stone-500 hover:bg-stone-50 hover:text-primary dark:hover:bg-zinc-800 dark:hover:text-primary',
                     isCollapsed && 'justify-center px-2'
                 )}
               >
@@ -343,13 +355,13 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
               <li key={item.href}>
                 <Link
                   href={item.href}
-
-                  title={isCollapsed ? item.label : undefined}
+                  onMouseEnter={(e) => handleMouseEnter(e, item.label)}
+                  onMouseLeave={handleMouseLeave}
                   className={cn(
                     'flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-medium transition-all',
                     isActive
                       ? 'bg-[#1a5c3a]/5 text-[#1a5c3a] font-bold'
-                      : 'text-stone-500 hover:bg-stone-50 hover:text-stone-900',
+                      : 'text-stone-500 hover:bg-stone-50 hover:text-primary dark:hover:bg-zinc-800 dark:hover:text-primary',
                     isCollapsed && 'justify-center px-2',
                   )}
                 >
@@ -421,6 +433,16 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
           )}
         </div>
       </div>
+
+      {/* Global Tooltip */}
+      {tooltip && isCollapsed && (
+        <div
+          className="fixed left-16 z-50 -translate-y-1/2 px-2.5 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-semibold rounded-md shadow-lg pointer-events-none animate-in fade-in zoom-in-95 duration-100"
+          style={{ top: tooltip.top }}
+        >
+          {tooltip.label}
+        </div>
+      )}
     </aside>
   )
 }

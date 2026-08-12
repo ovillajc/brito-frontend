@@ -1,6 +1,13 @@
 import { createClient } from '@/src/core/lib/supabase/server'
 import type { Either, Failure } from '@/src/core/domain/either'
-import type { IMaintenanceRepository, MaintenanceCatalogsEntity, MaintenanceListFilters, PaginatedResult } from '../../domain/repositories/i-maintenance-repository'
+import type { 
+  IMaintenanceRepository, 
+  MaintenanceListFilters, 
+  PaginatedResult, 
+  MaintenanceCatalogsEntity, 
+  MaintenanceGeneralKPIs, 
+  MaintenanceExpenseKPIs,
+} from '../../domain/repositories/i-maintenance-repository'
 import type { WorkOrderPartEntity, WorkshopStayKpiEntity, WorkshopWorkOrderEntity, WorkshopStayReplicaEntity, WorkshopWorkOrderReplicaEntity, WorkOrderPartReplicaEntity, MeasurementUnitEntity, InventoryItemEntity, MaintenanceTypeEntity, MaintenanceServiceEntity, VehicleSystemEntity, VehicleComponentEntity, WorkOrderIssueEntity, MaintenanceProviderEntity } from '../../domain/entities/maintenance-entity'
 import type { CreateWorkshopStayInput } from '../../domain/schemas/create-stay.schema'
 import type { CreateWorkOrderInput } from '../../domain/schemas/create-work-order.schema'
@@ -346,6 +353,36 @@ export class SupabaseMaintenanceServerRepository implements IMaintenanceReposito
       return { ok: true, data: undefined }
     } catch {
       return { ok: false, error: { code: 'UNEXPECTED', message: 'Error al eliminar la refacción' } }
+    }
+  }
+
+  async getGeneralKPIs(startDate?: string, endDate?: string): Promise<Either<Failure, MaintenanceGeneralKPIs>> {
+    try {
+      const supabase = await createClient()
+      const { data, error } = await supabase.rpc('get_maintenance_general_kpis', {
+        start_date: startDate || null,
+        end_date: endDate || null
+      })
+      if (error) throw error
+      return { ok: true, data: data as MaintenanceGeneralKPIs }
+    } catch (error: any) {
+      console.error('Error fetching general KPIs on server:', error)
+      return { ok: false, error: { code: 'DB_ERROR', message: 'Error al obtener métricas generales' } }
+    }
+  }
+
+  async getExpenseKPIs(startDate?: string, endDate?: string): Promise<Either<Failure, MaintenanceExpenseKPIs>> {
+    try {
+      const supabase = await createClient()
+      const { data, error } = await supabase.rpc('get_maintenance_expense_kpis', {
+        start_date: startDate || null,
+        end_date: endDate || null
+      })
+      if (error) throw error
+      return { ok: true, data: data as MaintenanceExpenseKPIs }
+    } catch (error: any) {
+      console.error('Error fetching expense KPIs on server:', error)
+      return { ok: false, error: { code: 'DB_ERROR', message: 'Error al obtener métricas de gastos' } }
     }
   }
 }

@@ -45,6 +45,21 @@ export interface PaginatedResult<T> {
   pageSize: number
 }
 
+export interface MaintenanceGeneralKPIs {
+  staysByStatus: { status: string; count: number }[]
+  workOrdersByType: { type: string; count: number }[]
+  avgDaysInShop: { date: string; avg_days: number }[]
+  topUnitsByStays: { unit: string; count: number }[]
+}
+
+export interface MaintenanceExpenseKPIs {
+  expenseOverTime: { date: string; total: number }[]
+  expenseByUnit: { unit: string; total: number }[]
+  expenseByOperator: { operator: string; total: number }[]
+  expenseByClient: { client: string; total: number }[]
+  expenseByPaidBy: { paid_by: string; total: number }[]
+}
+
 export interface IMaintenanceRepository {
   listStays(filters?: MaintenanceListFilters): Promise<Either<Failure, PaginatedResult<WorkshopStayReplicaEntity>>>
   listWorkOrders(stayId: string): Promise<Either<Failure, WorkshopWorkOrderEntity[]>>
@@ -80,6 +95,8 @@ export interface IMaintenanceRepository {
   // Providers
   listProviders(): Promise<Either<Failure, MaintenanceProviderEntity[]>>
   createProvider(input: CreateProviderInput, createdBy: string | null): Promise<Either<Failure, void>>
-  updateProvider(providerId: string, input: Partial<CreateProviderInput>): Promise<Either<Failure, void>>
-}
+  updateProvider(id: string, input: Partial<CreateProviderInput>): Promise<Either<Failure, void>>
 
+  getGeneralKPIs(startDate?: string, endDate?: string): Promise<Either<Failure, MaintenanceGeneralKPIs>>
+  getExpenseKPIs(startDate?: string, endDate?: string): Promise<Either<Failure, MaintenanceExpenseKPIs>>
+}

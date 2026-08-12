@@ -3,11 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/src/core/infrastructure/utils/cn'
-import { ClipboardList, Wrench, Settings, Building2, CircleDollarSign } from 'lucide-react'
+import { ClipboardList, Wrench, Settings, Building2, CircleDollarSign, LayoutDashboard } from 'lucide-react'
 import { useAuthStore } from '@/src/features/auth/presentation/store/auth-store'
 
 const MAINTENANCE_NAV = [
-  { name: 'Estancias', href: '/maintenance', icon: ClipboardList },
+  { name: 'Dashboard', href: '/maintenance/dashboard', icon: LayoutDashboard },
+  { name: 'Estancias', href: '/maintenance/stays', icon: ClipboardList },
   { name: 'Trabajos', href: '/maintenance/jobs', icon: Wrench },
   { name: 'Gastos', href: '/maintenance/costs', icon: CircleDollarSign },
   { name: 'Proveedores', href: '/maintenance/providers', icon: Building2 },

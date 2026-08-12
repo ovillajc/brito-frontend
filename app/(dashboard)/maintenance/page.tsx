@@ -1,10 +1,5 @@
-import MaintenanceStaysPage from '@/src/features/maintenance/presentation/components/pages/MaintenanceStaysPage'
-import { ModuleGuard } from '@/src/features/auth/presentation/components/ModuleGuard'
+import { redirect } from 'next/navigation'
 
-export default function MaintenanceStaysRoute() {
-  return (
-    <ModuleGuard permissions={['maintenance:view', 'maintenance:manage']}>
-      <MaintenanceStaysPage />
-    </ModuleGuard>
-  )
+export default function MaintenanceRootPage() {
+  redirect('/maintenance/dashboard')
 }
